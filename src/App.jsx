@@ -90,21 +90,25 @@ export default function App() {
         }
     };
 
+    const showSidebar = currentPath === '#dashboard';
+
     return (
         <div className="app-container">
-            <div className="main-layout">
+            <div className={`main-layout ${!showSidebar ? 'no-sidebar' : ''}`}>
                 <Header 
                     clinics={clinics}
                     selectedClinic={selectedClinic}
                     onClinicChange={setSelectedClinic}
                 />
-                <Sidebar 
-                    currentDate={currentDate}
-                    setCurrentDate={setCurrentDate}
-                    doctors={doctors}
-                    filteredDoctorIds={filteredDoctorIds}
-                    setFilteredDoctorIds={setFilteredDoctorIds}
-                />
+                {showSidebar && (
+                    <Sidebar 
+                        currentDate={currentDate}
+                        setCurrentDate={setCurrentDate}
+                        doctors={doctors}
+                        filteredDoctorIds={filteredDoctorIds}
+                        setFilteredDoctorIds={setFilteredDoctorIds}
+                    />
+                )}
                 <main className="content-area">
                     {renderPage()}
                 </main>

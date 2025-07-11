@@ -1,6 +1,6 @@
 
 /* -------------------------------------------------- */
-/* FILE 5: src/components/DashboardPage.jsx (REPLACE) */
+/* FILE 5: src/components/DashboardPage.jsx (No Changes) */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect, useMemo } from 'react';

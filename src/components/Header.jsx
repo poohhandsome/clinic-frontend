@@ -14,6 +14,7 @@ const NavDropdown = () => {
             </button>
             {isOpen && (
                 <div className="header-nav-dropdown-menu">
+                    <a href="#dashboard" onClick={() => setIsOpen(false)}>Dashboard</a>
                     <a href="#pending" onClick={() => setIsOpen(false)}>Unconfirmed List</a>
                     <a href="#confirmed" onClick={() => setIsOpen(false)}>Confirmed List</a>
                     <a href="#schedules" onClick={() => setIsOpen(false)}>Doctor Schedule Setting</a>

@@ -94,3 +94,4 @@ export default function Sidebar({ currentDate, setCurrentDate, doctors, filtered
         </aside>
     );
 }
+
