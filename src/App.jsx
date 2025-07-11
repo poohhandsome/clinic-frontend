@@ -1,6 +1,6 @@
 
 /* -------------------------------------------------- */
-/* FILE 2: src/App.jsx (REPLACE this file)            */
+/* FILE 2: src/App.jsx (REPLACE)                      */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect } from 'react';
@@ -12,8 +12,7 @@ import DashboardPage from './components/DashboardPage';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import authorizedFetch from './api';
 
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
@@ -26,7 +25,7 @@ const useHashNavigation = () => {
 };
 
 export default function App() {
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [user, setUser] = useState(null);
     const [clinics, setClinics] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [selectedClinic, setSelectedClinic] = useState('');
@@ -35,21 +34,29 @@ export default function App() {
 
     const currentPath = useHashNavigation();
 
-    // Fetch clinics on initial load
     useEffect(() => {
-        fetch(`${API_BASE_URL}/clinics`)
-            .then(res => res.json())
-            .then(data => {
-                setClinics(data);
-                if (data.length > 0) setSelectedClinic(data[0].id);
-            });
+        const storedUser = localStorage.getItem('user');
+        const token = localStorage.getItem('authToken');
+        if (storedUser && token) {
+            setUser(JSON.parse(storedUser));
+        }
     }, []);
 
-    // Fetch doctors when the selected clinic changes
+    useEffect(() => {
+        if (user) { // Only fetch data if logged in
+            authorizedFetch('/clinics')
+                .then(res => res.json())
+                .then(data => {
+                    setClinics(data);
+                    if (data.length > 0) setSelectedClinic(data[0].id);
+                });
+        }
+    }, [user]); // Re-fetch if user logs in
+
     useEffect(() => {
         if (selectedClinic) {
             const dateString = '2025-01-01'; 
-            fetch(`${API_BASE_URL}/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
+            authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => {
                     setDoctors(data.doctors || []);
@@ -58,35 +65,34 @@ export default function App() {
         }
     }, [selectedClinic]);
 
-    if (!isLoggedIn) {
-        return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
+    const handleLogin = (loggedInUser, token) => {
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('user', JSON.stringify(loggedInUser));
+        setUser(loggedInUser);
+        window.location.hash = '#dashboard';
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setUser(null);
+        window.location.hash = '#login';
+    };
+
+    if (!user) {
+        return <LoginPage onLogin={handleLogin} />;
     }
 
     const renderPage = () => {
-        const pageProps = { 
-            selectedClinic, 
-            apiUrl: API_BASE_URL, 
-            currentDate, 
-            setCurrentDate,
-            doctors,
-            filteredDoctorIds
-        };
-        // The main dashboard is now the default view
-        if (currentPath === '#login' || currentPath === '') {
-            window.location.hash = '#dashboard';
-        }
+        const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds };
+        if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
 
         switch (currentPath) {
-            case '#dashboard':
-                return <DashboardPage {...pageProps} />;
-            case '#pending':
-                return <PendingAppointmentsPage {...pageProps} />;
-            case '#confirmed':
-                return <ConfirmedAppointmentsPage {...pageProps} />;
-            case '#schedules':
-                return <DoctorSchedulesPage {...pageProps} />;
-            default:
-                 return <DashboardPage {...pageProps} />;
+            case '#dashboard': return <DashboardPage {...pageProps} />;
+            case '#pending': return <PendingAppointmentsPage {...pageProps} />;
+            case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
+            case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
+            default: return <DashboardPage {...pageProps} />;
         }
     };
 
@@ -96,6 +102,8 @@ export default function App() {
         <div className="app-container">
             <div className={`main-layout ${!showSidebar ? 'no-sidebar' : ''}`}>
                 <Header 
+                    user={user}
+                    onLogout={handleLogout}
                     clinics={clinics}
                     selectedClinic={selectedClinic}
                     onClinicChange={setSelectedClinic}
@@ -109,9 +117,7 @@ export default function App() {
                         setFilteredDoctorIds={setFilteredDoctorIds}
                     />
                 )}
-                <main className="content-area">
-                    {renderPage()}
-                </main>
+                <main className="content-area">{renderPage()}</main>
             </div>
         </div>
     );

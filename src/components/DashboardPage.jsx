@@ -6,8 +6,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import AppointmentModal from './AppointmentModal';
+import authorizedFetch from '../api';
 
-export default function DashboardPage({ selectedClinic, apiUrl, currentDate, doctors, filteredDoctorIds }) {
+export default function DashboardPage({ selectedClinic, currentDate, doctors, filteredDoctorIds }) {
     const [dayData, setDayData] = useState({ appointments: [] });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
@@ -20,7 +21,7 @@ export default function DashboardPage({ selectedClinic, apiUrl, currentDate, doc
     const fetchDayData = () => {
         if (selectedClinic) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
-            fetch(`${apiUrl}/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
+            authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => setDayData({ appointments: data.appointments || [] }));
         }
