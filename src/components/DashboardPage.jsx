@@ -7,17 +7,21 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import AppointmentModal from './AppointmentModal';
 
-export default function DashboardPage({ selectedClinic, apiUrl, currentDate }) {
-    const [dayData, setDayData] = useState({ doctors: [], appointments: [] });
+export default function DashboardPage({ selectedClinic, apiUrl, currentDate, doctors, filteredDoctorIds }) {
+    const [dayData, setDayData] = useState({ appointments: [] });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
+
+    const displayedDoctors = useMemo(() => {
+        return doctors.filter(doc => filteredDoctorIds.includes(doc.id));
+    }, [doctors, filteredDoctorIds]);
 
     const fetchDayData = () => {
         if (selectedClinic) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
             fetch(`${apiUrl}/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
-                .then(data => setDayData(data));
+                .then(data => setDayData({ appointments: data.appointments || [] }));
         }
     };
 
@@ -51,16 +55,16 @@ export default function DashboardPage({ selectedClinic, apiUrl, currentDate }) {
             {isModalOpen && <AppointmentModal data={modalData} clinicId={selectedClinic} apiUrl={apiUrl} onClose={handleModalClose} />}
             
             <div className="calendar-container">
-                <div className="calendar-grid" style={{ gridTemplateColumns: `5rem repeat(${dayData.doctors.length}, 1fr)` }}>
+                <div className="calendar-grid" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, 1fr)` }}>
                     {/* Headers */}
                     <div className="grid-header time-gutter"></div>
-                    {dayData.doctors.map(doc => <div key={doc.id} className="grid-header doctor-column">{doc.name}</div>)}
+                    {displayedDoctors.map(doc => <div key={doc.id} className="grid-header doctor-column">{doc.name}</div>)}
 
                     {/* Body */}
                     {timeSlots.map(time => (
                         <React.Fragment key={time}>
                             <div className="time-label">{time}</div>
-                            {dayData.doctors.map(doc => {
+                            {displayedDoctors.map(doc => {
                                 const appointment = dayData.appointments.find(app => app.doctor_id === doc.id && app.appointment_time.startsWith(time));
                                 return (
                                     <div className="time-slot doctor-column" onClick={() => !appointment && handleSlotClick(time, doc.id)}>

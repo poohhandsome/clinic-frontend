@@ -28,11 +28,14 @@ const useHashNavigation = () => {
 export default function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [clinics, setClinics] = useState([]);
+    const [doctors, setDoctors] = useState([]);
     const [selectedClinic, setSelectedClinic] = useState('');
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
 
     const currentPath = useHashNavigation();
 
+    // Fetch clinics on initial load
     useEffect(() => {
         fetch(`${API_BASE_URL}/clinics`)
             .then(res => res.json())
@@ -42,12 +45,34 @@ export default function App() {
             });
     }, []);
 
+    // Fetch doctors when the selected clinic changes
+    useEffect(() => {
+        if (selectedClinic) {
+            // We can use any date for the schedule endpoint just to get the list of doctors
+            const dateString = '2025-01-01'; 
+            fetch(`${API_BASE_URL}/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
+                .then(res => res.json())
+                .then(data => {
+                    setDoctors(data.doctors || []);
+                    // When clinic changes, select all doctors by default
+                    setFilteredDoctorIds((data.doctors || []).map(d => d.id));
+                });
+        }
+    }, [selectedClinic]);
+
     if (!isLoggedIn) {
         return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
     }
 
     const renderPage = () => {
-        const pageProps = { selectedClinic, apiUrl: API_BASE_URL, currentDate, setCurrentDate };
+        const pageProps = { 
+            selectedClinic, 
+            apiUrl: API_BASE_URL, 
+            currentDate, 
+            setCurrentDate,
+            doctors,
+            filteredDoctorIds
+        };
         switch (currentPath) {
             case '#dashboard':
                 return <DashboardPage {...pageProps} />;
@@ -74,6 +99,9 @@ export default function App() {
                 <Sidebar 
                     currentDate={currentDate}
                     setCurrentDate={setCurrentDate}
+                    doctors={doctors}
+                    filteredDoctorIds={filteredDoctorIds}
+                    setFilteredDoctorIds={setFilteredDoctorIds}
                 />
                 <main className="content-area">
                     {renderPage()}

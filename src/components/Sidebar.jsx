@@ -1,9 +1,9 @@
 
 /* -------------------------------------------------- */
-/* FILE 4: src/components/Sidebar.jsx (NEW file)      */
+/* FILE 4: src/components/Sidebar.jsx (REPLACE)       */
 /* -------------------------------------------------- */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameDay, isSameMonth } from 'date-fns';
 
 const MiniCalendar = ({ currentDate, setCurrentDate }) => {
@@ -56,14 +56,25 @@ const SettingsDropdown = () => {
     );
 };
 
-export default function Sidebar({ currentDate, setCurrentDate }) {
-    // This is placeholder data. In a real app, this would come from an API call
-    // based on the selectedClinic and currentDate.
-    const doctors = [
-        { id: 1, name: 'Dr. Suwachai' },
-        { id: 2, name: 'Dr. Usanee' },
-        { id: 3, name: 'Dr. Sirassss' },
-    ];
+export default function Sidebar({ currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds }) {
+    
+    const handleDoctorFilterChange = (doctorId) => {
+        setFilteredDoctorIds(prevIds => 
+            prevIds.includes(doctorId) 
+                ? prevIds.filter(id => id !== doctorId) 
+                : [...prevIds, doctorId]
+        );
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setFilteredDoctorIds(doctors.map(d => d.id));
+        } else {
+            setFilteredDoctorIds([]);
+        }
+    };
+
+    const areAllSelected = doctors.length > 0 && filteredDoctorIds.length === doctors.length;
 
     return (
         <aside className="sidebar">
@@ -78,12 +89,22 @@ export default function Sidebar({ currentDate, setCurrentDate }) {
                 <ul className="doctor-list">
                     {doctors.map(doc => (
                         <li key={doc.id} className="doctor-item">
-                            <input type="checkbox" id={`doc-${doc.id}`} defaultChecked />
+                            <input 
+                                type="checkbox" 
+                                id={`doc-${doc.id}`} 
+                                checked={filteredDoctorIds.includes(doc.id)}
+                                onChange={() => handleDoctorFilterChange(doc.id)}
+                            />
                             <label htmlFor={`doc-${doc.id}`}>{doc.name}</label>
                         </li>
                     ))}
                      <li className="doctor-item">
-                        <input type="checkbox" id="doc-all" />
+                        <input 
+                            type="checkbox" 
+                            id="doc-all"
+                            checked={areAllSelected}
+                            onChange={handleSelectAll}
+                        />
                         <label htmlFor="doc-all">All</label>
                     </li>
                 </ul>
@@ -94,3 +115,4 @@ export default function Sidebar({ currentDate, setCurrentDate }) {
         </aside>
     );
 }
+
