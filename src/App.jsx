@@ -9,10 +9,9 @@ import LoginPage from './components/LoginPage';
 import DashboardPage from './components/DashboardPage';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage';
+import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage'; // Import new page
 
 // Get the API URL from environment variables.
-// It will be http://localhost:3001/api in development (if .env.development exists)
-// or the value from Vercel's settings in production.
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Simple router based on URL hash
@@ -40,6 +39,7 @@ const Navbar = ({ onClinicChange, clinics, selectedClinic }) => {
                 <nav>
                     <a href="#dashboard" className={currentPath === '#dashboard' ? 'active' : ''}>Dashboard</a>
                     <a href="#pending" className={currentPath === '#pending' ? 'active' : ''}>Pending Appointments</a>
+                    <a href="#confirmed" className={currentPath === '#confirmed' ? 'active' : ''}>Confirmed Appointments</a>
                     <a href="#schedules" className={currentPath === '#schedules' ? 'active' : ''}>Doctor Schedules</a>
                 </nav>
             </div>
@@ -84,6 +84,8 @@ export default function App() {
                 return <DashboardPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
             case '#pending':
                 return <PendingAppointmentsPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
+            case '#confirmed':
+                return <ConfirmedAppointmentsPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
             case '#schedules':
                 return <DoctorSchedulesPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
             default:
@@ -108,4 +110,3 @@ export default function App() {
         </div>
     );
 }
-
