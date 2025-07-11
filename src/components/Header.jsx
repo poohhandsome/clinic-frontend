@@ -1,5 +1,27 @@
 
-import React from 'react';
+/* -------------------------------------------------- */
+/* FILE 3: src/components/Header.jsx (REPLACE)        */
+/* -------------------------------------------------- */
+
+import React, { useState } from 'react';
+
+const NavDropdown = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+        <div className="header-nav-dropdown">
+            <button onClick={() => setIsOpen(!isOpen)}>
+                Menu &#9662;
+            </button>
+            {isOpen && (
+                <div className="header-nav-dropdown-menu">
+                    <a href="#pending" onClick={() => setIsOpen(false)}>Unconfirmed List</a>
+                    <a href="#confirmed" onClick={() => setIsOpen(false)}>Confirmed List</a>
+                    <a href="#schedules" onClick={() => setIsOpen(false)}>Doctor Schedule Setting</a>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default function Header({ clinics, selectedClinic, onClinicChange }) {
     return (
@@ -14,6 +36,9 @@ export default function Header({ clinics, selectedClinic, onClinicChange }) {
                             <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
                         ))}
                     </select>
+                </div>
+                <div className="header-nav-dropdown">
+                    | <NavDropdown />
                 </div>
             </div>
             <div className="header-right">

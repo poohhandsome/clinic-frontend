@@ -38,24 +38,6 @@ const MiniCalendar = ({ currentDate, setCurrentDate }) => {
     );
 };
 
-const SettingsDropdown = () => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-        <div className="settings-dropdown">
-            {isOpen && (
-                <div className="settings-dropdown-menu">
-                    <a href="#pending">Pending Appointments</a>
-                    <a href="#confirmed">Confirmed Appointments</a>
-                    <a href="#schedules">Doctor Schedules</a>
-                </div>
-            )}
-            <button onClick={() => setIsOpen(!isOpen)}>
-                Settings
-            </button>
-        </div>
-    );
-};
-
 export default function Sidebar({ currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds }) {
     
     const handleDoctorFilterChange = (doctorId) => {
@@ -109,10 +91,6 @@ export default function Sidebar({ currentDate, setCurrentDate, doctors, filtered
                     </li>
                 </ul>
             </div>
-            <div style={{ marginTop: 'auto' }}>
-                <SettingsDropdown />
-            </div>
         </aside>
     );
 }
-

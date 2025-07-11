@@ -13,6 +13,7 @@ export default function DashboardPage({ selectedClinic, apiUrl, currentDate, doc
     const [modalData, setModalData] = useState(null);
 
     const displayedDoctors = useMemo(() => {
+        // Only show doctors that are selected in the sidebar
         return doctors.filter(doc => filteredDoctorIds.includes(doc.id));
     }, [doctors, filteredDoctorIds]);
 

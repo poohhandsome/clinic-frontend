@@ -1,3 +1,4 @@
+
 /* -------------------------------------------------- */
 /* FILE 1: src/App.css (REPLACE this file)            */
 /* -------------------------------------------------- */
@@ -41,9 +42,30 @@ body {
 .header-left { display: flex; align-items: center; gap: 1.5rem; }
 .header-logo { font-weight: bold; font-size: 1.25rem; }
 .header-logo span { color: var(--primary-color); }
-.header-user, .header-clinic-select { display: flex; align-items: center; gap: 0.5rem; }
-.header-clinic-select select { border: none; font-weight: 600; font-size: 1rem; }
+.header-user, .header-clinic-select, .header-nav-dropdown { display: flex; align-items: center; gap: 0.5rem; }
+.header-clinic-select select { border: none; font-weight: 600; font-size: 1rem; background: transparent; cursor: pointer; }
 .header-profile { width: 2.5rem; height: 2.5rem; border-radius: 9999px; background-color: var(--primary-light); display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--primary-color); }
+
+/* Header Nav Dropdown */
+.header-nav-dropdown { position: relative; }
+.header-nav-dropdown button { background: none; border: none; font-weight: 600; font-size: 1rem; cursor: pointer; }
+.header-nav-dropdown-menu {
+  position: absolute;
+  top: 120%;
+  left: 0;
+  background: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  z-index: 20;
+}
+.header-nav-dropdown-menu a { padding: 0.5rem 1rem; text-decoration: none; color: var(--text-color); border-radius: 0.25rem; }
+.header-nav-dropdown-menu a:hover { background-color: var(--primary-light); }
+
 
 /* --- Sidebar Component --- */
 .sidebar {
@@ -77,24 +99,6 @@ body {
 .mini-calendar-grid .day.is-selected { background-color: var(--primary-color); color: var(--white); }
 .mini-calendar-grid .day.is-other-month { color: var(--text-light); opacity: 0.5; }
 
-/* Settings Dropdown */
-.settings-dropdown { position: relative; }
-.settings-dropdown button { width: 100%; text-align: left; background: var(--gray-light); border: 1px solid var(--border-color); }
-.settings-dropdown-menu {
-  position: absolute;
-  bottom: 100%;
-  width: 100%;
-  background: var(--white);
-  border: 1px solid var(--border-color);
-  border-radius: 0.375rem;
-  margin-bottom: 0.5rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-}
-.settings-dropdown-menu a { padding: 0.5rem; text-decoration: none; color: var(--text-color); border-radius: 0.25rem; }
-.settings-dropdown-menu a:hover { background-color: var(--primary-light); }
 
 /* --- Dashboard Page --- */
 .dashboard-container { height: 100%; display: flex; flex-direction: column; }

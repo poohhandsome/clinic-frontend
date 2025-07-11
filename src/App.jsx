@@ -48,13 +48,11 @@ export default function App() {
     // Fetch doctors when the selected clinic changes
     useEffect(() => {
         if (selectedClinic) {
-            // We can use any date for the schedule endpoint just to get the list of doctors
             const dateString = '2025-01-01'; 
             fetch(`${API_BASE_URL}/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => {
                     setDoctors(data.doctors || []);
-                    // When clinic changes, select all doctors by default
                     setFilteredDoctorIds((data.doctors || []).map(d => d.id));
                 });
         }
@@ -73,6 +71,11 @@ export default function App() {
             doctors,
             filteredDoctorIds
         };
+        // The main dashboard is now the default view
+        if (currentPath === '#login' || currentPath === '') {
+            window.location.hash = '#dashboard';
+        }
+
         switch (currentPath) {
             case '#dashboard':
                 return <DashboardPage {...pageProps} />;
@@ -83,8 +86,7 @@ export default function App() {
             case '#schedules':
                 return <DoctorSchedulesPage {...pageProps} />;
             default:
-                window.location.hash = '#dashboard';
-                return null;
+                 return <DashboardPage {...pageProps} />;
         }
     };
 
