@@ -1,14 +1,13 @@
 
 /* -------------------------------------------------- */
-/* FILE 4: src/components/DashboardPage.jsx (UPDATED) */
+/* FILE 5: src/components/DashboardPage.jsx (REPLACE) */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { format, addDays, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import AppointmentModal from './AppointmentModal';
 
-export default function DashboardPage({ selectedClinic, apiUrl }) {
-    const [currentDate, setCurrentDate] = useState(new Date());
+export default function DashboardPage({ selectedClinic, apiUrl, currentDate }) {
     const [dayData, setDayData] = useState({ doctors: [], appointments: [] });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
@@ -22,13 +21,14 @@ export default function DashboardPage({ selectedClinic, apiUrl }) {
         }
     };
 
-    useEffect(fetchDayData, [selectedClinic, currentDate]);
+    useEffect(fetchDayData, [selectedClinic, currentDate, apiUrl]);
 
     const timeSlots = useMemo(() => {
         const slots = [];
         for (let i = 7; i <= 20; i++) { // 7 AM to 8 PM
-            slots.push(`${String(i).padStart(2, '0')}:00`);
-            slots.push(`${String(i).padStart(2, '0')}:30`);
+            for (let j = 0; j < 60; j += 30) { // 30-minute increments
+                slots.push(`${String(i).padStart(2, '0')}:${String(j).padStart(2, '0')}`);
+            }
         }
         return slots;
     }, []);
@@ -42,26 +42,18 @@ export default function DashboardPage({ selectedClinic, apiUrl }) {
         setIsModalOpen(false);
         setModalData(null);
         if (didBook) {
-            fetchDayData(); // Refresh data if booking was made
+            fetchDayData();
         }
     };
 
     return (
-        <>
+        <div className="dashboard-container">
             {isModalOpen && <AppointmentModal data={modalData} clinicId={selectedClinic} apiUrl={apiUrl} onClose={handleModalClose} />}
-            <div className="dashboard-header">
-                <h2>Appointments for {format(currentDate, 'EEEE, MMMM d, yyyy')}</h2>
-                <div className="date-navigation">
-                    <button className="secondary" onClick={() => setCurrentDate(subDays(currentDate, 1))}>Previous Day</button>
-                    <button className="primary" onClick={() => setCurrentDate(new Date())}>Today</button>
-                    <button className="secondary" onClick={() => setCurrentDate(addDays(currentDate, 1))}>Next Day</button>
-                </div>
-            </div>
-
+            
             <div className="calendar-container">
                 <div className="calendar-grid" style={{ gridTemplateColumns: `5rem repeat(${dayData.doctors.length}, 1fr)` }}>
                     {/* Headers */}
-                    <div className="grid-header time-gutter">Time</div>
+                    <div className="grid-header time-gutter"></div>
                     {dayData.doctors.map(doc => <div key={doc.id} className="grid-header doctor-column">{doc.name}</div>)}
 
                     {/* Body */}
@@ -84,6 +76,6 @@ export default function DashboardPage({ selectedClinic, apiUrl }) {
                     ))}
                 </div>
             </div>
-        </>
+        </div>
     );
 }

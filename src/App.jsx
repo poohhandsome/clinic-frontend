@@ -1,76 +1,44 @@
 
 /* -------------------------------------------------- */
-/* FILE 2: src/App.jsx (UPDATED)                      */
+/* FILE 2: src/App.jsx (REPLACE this file)            */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import LoginPage from './components/LoginPage';
+import Header from './components/Header';
+import Sidebar from './components/Sidebar';
 import DashboardPage from './components/DashboardPage';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage';
-import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage'; // Import new page
+import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage';
 
-// Get the API URL from environment variables.
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-// Simple router based on URL hash
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
-
     useEffect(() => {
-        const handleHashChange = () => {
-            setCurrentPath(window.location.hash || '#login');
-        };
+        const handleHashChange = () => setCurrentPath(window.location.hash || '#login');
         window.addEventListener('hashchange', handleHashChange);
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
-
     return currentPath;
-};
-
-const Navbar = ({ onClinicChange, clinics, selectedClinic }) => {
-    const currentPath = useHashNavigation();
-    
-    return (
-        <aside className="navbar">
-            <div>
-                <h1>Youcare</h1>
-                <nav>
-                    <a href="#dashboard" className={currentPath === '#dashboard' ? 'active' : ''}>Dashboard</a>
-                    <a href="#pending" className={currentPath === '#pending' ? 'active' : ''}>Pending Appointments</a>
-                    <a href="#confirmed" className={currentPath === '#confirmed' ? 'active' : ''}>Confirmed Appointments</a>
-                    <a href="#schedules" className={currentPath === '#schedules' ? 'active' : ''}>Doctor Schedules</a>
-                </nav>
-            </div>
-            <div className="clinic-selector">
-                <label htmlFor="clinic-select">Clinic</label>
-                <select id="clinic-select" value={selectedClinic} onChange={e => onClinicChange(e.target.value)}>
-                    {clinics.map(clinic => (
-                        <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
-                    ))}
-                </select>
-            </div>
-        </aside>
-    );
 };
 
 export default function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [clinics, setClinics] = useState([]);
     const [selectedClinic, setSelectedClinic] = useState('');
-    
+    const [currentDate, setCurrentDate] = useState(new Date());
+
     const currentPath = useHashNavigation();
 
     useEffect(() => {
-        // Fetch clinics once on load
         fetch(`${API_BASE_URL}/clinics`)
             .then(res => res.json())
             .then(data => {
                 setClinics(data);
-                if (data.length > 0) {
-                    setSelectedClinic(data[0].id);
-                }
+                if (data.length > 0) setSelectedClinic(data[0].id);
             });
     }, []);
 
@@ -79,17 +47,17 @@ export default function App() {
     }
 
     const renderPage = () => {
+        const pageProps = { selectedClinic, apiUrl: API_BASE_URL, currentDate, setCurrentDate };
         switch (currentPath) {
             case '#dashboard':
-                return <DashboardPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
+                return <DashboardPage {...pageProps} />;
             case '#pending':
-                return <PendingAppointmentsPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
+                return <PendingAppointmentsPage {...pageProps} />;
             case '#confirmed':
-                return <ConfirmedAppointmentsPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
+                return <ConfirmedAppointmentsPage {...pageProps} />;
             case '#schedules':
-                return <DoctorSchedulesPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
+                return <DoctorSchedulesPage {...pageProps} />;
             default:
-                // Redirect to dashboard if logged in and hash is invalid or #login
                 window.location.hash = '#dashboard';
                 return null;
         }
@@ -98,10 +66,14 @@ export default function App() {
     return (
         <div className="app-container">
             <div className="main-layout">
-                <Navbar 
+                <Header 
                     clinics={clinics}
                     selectedClinic={selectedClinic}
                     onClinicChange={setSelectedClinic}
+                />
+                <Sidebar 
+                    currentDate={currentDate}
+                    setCurrentDate={setCurrentDate}
                 />
                 <main className="content-area">
                     {renderPage()}
