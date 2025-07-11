@@ -1,6 +1,6 @@
 
 /* -------------------------------------------------- */
-/* FILE 6: src/components/PendingAppointmentsPage.jsx (UPDATED) */
+/* FILE 6: src/components/PendingAppointmentsPage.jsx (REPLACE) */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect } from 'react';
@@ -11,13 +11,26 @@ export default function PendingAppointmentsPage({ selectedClinic, apiUrl }) {
 
     const fetchPending = () => {
         if (selectedClinic) {
+            console.log('Fetching pending appointments...');
             fetch(`${apiUrl}/pending-appointments?clinic_id=${selectedClinic}`)
                 .then(res => res.json())
                 .then(data => setPending(data));
         }
     };
 
-    useEffect(fetchPending, [selectedClinic]);
+    // This useEffect hook sets up the polling.
+    useEffect(() => {
+        // Fetch data immediately when the component loads
+        fetchPending(); 
+        
+        // Then, set up an interval to fetch data every 10 seconds (10000 milliseconds)
+        const intervalId = setInterval(fetchPending, 10000);
+
+        // This is a cleanup function. React runs this when the component
+        // is unmounted (e.g., when you navigate to another page).
+        // It's crucial for preventing memory leaks.
+        return () => clearInterval(intervalId);
+    }, [selectedClinic, apiUrl]); // Rerun this effect if the clinic or API URL changes
 
     const handleAction = (appointmentId, newStatus) => {
         fetch(`${apiUrl}/appointments/${appointmentId}`, {
@@ -25,13 +38,16 @@ export default function PendingAppointmentsPage({ selectedClinic, apiUrl }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus }),
         }).then(() => {
-            fetchPending(); // Refresh the list after action
+            // After an action, fetch immediately to show the change
+            fetchPending();
         });
     };
 
     return (
         <div>
-            <h2>Pending Appointments</h2>
+            <div className="page-header">
+                <h2>Unconfirmed Appointments</h2>
+            </div>
             <div className="table-container">
                 <table>
                     <thead>
@@ -58,8 +74,8 @@ export default function PendingAppointmentsPage({ selectedClinic, apiUrl }) {
                         ))}
                     </tbody>
                 </table>
+                 {pending.length === 0 && <p style={{textAlign: 'center', padding: '1rem'}}>No pending appointments for this clinic.</p>}
             </div>
         </div>
     );
 }
-
