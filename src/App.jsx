@@ -1,8 +1,4 @@
 
-/* -------------------------------------------------- */
-/* FILE 2: src/App.jsx (REPLACE)                      */
-/* -------------------------------------------------- */
-
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import LoginPage from './components/LoginPage';
@@ -54,7 +50,7 @@ export default function App() {
     }, [user]); // Re-fetch if user logs in
 
     useEffect(() => {
-        if (selectedClinic) {
+        if (selectedClinic && user) { // Also ensure user is logged in
             const dateString = '2025-01-01'; 
             authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
@@ -63,7 +59,7 @@ export default function App() {
                     setFilteredDoctorIds((data.doctors || []).map(d => d.id));
                 });
         }
-    }, [selectedClinic]);
+    }, [selectedClinic, user]);
 
     const handleLogin = (loggedInUser, token) => {
         localStorage.setItem('authToken', token);
@@ -84,7 +80,15 @@ export default function App() {
     }
 
     const renderPage = () => {
-        const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds };
+        // **THE FIX IS HERE**: We now pass the user prop down
+        const pageProps = { 
+            selectedClinic, 
+            currentDate, 
+            setCurrentDate,
+            doctors,
+            filteredDoctorIds,
+            user
+        };
         if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
 
         switch (currentPath) {

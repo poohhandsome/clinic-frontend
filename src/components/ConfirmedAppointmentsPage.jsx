@@ -2,13 +2,12 @@
 /* -------------------------------------------------- */
 /* FILE 8: src/components/ConfirmedAppointmentsPage.jsx (REPLACE) */
 /* -------------------------------------------------- */
-
 import React, { useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
+import authorizedFetch from '../api';
 
-export default function ConfirmedAppointmentsPage({ selectedClinic, apiUrl }) {
+export default function ConfirmedAppointmentsPage({ selectedClinic }) {
     const [appointments, setAppointments] = useState([]);
-    // Default to a 7-day range ending today
     const [endDate, setEndDate] = useState(new Date());
     const [startDate, setStartDate] = useState(subDays(new Date(), 6));
 
@@ -17,11 +16,11 @@ export default function ConfirmedAppointmentsPage({ selectedClinic, apiUrl }) {
             const startDateString = format(startDate, 'yyyy-MM-dd');
             const endDateString = format(endDate, 'yyyy-MM-dd');
             
-            fetch(`${apiUrl}/confirmed-appointments?clinic_id=${selectedClinic}&startDate=${startDateString}&endDate=${endDateString}`)
+            authorizedFetch(`/confirmed-appointments?clinic_id=${selectedClinic}&startDate=${startDateString}&endDate=${endDateString}`)
                 .then(res => res.json())
                 .then(data => setAppointments(data));
         }
-    }, [selectedClinic, startDate, endDate, apiUrl]);
+    }, [selectedClinic, startDate, endDate]);
 
     return (
         <div>
@@ -29,32 +28,15 @@ export default function ConfirmedAppointmentsPage({ selectedClinic, apiUrl }) {
                 <h2>Confirmed Appointments</h2>
                 <div className="date-range-picker">
                     <label htmlFor="start-date">From:</label>
-                    <input 
-                        type="date" 
-                        id="start-date"
-                        value={format(startDate, 'yyyy-MM-dd')}
-                        onChange={e => setStartDate(new Date(e.target.value))}
-                    />
+                    <input type="date" id="start-date" value={format(startDate, 'yyyy-MM-dd')} onChange={e => setStartDate(new Date(e.target.value))} />
                     <label htmlFor="end-date">To:</label>
-                     <input 
-                        type="date" 
-                        id="end-date"
-                        value={format(endDate, 'yyyy-MM-dd')}
-                        onChange={e => setEndDate(new Date(e.target.value))}
-                    />
+                    <input type="date" id="end-date" value={format(endDate, 'yyyy-MM-dd')} onChange={e => setEndDate(new Date(e.target.value))} />
                 </div>
             </div>
             <div className="table-container">
                 <table>
                     <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Booking Time</th>
-                            <th>Patient Name</th>
-                            <th>Phone Number</th>
-                            <th>Doctor</th>
-                            <th>Status</th>
-                        </tr>
+                        <tr><th>Date</th><th>Booking Time</th><th>Patient Name</th><th>Phone Number</th><th>Doctor</th><th>Status</th></tr>
                     </thead>
                     <tbody>
                         {appointments.map(app => (

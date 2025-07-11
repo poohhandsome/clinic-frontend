@@ -1,9 +1,9 @@
 
 /* -------------------------------------------------- */
-/* FILE 7: src/components/DoctorSchedulesPage.jsx (UPDATED)    */
+/* FILE 7: src/components/DoctorSchedulesPage.jsx (REPLACE) */
 /* -------------------------------------------------- */
-
 import React, { useState, useEffect } from 'react';
+import authorizedFetch from '../api';
 
 const daysOfWeek = [
     { id: 1, name: 'Monday' }, { id: 2, name: 'Tuesday' }, { id: 3, name: 'Wednesday' },
@@ -15,31 +15,21 @@ const StatusMessage = ({ message, type }) => {
     return <div className={`status-message ${type}`}>{message}</div>;
 };
 
-export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
-    const [doctors, setDoctors] = useState([]);
+export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctors }) {
     const [selectedDoctor, setSelectedDoctor] = useState('');
     const [availability, setAvailability] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [status, setStatus] = useState({ message: '', type: '' });
 
     useEffect(() => {
-        // Fetch doctors for the selected clinic to populate the dropdown
-        if (selectedClinic) {
-            fetch(`${apiUrl}/clinic-day-schedule?clinic_id=${selectedClinic}&date=2025-01-01`) // Date doesn't matter here
-                .then(res => res.json())
-                .then(data => {
-                    setDoctors(data.doctors);
-                    if (data.doctors.length > 0) {
-                        setSelectedDoctor(data.doctors[0].id);
-                    }
-                });
+        if (allDoctors.length > 0) {
+            setSelectedDoctor(allDoctors[0].id);
         }
-    }, [selectedClinic, apiUrl]);
+    }, [allDoctors]);
 
     useEffect(() => {
-        // Fetch the selected doctor's availability
         if (selectedDoctor) {
-            fetch(`${apiUrl}/doctor-availability/${selectedDoctor}`)
+            authorizedFetch(`/doctor-availability/${selectedDoctor}`)
                 .then(res => res.json())
                 .then(data => {
                     const newAvail = daysOfWeek.map(day => {
@@ -53,7 +43,7 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
                     setAvailability(newAvail);
                 });
         }
-    }, [selectedDoctor, apiUrl]);
+    }, [selectedDoctor]);
 
     const handleTimeChange = (dayId, field, value) => {
         setAvailability(prev => prev.map(day => 
@@ -63,18 +53,14 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
 
     const handleSave = () => {
         setIsLoading(true);
-        setStatus({ message: '', type: '' }); // Clear previous status
+        setStatus({ message: '', type: '' });
 
-        fetch(`${apiUrl}/doctor-availability/${selectedDoctor}`, {
+        authorizedFetch(`/doctor-availability/${selectedDoctor}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ availability: availability }),
         })
         .then(res => {
-            if (!res.ok) {
-                // If response is not 2xx, throw an error to be caught by .catch()
-                throw new Error('Failed to save schedule. Please check server logs.');
-            }
+            if (!res.ok) throw new Error('Failed to save schedule.');
             return res.json();
         })
         .then(() => {
@@ -82,7 +68,7 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
         })
         .catch(err => {
             console.error(err);
-            setStatus({ message: 'Error saving schedule. Please try again.', type: 'error' });
+            setStatus({ message: 'Error saving schedule.', type: 'error' });
         })
         .finally(() => {
             setIsLoading(false);
@@ -91,11 +77,11 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
 
     return (
         <div>
-            <h2>Manage Doctor Schedules</h2>
-            <div style={{marginBottom: '1rem'}}>
+            <div className="page-header"><h2>Manage Doctor Schedules</h2></div>
+            <div style={{marginBottom: '1rem', maxWidth: '24rem'}}>
                 <label htmlFor="doctor-schedule-select">Select Doctor</label>
                 <select id="doctor-schedule-select" value={selectedDoctor} onChange={e => setSelectedDoctor(e.target.value)}>
-                    {doctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
+                    {allDoctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
                 </select>
             </div>
             
@@ -107,7 +93,7 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
                         <tr><th>Day</th><th>Start Time</th><th>End Time</th></tr>
                     </thead>
                     <tbody>
-                        {availability.map((day, index) => (
+                        {availability.map((day) => (
                             <tr key={day.day_of_week}>
                                 <td>{daysOfWeek.find(d => d.id === day.day_of_week).name}</td>
                                 <td><input type="time" value={day.start_time} onChange={e => handleTimeChange(day.day_of_week, 'start_time', e.target.value)} /></td>
