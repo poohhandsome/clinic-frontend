@@ -43,10 +43,10 @@ export default function ConfirmedAppointmentsPage({ selectedClinic, apiUrl }) {
                     <tbody>
                         {appointments.map(app => (
                             <tr key={app.id}>
-                                <td>{app.booking_time}</td>
-                                <td>{app.patient_name}</td>
+                                <td>{app.appointment_time}</td>
+                                <td>{app.customer_id}</td>
                                 <td>{app.phone_number}</td>
-                                <td>{app.doctor_name}</td>
+                                <td>{app.doctor_id}</td>
                                 <td>{app.status}</td>
                             </tr>
                         ))}
