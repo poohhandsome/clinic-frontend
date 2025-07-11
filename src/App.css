@@ -134,6 +134,7 @@ body {
 
 /* --- Other Pages (Pending, Confirmed, Schedules) --- */
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.page-header .date-range-picker { display: flex; align-items: center; gap: 0.5rem; }
 .table-container { background: var(--white); border: 1px solid var(--border-color); border-radius: 0.5rem; overflow: hidden; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
