@@ -1,7 +1,6 @@
 
-
 /* -------------------------------------------------- */
-/* FILE 7: src/components/DoctorSchedulesPage.jsx (UPDATED) */
+/* FILE 7: src/components/DoctorSchedulesPage.jsx (UPDATED)    */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect } from 'react';
@@ -11,14 +10,22 @@ const daysOfWeek = [
     { id: 4, name: 'Thursday' }, { id: 5, name: 'Friday' }, { id: 6, name: 'Saturday' }, { id: 0, name: 'Sunday' }
 ];
 
+const StatusMessage = ({ message, type }) => {
+    if (!message) return null;
+    return <div className={`status-message ${type}`}>{message}</div>;
+};
+
 export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
     const [doctors, setDoctors] = useState([]);
     const [selectedDoctor, setSelectedDoctor] = useState('');
     const [availability, setAvailability] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [status, setStatus] = useState({ message: '', type: '' });
 
     useEffect(() => {
+        // Fetch doctors for the selected clinic to populate the dropdown
         if (selectedClinic) {
-            fetch(`${apiUrl}/clinic-day-schedule?clinic_id=${selectedClinic}&date=2025-01-01`)
+            fetch(`${apiUrl}/clinic-day-schedule?clinic_id=${selectedClinic}&date=2025-01-01`) // Date doesn't matter here
                 .then(res => res.json())
                 .then(data => {
                     setDoctors(data.doctors);
@@ -27,9 +34,10 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
                     }
                 });
         }
-    }, [selectedClinic]);
+    }, [selectedClinic, apiUrl]);
 
     useEffect(() => {
+        // Fetch the selected doctor's availability
         if (selectedDoctor) {
             fetch(`${apiUrl}/doctor-availability/${selectedDoctor}`)
                 .then(res => res.json())
@@ -45,7 +53,7 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
                     setAvailability(newAvail);
                 });
         }
-    }, [selectedDoctor]);
+    }, [selectedDoctor, apiUrl]);
 
     const handleTimeChange = (dayId, field, value) => {
         setAvailability(prev => prev.map(day => 
@@ -54,11 +62,31 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
     };
 
     const handleSave = () => {
+        setIsLoading(true);
+        setStatus({ message: '', type: '' }); // Clear previous status
+
         fetch(`${apiUrl}/doctor-availability/${selectedDoctor}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ availability: availability }),
-        }).then(() => alert('Schedule saved!'));
+        })
+        .then(res => {
+            if (!res.ok) {
+                // If response is not 2xx, throw an error to be caught by .catch()
+                throw new Error('Failed to save schedule. Please check server logs.');
+            }
+            return res.json();
+        })
+        .then(() => {
+            setStatus({ message: 'Schedule saved successfully!', type: 'success' });
+        })
+        .catch(err => {
+            console.error(err);
+            setStatus({ message: 'Error saving schedule. Please try again.', type: 'error' });
+        })
+        .finally(() => {
+            setIsLoading(false);
+        });
     };
 
     return (
@@ -71,6 +99,8 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
                 </select>
             </div>
             
+            <StatusMessage message={status.message} type={status.type} />
+
             <div className="table-container">
                 <table>
                     <thead>
@@ -88,7 +118,9 @@ export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
                 </table>
             </div>
             <div style={{marginTop: '1rem', textAlign: 'right'}}>
-                <button className="primary" onClick={handleSave}>Save Schedule</button>
+                <button className="primary" onClick={handleSave} disabled={isLoading}>
+                    {isLoading ? 'Saving...' : 'Save Schedule'}
+                </button>
             </div>
         </div>
     );
