@@ -1,8 +1,12 @@
 
+/* -------------------------------------------------- */
+/* FILE 5: src/components/AppointmentModal.jsx (UPDATED)  */
+/* -------------------------------------------------- */
+
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 
-export default function AppointmentModal({ data, clinicId, onClose }) {
+export default function AppointmentModal({ data, clinicId, apiUrl, onClose }) {
     const [patientId, setPatientId] = useState('');
 
     const handleSubmit = (e) => {
@@ -16,12 +20,15 @@ export default function AppointmentModal({ data, clinicId, onClose }) {
             status: 'confirmed'
         };
 
-        fetch('http://localhost:3001/api/appointments', {
+        fetch(`${apiUrl}/appointments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(bookingData),
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error('Booking failed');
+            return res.json();
+        })
         .then(() => onClose(true)) // Close and indicate booking was made
         .catch(err => console.error("Booking failed", err));
     };

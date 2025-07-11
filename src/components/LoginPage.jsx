@@ -1,6 +1,6 @@
 
 /* -------------------------------------------------- */
-/* FILE 3: src/components/LoginPage.jsx (NEW file)    */
+/* FILE 3: src/components/LoginPage.jsx (No Changes)  */
 /* -------------------------------------------------- */
 
 import React from 'react';

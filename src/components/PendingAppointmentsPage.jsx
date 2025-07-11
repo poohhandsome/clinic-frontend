@@ -1,17 +1,17 @@
 
 /* -------------------------------------------------- */
-/* FILE 6: src/components/PendingAppointmentsPage.jsx */
+/* FILE 6: src/components/PendingAppointmentsPage.jsx (UPDATED) */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 
-export default function PendingAppointmentsPage({ selectedClinic }) {
+export default function PendingAppointmentsPage({ selectedClinic, apiUrl }) {
     const [pending, setPending] = useState([]);
 
     const fetchPending = () => {
         if (selectedClinic) {
-            fetch(`http://localhost:3001/api/pending-appointments?clinic_id=${selectedClinic}`)
+            fetch(`${apiUrl}/pending-appointments?clinic_id=${selectedClinic}`)
                 .then(res => res.json())
                 .then(data => setPending(data));
         }
@@ -20,13 +20,12 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
     useEffect(fetchPending, [selectedClinic]);
 
     const handleAction = (appointmentId, newStatus) => {
-        fetch(`http://localhost:3001/api/appointments/${appointmentId}`, {
+        fetch(`${apiUrl}/appointments/${appointmentId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus }),
         }).then(() => {
-            // Refresh the list after action
-            fetchPending();
+            fetchPending(); // Refresh the list after action
         });
     };
 

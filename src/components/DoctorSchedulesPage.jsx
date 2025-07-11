@@ -1,6 +1,7 @@
 
+
 /* -------------------------------------------------- */
-/* FILE 7: src/components/DoctorSchedulesPage.jsx     */
+/* FILE 7: src/components/DoctorSchedulesPage.jsx (UPDATED) */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect } from 'react';
@@ -10,15 +11,14 @@ const daysOfWeek = [
     { id: 4, name: 'Thursday' }, { id: 5, name: 'Friday' }, { id: 6, name: 'Saturday' }, { id: 0, name: 'Sunday' }
 ];
 
-export default function DoctorSchedulesPage({ selectedClinic }) {
+export default function DoctorSchedulesPage({ selectedClinic, apiUrl }) {
     const [doctors, setDoctors] = useState([]);
     const [selectedDoctor, setSelectedDoctor] = useState('');
     const [availability, setAvailability] = useState([]);
 
     useEffect(() => {
-        // Fetch doctors for the selected clinic to populate the dropdown
         if (selectedClinic) {
-            fetch(`http://localhost:3001/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=2025-01-01`) // Date doesn't matter here
+            fetch(`${apiUrl}/clinic-day-schedule?clinic_id=${selectedClinic}&date=2025-01-01`)
                 .then(res => res.json())
                 .then(data => {
                     setDoctors(data.doctors);
@@ -30,12 +30,10 @@ export default function DoctorSchedulesPage({ selectedClinic }) {
     }, [selectedClinic]);
 
     useEffect(() => {
-        // Fetch the selected doctor's availability
         if (selectedDoctor) {
-            fetch(`http://localhost:3001/api/doctor-availability/${selectedDoctor}`)
+            fetch(`${apiUrl}/doctor-availability/${selectedDoctor}`)
                 .then(res => res.json())
                 .then(data => {
-                    // Format data for easy use in the form
                     const newAvail = daysOfWeek.map(day => {
                         const saved = data.find(d => d.day_of_week === day.id);
                         return { 
@@ -56,7 +54,7 @@ export default function DoctorSchedulesPage({ selectedClinic }) {
     };
 
     const handleSave = () => {
-        fetch(`http://localhost:3001/api/doctor-availability/${selectedDoctor}`, {
+        fetch(`${apiUrl}/doctor-availability/${selectedDoctor}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ availability: availability }),

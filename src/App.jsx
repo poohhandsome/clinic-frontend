@@ -1,6 +1,6 @@
 
 /* -------------------------------------------------- */
-/* FILE 2: src/App.jsx (REPLACE this file)            */
+/* FILE 2: src/App.jsx (UPDATED)                      */
 /* -------------------------------------------------- */
 
 import React, { useState, useEffect } from 'react';
@@ -9,6 +9,11 @@ import LoginPage from './components/LoginPage';
 import DashboardPage from './components/DashboardPage';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage';
+
+// Get the API URL from environment variables.
+// It will be http://localhost:3001/api in development (if .env.development exists)
+// or the value from Vercel's settings in production.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Simple router based on URL hash
 const useHashNavigation = () => {
@@ -59,7 +64,7 @@ export default function App() {
 
     useEffect(() => {
         // Fetch clinics once on load
-        fetch('http://localhost:3001/api/clinics')
+        fetch(`${API_BASE_URL}/clinics`)
             .then(res => res.json())
             .then(data => {
                 setClinics(data);
@@ -76,11 +81,11 @@ export default function App() {
     const renderPage = () => {
         switch (currentPath) {
             case '#dashboard':
-                return <DashboardPage selectedClinic={selectedClinic} />;
+                return <DashboardPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
             case '#pending':
-                return <PendingAppointmentsPage selectedClinic={selectedClinic} />;
+                return <PendingAppointmentsPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
             case '#schedules':
-                return <DoctorSchedulesPage selectedClinic={selectedClinic} />;
+                return <DoctorSchedulesPage selectedClinic={selectedClinic} apiUrl={API_BASE_URL} />;
             default:
                 // Redirect to dashboard if logged in and hash is invalid or #login
                 window.location.hash = '#dashboard';
@@ -103,3 +108,4 @@ export default function App() {
         </div>
     );
 }
+

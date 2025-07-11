@@ -1,22 +1,28 @@
 
+/* -------------------------------------------------- */
+/* FILE 4: src/components/DashboardPage.jsx (UPDATED) */
+/* -------------------------------------------------- */
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { format, addDays, subDays } from 'date-fns';
-import AppointmentModal from './AppointmentModal'; // We will create this
+import AppointmentModal from './AppointmentModal';
 
-export default function DashboardPage({ selectedClinic }) {
+export default function DashboardPage({ selectedClinic, apiUrl }) {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [dayData, setDayData] = useState({ doctors: [], appointments: [] });
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
 
-    useEffect(() => {
+    const fetchDayData = () => {
         if (selectedClinic) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
-            fetch(`http://localhost:3001/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
+            fetch(`${apiUrl}/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => setDayData(data));
         }
-    }, [selectedClinic, currentDate]);
+    };
+
+    useEffect(fetchDayData, [selectedClinic, currentDate]);
 
     const timeSlots = useMemo(() => {
         const slots = [];
@@ -36,17 +42,13 @@ export default function DashboardPage({ selectedClinic }) {
         setIsModalOpen(false);
         setModalData(null);
         if (didBook) {
-            // Refresh data
-            const dateString = format(currentDate, 'yyyy-MM-dd');
-            fetch(`http://localhost:3001/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
-                .then(res => res.json())
-                .then(data => setDayData(data));
+            fetchDayData(); // Refresh data if booking was made
         }
     };
 
     return (
         <>
-            {isModalOpen && <AppointmentModal data={modalData} clinicId={selectedClinic} onClose={handleModalClose} />}
+            {isModalOpen && <AppointmentModal data={modalData} clinicId={selectedClinic} apiUrl={apiUrl} onClose={handleModalClose} />}
             <div className="dashboard-header">
                 <h2>Appointments for {format(currentDate, 'EEEE, MMMM d, yyyy')}</h2>
                 <div className="date-navigation">
