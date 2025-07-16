@@ -1,12 +1,12 @@
-
-/* -------------------------------------------------- */
-/* FILE 4: src/components/Header.jsx (REPLACE)        */
-/* -------------------------------------------------- */
+// src/components/Header.jsx (Updated)
 
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
-const NavDropdown = ({ onLogout }) => {
+const NavDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const { logout } = useAuth(); // <-- Get logout from context
+
     return (
         <div className="header-nav-dropdown">
             <button onClick={() => setIsOpen(!isOpen)}>
@@ -18,14 +18,16 @@ const NavDropdown = ({ onLogout }) => {
                     <a href="#pending" onClick={() => setIsOpen(false)}>Unconfirmed List</a>
                     <a href="#confirmed" onClick={() => setIsOpen(false)}>Confirmed List</a>
                     <a href="#schedules" onClick={() => setIsOpen(false)}>Doctor Schedule Setting</a>
-                    <a href="#login" onClick={onLogout}>Logout</a>
+                    <a href="#login" onClick={logout}>Logout</a>
                 </div>
             )}
         </div>
     );
 };
 
-export default function Header({ user, onLogout, clinics, selectedClinic, onClinicChange }) {
+export default function Header({ clinics, selectedClinic, onClinicChange }) {
+    const { user } = useAuth(); // <-- Get user from context
+
     return (
         <header className="header">
             <div className="header-left">
@@ -40,7 +42,7 @@ export default function Header({ user, onLogout, clinics, selectedClinic, onClin
                     </select>
                 </div>
                 <div className="header-nav-dropdown">
-                    | <NavDropdown onLogout={onLogout} />
+                    | <NavDropdown />
                 </div>
             </div>
             <div className="header-right">

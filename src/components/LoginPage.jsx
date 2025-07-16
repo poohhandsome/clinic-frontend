@@ -1,33 +1,31 @@
-
-/* -------------------------------------------------- */
-/* FILE 3: src/components/LoginPage.jsx (REPLACE)     */
-/* -------------------------------------------------- */
+// src/components/LoginPage.jsx (Updated)
 
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import authorizedFetch from '../api';
 
-export default function LoginPage({ onLogin }) {
+export default function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    const { login } = useAuth(); // <-- Get the login function from context
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
         try {
-            const response = await fetch(`${API_BASE_URL}/login`, {
+            const response = await authorizedFetch('/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),
             });
             const data = await response.json();
             if (!response.ok) {
                 throw new Error(data.msg || 'Login failed');
             }
-            onLogin(data.user, data.token);
+            // The login function from context handles everything
+            login(data.user, data.token);
         } catch (err) {
             setError(err.message);
         } finally {

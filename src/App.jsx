@@ -1,6 +1,8 @@
+// src/App.jsx (Updated)
 
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import { useAuth } from './context/AuthContext';
 import LoginPage from './components/LoginPage';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -21,7 +23,7 @@ const useHashNavigation = () => {
 };
 
 export default function App() {
-    const [user, setUser] = useState(null);
+    const { isAuthenticated, user } = useAuth(); // <-- Use the context
     const [clinics, setClinics] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [selectedClinic, setSelectedClinic] = useState('');
@@ -31,27 +33,21 @@ export default function App() {
     const currentPath = useHashNavigation();
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('authToken');
-        if (storedUser && token) {
-            setUser(JSON.parse(storedUser));
-        }
-    }, []);
-
-    useEffect(() => {
-        if (user) { // Only fetch data if logged in
+        if (isAuthenticated) {
             authorizedFetch('/clinics')
                 .then(res => res.json())
                 .then(data => {
                     setClinics(data);
-                    if (data.length > 0) setSelectedClinic(data[0].id);
+                    if (data.length > 0 && !selectedClinic) {
+                        setSelectedClinic(data[0].id);
+                    }
                 });
         }
-    }, [user]); // Re-fetch if user logs in
+    }, [isAuthenticated, selectedClinic]);
 
     useEffect(() => {
-        if (selectedClinic && user) { // Also ensure user is logged in
-            const dateString = '2025-01-01'; 
+        if (selectedClinic && isAuthenticated) {
+            const dateString = '2025-01-01'; // This should probably be dynamic
             authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => {
@@ -59,31 +55,16 @@ export default function App() {
                     setFilteredDoctorIds((data.doctors || []).map(d => d.id));
                 });
         }
-    }, [selectedClinic, user]);
+    }, [selectedClinic, isAuthenticated]);
 
-    const handleLogin = (loggedInUser, token) => {
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('user', JSON.stringify(loggedInUser));
-        setUser(loggedInUser);
-        window.location.hash = '#dashboard';
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        setUser(null);
-        window.location.hash = '#login';
-    };
-
-    if (!user) {
-        return <LoginPage onLogin={handleLogin} />;
+    if (!isAuthenticated) {
+        return <LoginPage />;
     }
 
     const renderPage = () => {
-        // **THE FIX IS HERE**: We now pass the user prop down
-        const pageProps = { 
-            selectedClinic, 
-            currentDate, 
+        const pageProps = {
+            selectedClinic,
+            currentDate,
             setCurrentDate,
             doctors,
             filteredDoctorIds,
@@ -105,15 +86,13 @@ export default function App() {
     return (
         <div className="app-container">
             <div className={`main-layout ${!showSidebar ? 'no-sidebar' : ''}`}>
-                <Header 
-                    user={user}
-                    onLogout={handleLogout}
+                <Header
                     clinics={clinics}
                     selectedClinic={selectedClinic}
                     onClinicChange={setSelectedClinic}
                 />
                 {showSidebar && (
-                    <Sidebar 
+                    <Sidebar
                         currentDate={currentDate}
                         setCurrentDate={setCurrentDate}
                         doctors={doctors}
