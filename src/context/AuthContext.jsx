@@ -1,7 +1,6 @@
 // src/context/AuthContext.jsx
 
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import authorizedFetch from '../api';
 
 const AuthContext = createContext(null);
 
@@ -11,22 +10,19 @@ export function AuthProvider({ children }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        // On initial load, try to get user data from localStorage
         if (token) {
-            // Your backend doesn't have a /profile endpoint, so we will get the user from localStorage
-            // In a real-world scenario, you would add a /profile endpoint to verify the token
             const storedUser = localStorage.getItem('user');
             if (storedUser) {
                 setUser(JSON.parse(storedUser));
             } else {
-                // If no user but token exists, something is wrong. Log out.
+                // If there's a token but no user, the state is inconsistent. Log out.
                 localStorage.removeItem('authToken');
                 setToken(null);
                 setUser(null);
             }
-            setIsLoading(false);
-        } else {
-            setIsLoading(false);
         }
+        setIsLoading(false);
     }, [token]);
 
     const login = (userData, authToken) => {

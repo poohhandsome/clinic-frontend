@@ -16,6 +16,7 @@ export default function LoginPage() {
         setError('');
         setIsLoading(true);
         try {
+            // We use authorizedFetch here for consistency, though it's not strictly needed for login
             const response = await authorizedFetch('/login', {
                 method: 'POST',
                 body: JSON.stringify({ username, password }),

@@ -7,6 +7,12 @@ const NavDropdown = () => {
     const [isOpen, setIsOpen] = useState(false);
     const { logout } = useAuth(); // <-- Get logout from context
 
+    const handleLogout = (e) => {
+        e.preventDefault();
+        logout();
+        setIsOpen(false);
+    }
+
     return (
         <div className="header-nav-dropdown">
             <button onClick={() => setIsOpen(!isOpen)}>
@@ -18,7 +24,7 @@ const NavDropdown = () => {
                     <a href="#pending" onClick={() => setIsOpen(false)}>Unconfirmed List</a>
                     <a href="#confirmed" onClick={() => setIsOpen(false)}>Confirmed List</a>
                     <a href="#schedules" onClick={() => setIsOpen(false)}>Doctor Schedule Setting</a>
-                    <a href="#login" onClick={logout}>Logout</a>
+                    <a href="#login" onClick={handleLogout}>Logout</a>
                 </div>
             )}
         </div>
