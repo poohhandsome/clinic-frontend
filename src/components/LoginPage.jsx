@@ -62,7 +62,7 @@ export default function LoginPage() {
                         />
                     </div>
                     <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-indigo-100 mb-2">Password</label>
+                        <label htmlFor="password" className="block text-sm font-medium text-indigo-100 mb-2">Password habibi</label>
                         <div className="relative">
                             <input 
                                 type={showPassword ? 'text' : 'password'} 
