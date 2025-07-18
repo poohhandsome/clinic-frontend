@@ -123,3 +123,23 @@ body {
   width: calc(100% - 4px);
   left: 2px;
   padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  background-color: var(--primary-light);
+  border-left: 3px solid var(--primary-color);
+  height: calc(100% - 2px);
+  overflow: hidden;
+}
+
+/* --- Other Pages (Pending, Confirmed, Schedules) --- */
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.page-header .date-range-picker { display: flex; align-items: center; gap: 0.5rem; }
+.table-container { background: var(--white); border: 1px solid var(--border-color); border-radius: 0.5rem; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+th { background-color: var(--gray-light); }
+tr:last-child td { border-bottom: none; }
+td .actions { display: flex; gap: 0.5rem; }
+.status-message { padding: 0.75rem; margin-bottom: 1rem; border-radius: 0.375rem; font-weight: 500; }
+.status-message.success { background-color: #dcfce7; color: #16a34a; }
+.status-message.error { background-color: #fee2e2; color: #dc2626; }

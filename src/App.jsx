@@ -1,4 +1,4 @@
-// src/App.jsx (Updated)
+// src/App.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
 import './App.css';
@@ -23,7 +23,7 @@ const useHashNavigation = () => {
 };
 
 export default function App() {
-    const { isAuthenticated, user } = useAuth(); // <-- Use the context
+    const { isAuthenticated, user } = useAuth();
     const [clinics, setClinics] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [selectedClinic, setSelectedClinic] = useState('');
@@ -39,38 +39,40 @@ export default function App() {
                 .then(data => {
                     setClinics(data);
                     if (data.length > 0 && !selectedClinic) {
-                        setSelectedClinic(data[0].id);
+                        const firstClinicId = data[0].id;
+                        setSelectedClinic(firstClinicId);
+                        localStorage.setItem('selectedClinic', firstClinicId);
+                    } else if (localStorage.getItem('selectedClinic')) {
+                        setSelectedClinic(localStorage.getItem('selectedClinic'));
                     }
                 });
         }
-    }, [isAuthenticated, selectedClinic]);
+    }, [isAuthenticated]);
 
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
-            const dateString = '2025-01-01'; // This should probably be dynamic
-            authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
+            localStorage.setItem('selectedClinic', selectedClinic);
+            authorizedFetch(`/clinic-doctors?clinic_id=${selectedClinic}`)
                 .then(res => res.json())
                 .then(data => {
-                    setDoctors(data.doctors || []);
-                    setFilteredDoctorIds((data.doctors || []).map(d => d.id));
+                    setDoctors(data || []);
+                    setFilteredDoctorIds((data || []).map(d => d.id));
                 });
         }
     }, [selectedClinic, isAuthenticated]);
+
 
     if (!isAuthenticated) {
         return <LoginPage />;
     }
 
     const renderPage = () => {
-        const pageProps = {
-            selectedClinic,
-            currentDate,
-            setCurrentDate,
-            doctors,
-            filteredDoctorIds,
-            user
-        };
-        if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
+        if (currentPath === '#login' || currentPath === '') {
+            window.location.hash = '#dashboard';
+            return null; // or a loading indicator
+        }
+        
+        const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, user };
 
         switch (currentPath) {
             case '#dashboard': return <DashboardPage {...pageProps} />;
@@ -84,14 +86,9 @@ export default function App() {
     const showSidebar = currentPath === '#dashboard';
 
     return (
-        <div className="app-container">
-            <div className={`main-layout ${!showSidebar ? 'no-sidebar' : ''}`}>
-                <Header
-                    clinics={clinics}
-                    selectedClinic={selectedClinic}
-                    onClinicChange={setSelectedClinic}
-                />
-                {showSidebar && (
+        <div className="h-screen w-screen overflow-hidden">
+            <div className={`grid h-full transition-all duration-300 ${showSidebar ? 'grid-cols-[18rem_1fr]' : 'grid-cols-[0rem_1fr]'}`}>
+                <div className={`transition-all duration-300 ${showSidebar ? 'ml-0' : '-ml-72'}`}>
                     <Sidebar
                         currentDate={currentDate}
                         setCurrentDate={setCurrentDate}
@@ -99,8 +96,15 @@ export default function App() {
                         filteredDoctorIds={filteredDoctorIds}
                         setFilteredDoctorIds={setFilteredDoctorIds}
                     />
-                )}
-                <main className="content-area">{renderPage()}</main>
+                </div>
+                <div className="grid grid-rows-[4rem_1fr] bg-slate-50">
+                    <Header
+                        clinics={clinics}
+                        selectedClinic={selectedClinic}
+                        onClinicChange={setSelectedClinic}
+                    />
+                    <main className="overflow-y-auto p-6">{renderPage()}</main>
+                </div>
             </div>
         </div>
     );
