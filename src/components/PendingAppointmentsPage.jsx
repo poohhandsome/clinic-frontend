@@ -1,7 +1,5 @@
+// src/components/PendingAppointmentsPage.jsx (REPLACE)
 
-/* -------------------------------------------------- */
-/* FILE 6: src/components/PendingAppointmentsPage.jsx (REPLACE) */
-/* -------------------------------------------------- */
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import authorizedFetch from '../api';
@@ -32,28 +30,38 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
 
     return (
         <div>
-            <div className="page-header"><h2>Unconfirmed Appointments</h2></div>
-            <div className="table-container">
-                <table>
-                    <thead>
-                        <tr><th>Date</th><th>Time</th><th>Patient</th><th>Doctor</th><th>Actions</th></tr>
+            <div className="mb-6">
+                <h2 className="text-2xl font-bold text-slate-800">Unconfirmed Appointments</h2>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                <table className="w-full text-sm">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th className="p-3 text-left font-semibold text-slate-600">Date</th>
+                            <th className="p-3 text-left font-semibold text-slate-600">Time</th>
+                            <th className="p-3 text-left font-semibold text-slate-600">Patient</th>
+                            <th className="p-3 text-left font-semibold text-slate-600">Doctor</th>
+                            <th className="p-3 text-left font-semibold text-slate-600">Actions</th>
+                        </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-200">
                         {pending.map(app => (
-                            <tr key={app.id}>
-                                <td>{format(new Date(app.appointment_date), 'MMM d, yyyy')}</td>
-                                <td>{app.appointment_time}</td>
-                                <td>{app.patient_name}</td>
-                                <td>{app.doctor_name}</td>
-                                <td className="actions">
-                                    <button className="primary" onClick={() => handleAction(app.id, 'confirmed')}>Approve</button>
-                                    <button className="secondary" onClick={() => handleAction(app.id, 'cancelled')}>Deny</button>
+                            <tr key={app.id} className="hover:bg-slate-50">
+                                <td className="p-3">{format(new Date(app.appointment_date), 'MMM d, yyyy')}</td>
+                                <td className="p-3">{app.appointment_time}</td>
+                                <td className="p-3">{app.patient_name}</td>
+                                <td className="p-3">{app.doctor_name}</td>
+                                <td className="p-3">
+                                    <div className="flex gap-2">
+                                        <button className="primary !py-1 !px-3" onClick={() => handleAction(app.id, 'confirmed')}>Approve</button>
+                                        <button className="secondary !py-1 !px-3 !border-red-300 !text-red-700 hover:!bg-red-50" onClick={() => handleAction(app.id, 'cancelled')}>Deny</button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-                 {pending.length === 0 && <p style={{textAlign: 'center', padding: '1rem'}}>No pending appointments.</p>}
+                 {pending.length === 0 && <p className="text-center p-4 text-slate-500">No pending appointments.</p>}
             </div>
         </div>
     );

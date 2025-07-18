@@ -1,7 +1,5 @@
+// src/components/DoctorSchedulesPage.jsx (REPLACE)
 
-/* -------------------------------------------------- */
-/* FILE 7: src/components/DoctorSchedulesPage.jsx (REPLACE) */
-/* -------------------------------------------------- */
 import React, { useState, useEffect } from 'react';
 import authorizedFetch from '../api';
 
@@ -12,7 +10,11 @@ const daysOfWeek = [
 
 const StatusMessage = ({ message, type }) => {
     if (!message) return null;
-    return <div className={`status-message ${type}`}>{message}</div>;
+    const baseClasses = 'p-3 rounded-md font-medium mb-4 ';
+    const typeClasses = type === 'success' 
+        ? 'bg-green-100 text-green-800'
+        : 'bg-red-100 text-red-800';
+    return <div className={baseClasses + typeClasses}>{message}</div>;
 };
 
 export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctors }) {
@@ -22,10 +24,10 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
     const [status, setStatus] = useState({ message: '', type: '' });
 
     useEffect(() => {
-        if (allDoctors.length > 0) {
+        if (allDoctors.length > 0 && !selectedDoctor) {
             setSelectedDoctor(allDoctors[0].id);
         }
-    }, [allDoctors]);
+    }, [allDoctors, selectedDoctor]);
 
     useEffect(() => {
         if (selectedDoctor) {
@@ -55,9 +57,11 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
         setIsLoading(true);
         setStatus({ message: '', type: '' });
 
+        const formattedAvailability = availability.filter(day => day.start_time && day.end_time);
+
         authorizedFetch(`/doctor-availability/${selectedDoctor}`, {
             method: 'POST',
-            body: JSON.stringify({ availability: availability }),
+            body: JSON.stringify({ availability: formattedAvailability }),
         })
         .then(res => {
             if (!res.ok) throw new Error('Failed to save schedule.');
@@ -77,8 +81,8 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
 
     return (
         <div>
-            <div className="page-header"><h2>Manage Doctor Schedules</h2></div>
-            <div style={{marginBottom: '1rem', maxWidth: '24rem'}}>
+            <div className="mb-6"><h2 className="text-2xl font-bold text-slate-800">Manage Doctor Schedules</h2></div>
+            <div className="mb-4 max-w-sm">
                 <label htmlFor="doctor-schedule-select">Select Doctor</label>
                 <select id="doctor-schedule-select" value={selectedDoctor} onChange={e => setSelectedDoctor(e.target.value)}>
                     {allDoctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
@@ -87,23 +91,27 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
             
             <StatusMessage message={status.message} type={status.type} />
 
-            <div className="table-container">
-                <table>
-                    <thead>
-                        <tr><th>Day</th><th>Start Time</th><th>End Time</th></tr>
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                <table className="w-full text-sm">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th className="p-3 w-1/3 text-left font-semibold text-slate-600">Day</th>
+                            <th className="p-3 w-1/3 text-left font-semibold text-slate-600">Start Time</th>
+                            <th className="p-3 w-1/3 text-left font-semibold text-slate-600">End Time</th>
+                        </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-200">
                         {availability.map((day) => (
-                            <tr key={day.day_of_week}>
-                                <td>{daysOfWeek.find(d => d.id === day.day_of_week).name}</td>
-                                <td><input type="time" value={day.start_time} onChange={e => handleTimeChange(day.day_of_week, 'start_time', e.target.value)} /></td>
-                                <td><input type="time" value={day.end_time} onChange={e => handleTimeChange(day.day_of_week, 'end_time', e.target.value)} /></td>
+                            <tr key={day.day_of_week} className="hover:bg-slate-50">
+                                <td className="p-3 font-medium">{daysOfWeek.find(d => d.id === day.day_of_week).name}</td>
+                                <td className="p-3"><input type="time" value={day.start_time || ''} onChange={e => handleTimeChange(day.day_of_week, 'start_time', e.target.value)} /></td>
+                                <td className="p-3"><input type="time" value={day.end_time || ''} onChange={e => handleTimeChange(day.day_of_week, 'end_time', e.target.value)} /></td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
-            <div style={{marginTop: '1rem', textAlign: 'right'}}>
+            <div className="mt-4 text-right">
                 <button className="primary" onClick={handleSave} disabled={isLoading}>
                     {isLoading ? 'Saving...' : 'Save Schedule'}
                 </button>
