@@ -1,4 +1,3 @@
-
 /* -------------------------------------------------- */
 /* FILE 8: src/components/ConfirmedAppointmentsPage.jsx (REPLACE) */
 /* -------------------------------------------------- */
@@ -16,7 +15,8 @@ export default function ConfirmedAppointmentsPage({ selectedClinic }) {
             const startDateString = format(startDate, 'yyyy-MM-dd');
             const endDateString = format(endDate, 'yyyy-MM-dd');
             
-            authorizedFetch(`/confirmed-appointments?clinic_id=${selectedClinic}&startDate=${startDateString}&endDate=${endDateString}`)
+            // **THE FIX IS HERE**: Added '/api' to the fetch URL
+            authorizedFetch(`/api/confirmed-appointments?clinic_id=${selectedClinic}&startDate=${startDateString}&endDate=${endDateString}`)
                 .then(res => res.json())
                 .then(data => setAppointments(data));
         }

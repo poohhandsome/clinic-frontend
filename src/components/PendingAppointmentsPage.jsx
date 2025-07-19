@@ -1,4 +1,3 @@
-
 /* -------------------------------------------------- */
 /* FILE 6: src/components/PendingAppointmentsPage.jsx (REPLACE) */
 /* -------------------------------------------------- */
@@ -11,7 +10,8 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
 
     const fetchPending = () => {
         if (selectedClinic) {
-            authorizedFetch(`/pending-appointments?clinic_id=${selectedClinic}`)
+            // **THE FIX IS HERE**: Added '/api' to the fetch URL
+            authorizedFetch(`/api/pending-appointments?clinic_id=${selectedClinic}`)
                 .then(res => res.json())
                 .then(data => setPending(data));
         }
@@ -24,7 +24,8 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
     }, [selectedClinic]);
 
     const handleAction = (appointmentId, newStatus) => {
-        authorizedFetch(`/appointments/${appointmentId}`, {
+        // **THE FIX IS HERE**: Added '/api' to the fetch URL
+        authorizedFetch(`/api/appointments/${appointmentId}`, {
             method: 'PATCH',
             body: JSON.stringify({ status: newStatus }),
         }).then(fetchPending);
