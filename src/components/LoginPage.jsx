@@ -36,7 +36,8 @@ export default function LoginPage() {
         setError('');
         setIsLoading(true);
         try {
-            const response = await authorizedFetch('/login', {
+            // **THE FIX IS HERE**: The path is now correctly set to '/api/login'
+            const response = await authorizedFetch('/api/login', {
                 method: 'POST',
                 body: JSON.stringify({ username, password }),
             });
