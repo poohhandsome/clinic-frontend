@@ -1,3 +1,4 @@
+
 /* -------------------------------------------------- */
 /* FILE 4: src/components/Sidebar.jsx (REPLACE)       */
 /* -------------------------------------------------- */
@@ -93,3 +94,4 @@ export default function Sidebar({ currentDate, setCurrentDate, doctors, filtered
         </aside>
     );
 }
+
