@@ -26,6 +26,7 @@ export default function App() {
     const { isAuthenticated, user } = useAuth();
     const [clinics, setClinics] = useState([]);
     const [doctors, setDoctors] = useState([]);
+    const [workingDoctors, setWorkingDoctors] = useState([]);
     const [dailySchedule, setDailySchedule] = useState({});
     const [selectedClinic, setSelectedClinic] = useState('');
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -43,7 +44,7 @@ export default function App() {
                     }
                 });
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, selectedClinic]);
 
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
@@ -59,10 +60,12 @@ export default function App() {
                         return acc;
                     }, {});
 
-                    setDoctors(allDocs);
-                    setDailySchedule(scheduleMap);
-                    
                     const workingDoctorIds = Object.keys(scheduleMap).map(id => parseInt(id, 10));
+                    const workingDocs = allDocs.filter(doc => workingDoctorIds.includes(doc.id));
+
+                    setDoctors(allDocs);
+                    setWorkingDoctors(workingDocs);
+                    setDailySchedule(scheduleMap);
                     setFilteredDoctorIds(workingDoctorIds);
                 });
         }
@@ -73,7 +76,16 @@ export default function App() {
     }
 
     const renderPage = () => {
-        const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, dailySchedule, user };
+        const pageProps = { 
+            selectedClinic, 
+            currentDate, 
+            setCurrentDate, 
+            doctors: workingDoctors, 
+            allDoctors: doctors,
+            filteredDoctorIds, 
+            dailySchedule, 
+            user 
+        };
         if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
 
         switch (currentPath) {
@@ -103,7 +115,7 @@ export default function App() {
                         <Sidebar
                             currentDate={currentDate}
                             setCurrentDate={setCurrentDate}
-                            doctors={doctors}
+                            doctors={workingDoctors}
                             filteredDoctorIds={filteredDoctorIds}
                             setFilteredDoctorIds={setFilteredDoctorIds}
                             dailySchedule={dailySchedule} 
