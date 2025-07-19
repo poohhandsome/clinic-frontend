@@ -25,7 +25,7 @@ const NavDropdown = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}><path d="m6 9 6 6 6-6"/></svg>
             </button>
             {isOpen && (
-                <div className="absolute left-0 mt-2 w-56 origin-top-left bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1 z-10">
+                <div className="absolute left-0 mt-2 w-56 origin-top-left bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1 z-30">
                     <a href="#dashboard" onClick={() => setIsOpen(false)} className={linkClass}>Dashboard</a>
                     <a href="#pending" onClick={() => setIsOpen(false)} className={linkClass}>Unconfirmed List</a>
                     <a href="#confirmed" onClick={() => setIsOpen(false)} className={linkClass}>Confirmed List</a>
