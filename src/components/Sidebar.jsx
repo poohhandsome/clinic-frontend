@@ -8,7 +8,7 @@ const MiniCalendar = ({ currentDate, setCurrentDate }) => {
 
     const firstDayOfMonth = startOfMonth(activeMonth);
     const lastDayOfMonth = endOfMonth(activeMonth);
-    const firstDayOfCalendar = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 }); // Start week on Monday
+    const firstDayOfCalendar = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 });
     const lastDayOfCalendar = endOfWeek(lastDayOfMonth, { weekStartsOn: 1 });
     const days = eachDayOfInterval({ start: firstDayOfCalendar, end: lastDayOfCalendar });
 
@@ -56,7 +56,10 @@ const MiniCalendar = ({ currentDate, setCurrentDate }) => {
     );
 };
 
-export default function Sidebar({ currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds }) {
+export default function Sidebar({ currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
+    
+    const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
+
     const handleDoctorFilterChange = (doctorId) => {
         setFilteredDoctorIds(prevIds =>
             prevIds.includes(doctorId)
@@ -66,10 +69,15 @@ export default function Sidebar({ currentDate, setCurrentDate, doctors, filtered
     };
 
     const handleSelectAll = (e) => {
-        setFilteredDoctorIds(e.target.checked ? doctors.map(d => d.id) : []);
+        if (e.target.checked) {
+            setFilteredDoctorIds(workingDoctorIds); // Only select doctors who are working
+        } else {
+            setFilteredDoctorIds([]);
+        }
     };
-
-    const areAllSelected = doctors.length > 0 && filteredDoctorIds.length === doctors.length;
+    
+    // Check if all WORKING doctors are selected
+    const areAllWorkingSelected = workingDoctorIds.length > 0 && workingDoctorIds.every(id => filteredDoctorIds.includes(id));
 
     return (
         <aside className="bg-white border-r border-slate-200 p-6 flex flex-col gap-8 shrink-0">
@@ -82,28 +90,34 @@ export default function Sidebar({ currentDate, setCurrentDate, doctors, filtered
             <div className="sidebar-section">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Doctors</h3>
                 <ul className="flex flex-col gap-2">
-                    {doctors.map(doc => (
-                        <li key={doc.id}>
-                           <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                                    checked={filteredDoctorIds.includes(doc.id)}
-                                    onChange={() => handleDoctorFilterChange(doc.id)}
-                                />
-                                <span className="text-sm font-medium text-slate-700">{doc.name}</span>
-                           </label>
-                        </li>
-                    ))}
+                    {doctors.map(doc => {
+                        const isWorking = workingDoctorIds.includes(doc.id);
+                        return (
+                            <li key={doc.id}>
+                               <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                                        checked={filteredDoctorIds.includes(doc.id)}
+                                        onChange={() => handleDoctorFilterChange(doc.id)}
+                                    />
+                                    <span className={`w-2 h-2 rounded-full ${isWorking ? 'bg-green-500' : 'bg-slate-300'}`}></span>
+                                    <span className={`text-sm font-medium ${isWorking ? 'text-slate-700' : 'text-slate-400'}`}>{doc.name}</span>
+                               </label>
+                            </li>
+                        );
+                    })}
                      <li className="mt-2 border-t border-slate-200 pt-3">
                         <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 cursor-pointer">
                             <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
-                                checked={areAllSelected}
+                                checked={areAllWorkingSelected}
                                 onChange={handleSelectAll}
+                                // Disable if there are no doctors working today
+                                disabled={workingDoctorIds.length === 0}
                             />
-                            <span className="text-sm font-semibold text-slate-800">Select All</span>
+                            <span className="text-sm font-semibold text-slate-800">Select All Working</span>
                         </label>
                     </li>
                 </ul>

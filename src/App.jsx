@@ -25,14 +25,13 @@ const useHashNavigation = () => {
 export default function App() {
     const { isAuthenticated, user } = useAuth();
     const [clinics, setClinics] = useState([]);
-    const [doctors, setDoctors] = useState([]); // This will now hold ALL doctors for the clinic
-    const [dailySchedule, setDailySchedule] = useState({}); // New state to hold daily start/end times
+    const [doctors, setDoctors] = useState([]);
+    const [dailySchedule, setDailySchedule] = useState({});
     const [selectedClinic, setSelectedClinic] = useState('');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const currentPath = useHashNavigation();
 
-    // Effect to fetch the list of available clinics
     useEffect(() => {
         if (isAuthenticated) {
             authorizedFetch('/clinics')
@@ -46,26 +45,24 @@ export default function App() {
         }
     }, [isAuthenticated]);
 
-    // Effect to fetch ALL doctors for a clinic and the schedule for a specific day
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
-            // Fetch the schedule, which includes the list of all doctors and their hours for the day
             authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => {
                     const allDocs = data.all_doctors_in_clinic || data.doctors || [];
                     const scheduleMap = (data.doctors || []).reduce((acc, doc) => {
-                        acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
+                        if (doc.start_time && doc.end_time) {
+                            acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
+                        }
                         return acc;
                     }, {});
 
                     setDoctors(allDocs);
                     setDailySchedule(scheduleMap);
-                    // Initially, filter to show only doctors who are working today
-                    const workingDoctorIds = allDocs
-                        .filter(doc => scheduleMap[doc.id] && scheduleMap[doc.id].startTime)
-                        .map(doc => doc.id);
+                    
+                    const workingDoctorIds = Object.keys(scheduleMap).map(id => parseInt(id, 10));
                     setFilteredDoctorIds(workingDoctorIds);
                 });
         }
@@ -76,15 +73,7 @@ export default function App() {
     }
 
     const renderPage = () => {
-        const pageProps = {
-            selectedClinic,
-            currentDate,
-            setCurrentDate,
-            doctors,
-            filteredDoctorIds,
-            dailySchedule, // Pass the daily schedule down
-            user
-        };
+        const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, dailySchedule, user };
         if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
 
         switch (currentPath) {
@@ -114,10 +103,10 @@ export default function App() {
                         <Sidebar
                             currentDate={currentDate}
                             setCurrentDate={setCurrentDate}
-                            // The sidebar should show ALL doctors so the user can choose to see their schedules
                             doctors={doctors}
                             filteredDoctorIds={filteredDoctorIds}
                             setFilteredDoctorIds={setFilteredDoctorIds}
+                            dailySchedule={dailySchedule} 
                         />
                     </div>
                 )}
