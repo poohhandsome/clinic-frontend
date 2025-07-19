@@ -1,5 +1,6 @@
 // src/api.js
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// **THE FIX IS HERE**: Removed '/api' from the end of the base URL.
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const getAuthToken = () => localStorage.getItem('authToken');
 
@@ -14,6 +15,7 @@ const authorizedFetch = async (url, options = {}) => {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // Now, this will correctly combine "http://localhost:3001" + "/api/clinics"
     const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
 
     if (response.status === 401) {
