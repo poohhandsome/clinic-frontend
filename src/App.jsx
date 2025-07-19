@@ -31,32 +31,31 @@ export default function App() {
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const currentPath = useHashNavigation();
 
-    // **FIX STEP 1**: This effect now ONLY runs when the user logs in.
-    // It's responsible for fetching the list of clinics.
+    // **THE FIX IS HERE**: This logic is now consolidated to prevent race conditions.
+    // It ensures that clinics are fetched first, and only then is the first clinic selected.
     useEffect(() => {
         if (isAuthenticated) {
             authorizedFetch('/api/clinics')
                 .then(res => res.json())
-                .then(setClinics)
+                .then(clinicData => {
+                    setClinics(clinicData);
+                    // If we get clinics and none is selected yet, select the first one.
+                    if (clinicData.length > 0 && !selectedClinic) {
+                        setSelectedClinic(clinicData[0].id);
+                    }
+                })
                 .catch(error => console.error("Failed to fetch clinics:", error));
         } else {
-            // Clear data on logout
+            // Clear all data on logout to ensure a clean state
             setClinics([]);
             setAllClinicDoctors([]);
             setWorkingDoctors([]);
             setSelectedClinic('');
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated]); // This effect ONLY depends on the authentication status.
 
-    // **FIX STEP 2**: This effect sets the *initial* clinic selection
-    // only when the clinics list is first loaded.
-    useEffect(() => {
-        if (clinics.length > 0 && !selectedClinic) {
-            setSelectedClinic(clinics[0].id);
-        }
-    }, [clinics]);
-
-    // This effect correctly fetches schedule data whenever the clinic or date changes.
+    // This effect fetches the schedule and doctor details.
+    // It now safely waits for `selectedClinic` to be set before running.
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
@@ -65,7 +64,6 @@ export default function App() {
                 .then(data => {
                     setAllClinicDoctors(data.all_doctors_in_clinic || []);
                     setWorkingDoctors(data.doctors || []);
-
                     const scheduleMap = (data.doctors || []).reduce((acc, doc) => {
                         if (doc.start_time && doc.end_time) {
                             acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
@@ -73,7 +71,6 @@ export default function App() {
                         return acc;
                     }, {});
                     setDailySchedule(scheduleMap);
-                    
                     const workingDoctorIds = (data.doctors || []).map(doc => doc.id);
                     setFilteredDoctorIds(workingDoctorIds);
                 })
@@ -123,7 +120,7 @@ export default function App() {
                             doctors={workingDoctors}
                             filteredDoctorIds={filteredDoctorIds}
                             setFilteredDoctorIds={setFilteredDoctorIds}
-                            dailySchedule={dailySchedule} 
+                            dailySchedule={dailySchedule}
                         />
                     </div>
                 )}
