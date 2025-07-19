@@ -11,8 +11,8 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 });
 
-// Generates hour labels for the grid header
-const hourLabels = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
+// **FIXED**: Correctly generates 12 hour labels for the 24 slots (8 AM to 7 PM)
+const hourLabels = Array.from({ length: 12 }, (_, i) => i + 8);
 
 const daysOfWeek = [
     { id: 1, name: 'Monday' }, { id: 2, name: 'Tuesday' }, { id: 3, name: 'Wednesday' },
@@ -37,14 +37,12 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
     const isDragging = useRef(false);
     const selectionMode = useRef('add');
 
-    // Set the initial doctor when the list loads
     useEffect(() => {
         if (allDoctors.length > 0 && !selectedDoctor) {
             setSelectedDoctor(allDoctors[0].id);
         }
     }, [allDoctors, selectedDoctor]);
 
-    // Fetch and format the doctor's availability
     useEffect(() => {
         if (selectedDoctor) {
             authorizedFetch(`/api/doctor-availability/${selectedDoctor}`)
@@ -67,7 +65,6 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
         }
     }, [selectedDoctor]);
 
-    // --- Event Handlers for Drag-to-Select ---
     const handleMouseDown = (dayId, time) => {
         isDragging.current = true;
         const currentSlots = selectedSlots[dayId] || [];
@@ -100,8 +97,12 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
             return { ...prev, [dayId]: daySlots };
         });
     };
+
+    // **NEW UX FEATURE**: Clears all selected slots for a specific day
+    const handleClearDay = (dayId) => {
+        setSelectedSlots(prev => ({ ...prev, [dayId]: [] }));
+    };
     
-    // --- Save Logic (No changes needed here) ---
     const handleSave = () => {
         setIsLoading(true);
         setStatus({ message: '', type: '' });
@@ -116,7 +117,6 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                 const prevTime = new Date(`1970-01-01T${slots[i-1]}`);
                 const currentTime = i < slots.length ? new Date(`1970-01-01T${slots[i]}`) : null;
                 
-                // If the block is broken (not contiguous) or it's the last slot
                 if (!currentTime || (currentTime - prevTime) > (30 * 60 * 1000)) {
                     const endTime = new Date(prevTime.getTime() + 30 * 60 * 1000);
                     availabilityPayload.push({
@@ -141,7 +141,6 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
     };
 
     return (
-        // Add onMouseUp and onMouseLeave to the main container to catch mouse releases anywhere
         <div onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-slate-800">Manage Doctor Schedules</h2>
@@ -169,12 +168,11 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
             
             <StatusMessage message={status.message} type={status.type} />
             
-            {/* The new weekly grid layout */}
-            <div className="grid border border-slate-200 rounded-lg" style={{ gridTemplateColumns: '80px repeat(24, 1fr)' }}>
+            <div className="grid border-t border-r border-slate-200" style={{ gridTemplateColumns: '100px repeat(24, 1fr)' }}>
                 {/* Header Row */}
-                <div className="font-semibold p-2 border-r border-b border-slate-200"></div>
+                <div className="font-semibold p-2 border-l border-b border-slate-200 bg-slate-50"></div>
                 {hourLabels.map(hour => (
-                    <div key={hour} className="text-center font-semibold p-2 border-b border-slate-200 bg-slate-50" style={{ gridColumn: 'span 2' }}>
+                    <div key={hour} className="text-center font-semibold p-2 border-l border-b border-slate-200 bg-slate-50" style={{ gridColumn: 'span 2' }}>
                         {hour}:00
                     </div>
                 ))}
@@ -182,17 +180,23 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                 {/* Day Rows */}
                 {daysOfWeek.map(day => (
                     <React.Fragment key={day.id}>
-                        <div className="font-semibold p-2 border-r border-slate-200 flex items-center justify-center">
-                            {day.name}
+                        <div className="font-semibold p-2 border-l border-b border-r border-slate-200 bg-slate-50 flex items-center justify-between">
+                            <span>{day.name}</span>
+                            {/* **NEW**: Clear button for each day */}
+                            <button onClick={() => handleClearDay(day.id)} className="text-xs text-red-500 hover:text-red-700" title={`Clear ${day.name}`}>
+                                Clear
+                            </button>
                         </div>
-                        {timeSlots.map(time => {
+                        {timeSlots.map((time, index) => {
                             const isSelected = (selectedSlots[day.id] || []).includes(time);
+                            // **IMPROVED**: Add borders for better readability
+                            const borderClass = index % 2 === 0 ? 'border-l-slate-300' : 'border-l-slate-200';
                             return (
                                 <div
                                     key={`${day.id}-${time}`}
                                     onMouseDown={() => handleMouseDown(day.id, time)}
                                     onMouseEnter={() => handleMouseEnter(day.id, time)}
-                                    className={`h-12 border-l border-slate-200 cursor-pointer transition-colors ${isSelected ? 'bg-green-300' : 'bg-white hover:bg-green-100'}`}
+                                    className={`h-12 border-b ${borderClass} cursor-pointer transition-colors ${isSelected ? 'bg-green-300' : 'bg-white hover:bg-green-100'}`}
                                     title={`${day.name} - ${time}`}
                                 ></div>
                             );
