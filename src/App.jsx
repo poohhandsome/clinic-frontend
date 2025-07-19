@@ -1,16 +1,15 @@
 // src/App.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
-// import './App.css'; // <-- REMOVE THIS LINE
-import { useAuth } from './context/AuthContext';
-import LoginPage from './components/LoginPage';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import DashboardPage from './components/DashboardPage';
-import PendingAppointmentsPage from './components/PendingAppointmentsPage';
-import DoctorSchedulesPage from './components/DoctorSchedulesPage';
-import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage';
-import authorizedFetch from './api';
+import { useAuth } from './context/AuthContext.jsx';
+import LoginPage from './components/LoginPage.jsx';
+import Header from './components/Header.jsx';
+import Sidebar from './components/Sidebar.jsx';
+import DashboardPage from './components/DashboardPage.jsx';
+import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
+import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
+import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
+import authorizedFetch from './api.js';
 
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
@@ -46,7 +45,7 @@ export default function App() {
 
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
-            const dateString = '2025-01-01'; // This should probably be dynamic
+            const dateString = '2025-01-01';
             authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => {
@@ -76,19 +75,31 @@ export default function App() {
     const showSidebar = currentPath === '#dashboard';
 
     return (
-        <div className="app-container">
-            <div className={`main-layout ${!showSidebar ? 'no-sidebar' : ''}`}>
-                <Header clinics={clinics} selectedClinic={selectedClinic} onClinicChange={setSelectedClinic} />
-                {showSidebar && (
-                    <Sidebar
-                        currentDate={currentDate}
-                        setCurrentDate={setCurrentDate}
-                        doctors={doctors}
-                        filteredDoctorIds={filteredDoctorIds}
-                        setFilteredDoctorIds={setFilteredDoctorIds}
+        <div className="h-screen w-full bg-slate-50">
+            <div className={`h-full w-full grid ${showSidebar ? 'grid-cols-[18rem_1fr]' : 'grid-cols-[1fr]'} grid-rows-[auto_1fr]`}>
+                <header className="col-span-full row-start-1">
+                    <Header
+                        clinics={clinics}
+                        selectedClinic={selectedClinic}
+                        onClinicChange={setSelectedClinic}
                     />
+                </header>
+
+                {showSidebar && (
+                     <div className="row-start-2 overflow-y-auto">
+                        <Sidebar
+                            currentDate={currentDate}
+                            setCurrentDate={setCurrentDate}
+                            doctors={doctors}
+                            filteredDoctorIds={filteredDoctorIds}
+                            setFilteredDoctorIds={setFilteredDoctorIds}
+                        />
+                    </div>
                 )}
-                <main className="content-area">{renderPage()}</main>
+
+                <main className="row-start-2 overflow-y-auto p-6">
+                    {renderPage()}
+                </main>
             </div>
         </div>
     );
