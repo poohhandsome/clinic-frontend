@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import authorizedFetch from '../api';
 
 // --- Helper Functions & Constants ---
 
-// Generate time slots for the timeline (8:00 AM to 8:00 PM)
+// **FIXED**: This function now correctly generates time slots from 08:00 to 19:30.
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
-    const hour = i + 8;
-    return [`${String(hour).padStart(2, '0')}:00`, `${String(hour).padStart(2, '0')}:30`];
-}).flat();
+    const totalMinutes = 8 * 60 + i * 30; // Start at 8:00 AM (480 mins)
+    const hour = Math.floor(totalMinutes / 60);
+    const minute = totalMinutes % 60;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+});
 
 const daysOfWeek = [
     { id: 1, name: 'Monday' }, { id: 2, name: 'Tuesday' }, { id: 3, name: 'Wednesday' },
@@ -28,25 +30,21 @@ const StatusMessage = ({ message, type }) => {
 
 export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctors, allDoctors: allDoctorsProp }) {
     const [selectedDoctor, setSelectedDoctor] = useState('');
-    // State to hold selected slots for each day, e.g., { 1: ['09:00', '09:30'], 2: [] }
     const [selectedSlots, setSelectedSlots] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [status, setStatus] = useState({ message: '', type: '' });
     
-    // Refs to manage the drag-to-select behavior
     const isDragging = useRef(false);
-    const selectionMode = useRef('add'); // 'add' or 'remove'
+    const selectionMode = useRef('add');
 
     const doctors = allDoctors || allDoctorsProp || [];
 
-    // Set the initial doctor when the list loads
     useEffect(() => {
         if (doctors.length > 0 && !selectedDoctor) {
             setSelectedDoctor(doctors[0].id);
         }
     }, [doctors, selectedDoctor]);
 
-    // Fetch and format the doctor's availability when the selected doctor changes
     useEffect(() => {
         if (selectedDoctor) {
             authorizedFetch(`/api/doctor-availability/${selectedDoctor}`)
@@ -69,12 +67,9 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
         }
     }, [selectedDoctor]);
 
-    // --- Event Handlers for Drag-to-Select ---
-
     const handleMouseDown = (dayId, time) => {
         isDragging.current = true;
         const currentSlots = selectedSlots[dayId] || [];
-        // Determine if we are adding or removing slots based on the first block clicked
         selectionMode.current = currentSlots.includes(time) ? 'remove' : 'add';
         toggleSlot(dayId, time);
     };
@@ -89,8 +84,6 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
         isDragging.current = false;
     };
     
-    // --- State Update Logic ---
-
     const toggleSlot = (dayId, time) => {
         setSelectedSlots(prev => {
             const daySlots = prev[dayId] ? [...prev[dayId]] : [];
@@ -106,15 +99,12 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
             return { ...prev, [dayId]: daySlots };
         });
     };
-
-    // --- Save Logic ---
     
     const handleSave = () => {
         setIsLoading(true);
         setStatus({ message: '', type: '' });
 
         const availabilityPayload = [];
-        // Convert selected slots back into start/end time blocks
         for (const dayId in selectedSlots) {
             const slots = [...selectedSlots[dayId]].sort();
             if (slots.length === 0) continue;
@@ -130,7 +120,6 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
                 const nextTimeInBlock = new Date(`1970-01-01T${currentBlock.start_time}`);
                 const diff = (currentTime - nextTimeInBlock) / (1000 * 60);
 
-                // If the current slot is not contiguous, push the previous block and start a new one
                 if (diff / 30 > i) {
                     const lastSlotTime = new Date(`1970-01-01T${slots[i-1]}`);
                     lastSlotTime.setMinutes(lastSlotTime.getMinutes() + 30);
@@ -140,7 +129,6 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
                     currentBlock = { day_of_week: parseInt(dayId, 10), start_time: slots[i], end_time: null };
                 }
             }
-             // Add the last block
             const finalSlotTime = new Date(`1970-01-01T${slots[slots.length - 1]}`);
             finalSlotTime.setMinutes(finalSlotTime.getMinutes() + 30);
             currentBlock.end_time = finalSlotTime.toTimeString().substring(0, 5);
@@ -197,7 +185,8 @@ export default function DoctorSchedulesPage({ selectedClinic, doctors: allDoctor
                 {daysOfWeek.map(day => (
                     <div key={day.id}>
                         <h3 className="text-lg font-semibold text-slate-700 mb-2">{day.name}</h3>
-                        <div className="grid grid-cols-12 gap-px bg-slate-200 border border-slate-200 rounded-lg p-px" onMouseLeave={handleMouseUp}>
+                        {/* **FIXED**: The grid is now correctly set to 24 columns */}
+                        <div className="grid grid-cols-24 gap-px bg-slate-200 border border-slate-200 rounded-lg p-px" onMouseLeave={handleMouseUp}>
                             {timeSlots.map((time, index) => {
                                 const isSelected = (selectedSlots[day.id] || []).includes(time);
                                 const isHourMark = index % 2 === 0;
