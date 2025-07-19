@@ -31,19 +31,32 @@ export default function App() {
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const currentPath = useHashNavigation();
 
+    // **FIX STEP 1**: This effect now ONLY runs when the user logs in.
+    // It's responsible for fetching the list of clinics.
     useEffect(() => {
         if (isAuthenticated) {
             authorizedFetch('/api/clinics')
                 .then(res => res.json())
-                .then(data => {
-                    setClinics(data);
-                    if (data.length > 0 && !selectedClinic) {
-                        setSelectedClinic(data[0].id);
-                    }
-                });
+                .then(setClinics)
+                .catch(error => console.error("Failed to fetch clinics:", error));
+        } else {
+            // Clear data on logout
+            setClinics([]);
+            setAllClinicDoctors([]);
+            setWorkingDoctors([]);
+            setSelectedClinic('');
         }
-    }, [isAuthenticated, selectedClinic]);
+    }, [isAuthenticated]);
 
+    // **FIX STEP 2**: This effect sets the *initial* clinic selection
+    // only when the clinics list is first loaded.
+    useEffect(() => {
+        if (clinics.length > 0 && !selectedClinic) {
+            setSelectedClinic(clinics[0].id);
+        }
+    }, [clinics]);
+
+    // This effect correctly fetches schedule data whenever the clinic or date changes.
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
@@ -63,7 +76,8 @@ export default function App() {
                     
                     const workingDoctorIds = (data.doctors || []).map(doc => doc.id);
                     setFilteredDoctorIds(workingDoctorIds);
-                });
+                })
+                .catch(error => console.error("Failed to fetch schedule:", error));
         }
     }, [selectedClinic, currentDate, isAuthenticated]);
 
@@ -82,7 +96,6 @@ export default function App() {
             case '#confirmed':
                 return <ConfirmedAppointmentsPage selectedClinic={selectedClinic} />;
             case '#schedules':
-                // **THE FIX IS HERE**: Pass the full list of doctors (`allClinicDoctors`) to the schedule page.
                 return <DoctorSchedulesPage doctors={allClinicDoctors} />;
             default:
                 return <DashboardPage doctors={workingDoctors} filteredDoctorIds={filteredDoctorIds} dailySchedule={dailySchedule} selectedClinic={selectedClinic} currentDate={currentDate} />;
