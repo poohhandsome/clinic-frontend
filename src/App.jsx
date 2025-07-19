@@ -1,5 +1,3 @@
-// src/App.jsx (REPLACE)
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
 import { format } from 'date-fns';
@@ -25,7 +23,7 @@ const useHashNavigation = () => {
 export default function App() {
     const { isAuthenticated, user } = useAuth();
     const [clinics, setClinics] = useState([]);
-    const [doctors, setDoctors] = useState([]);
+    const [allClinicDoctors, setAllClinicDoctors] = useState([]);
     const [workingDoctors, setWorkingDoctors] = useState([]);
     const [dailySchedule, setDailySchedule] = useState({});
     const [selectedClinic, setSelectedClinic] = useState('');
@@ -35,7 +33,7 @@ export default function App() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            authorizedFetch('/clinics')
+            authorizedFetch('/api/clinics')
                 .then(res => res.json())
                 .then(data => {
                     setClinics(data);
@@ -49,23 +47,21 @@ export default function App() {
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
-            authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
+            authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => {
-                    const allDocs = data.all_doctors_in_clinic || data.doctors || [];
+                    setAllClinicDoctors(data.all_doctors_in_clinic || []);
+                    setWorkingDoctors(data.doctors || []);
+
                     const scheduleMap = (data.doctors || []).reduce((acc, doc) => {
                         if (doc.start_time && doc.end_time) {
                             acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
                         }
                         return acc;
                     }, {});
-
-                    const workingDoctorIds = Object.keys(scheduleMap).map(id => parseInt(id, 10));
-                    const workingDocs = allDocs.filter(doc => workingDoctorIds.includes(doc.id));
-
-                    setDoctors(allDocs);
-                    setWorkingDoctors(workingDocs);
                     setDailySchedule(scheduleMap);
+                    
+                    const workingDoctorIds = (data.doctors || []).map(doc => doc.id);
                     setFilteredDoctorIds(workingDoctorIds);
                 });
         }
@@ -76,24 +72,20 @@ export default function App() {
     }
 
     const renderPage = () => {
-        const pageProps = { 
-            selectedClinic, 
-            currentDate, 
-            setCurrentDate, 
-            doctors: workingDoctors, 
-            allDoctors: doctors,
-            filteredDoctorIds, 
-            dailySchedule, 
-            user 
-        };
         if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
 
         switch (currentPath) {
-            case '#dashboard': return <DashboardPage {...pageProps} />;
-            case '#pending': return <PendingAppointmentsPage {...pageProps} />;
-            case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
-            case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
-            default: return <DashboardPage {...pageProps} />;
+            case '#dashboard':
+                return <DashboardPage doctors={workingDoctors} filteredDoctorIds={filteredDoctorIds} dailySchedule={dailySchedule} selectedClinic={selectedClinic} currentDate={currentDate} />;
+            case '#pending':
+                return <PendingAppointmentsPage selectedClinic={selectedClinic} />;
+            case '#confirmed':
+                return <ConfirmedAppointmentsPage selectedClinic={selectedClinic} />;
+            case '#schedules':
+                // **THE FIX IS HERE**: Pass the full list of doctors (`allClinicDoctors`) to the schedule page.
+                return <DoctorSchedulesPage doctors={allClinicDoctors} />;
+            default:
+                return <DashboardPage doctors={workingDoctors} filteredDoctorIds={filteredDoctorIds} dailySchedule={dailySchedule} selectedClinic={selectedClinic} currentDate={currentDate} />;
         }
     };
 

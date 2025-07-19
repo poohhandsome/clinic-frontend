@@ -3,20 +3,22 @@ import authorizedFetch from '../api';
 
 // --- Helper Functions & Constants ---
 
-// Generates 30-minute time slots from 8:00 AM to 7:30 PM
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
-    const totalMinutes = 8 * 60 + i * 30; // Start at 8:00 AM
+    const totalMinutes = 8 * 60 + i * 30;
     const hour = Math.floor(totalMinutes / 60);
     const minute = totalMinutes % 60;
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 });
 
-// **FIXED**: Correctly generates 12 hour labels for the 24 slots (8 AM to 7 PM)
-const hourLabels = Array.from({ length: 12 }, (_, i) => i + 8);
+// **IMPROVED**: Hour labels now show a range, e.g., "8:00 - 9:00"
+const hourLabels = Array.from({ length: 12 }, (_, i) => {
+    const startHour = i + 8;
+    return `${startHour}:00 - ${startHour + 1}:00`;
+});
 
 const daysOfWeek = [
     { id: 1, name: 'Monday' }, { id: 2, name: 'Tuesday' }, { id: 3, name: 'Wednesday' },
-    { id: 4, name: 'Thursday' }, { id: 5, name: 'Friday' }, { id: 6, name: 'Saturday' }, { id: 0, name: 'Sunday' }
+    { id: 4, name: 'Thursday' }, { id: 5, name: 'Friday' }, { id: 6, 'name': 'Saturday' }, { id: 0, name: 'Sunday' }
 ];
 
 const StatusMessage = ({ message, type }) => {
@@ -43,6 +45,7 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
         }
     }, [allDoctors, selectedDoctor]);
 
+    // This correctly fetches the existing schedule for the selected doctor
     useEffect(() => {
         if (selectedDoctor) {
             authorizedFetch(`/api/doctor-availability/${selectedDoctor}`)
@@ -86,49 +89,35 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
         setSelectedSlots(prev => {
             const daySlots = prev[dayId] ? [...prev[dayId]] : [];
             const isSelected = daySlots.includes(time);
-            
-            if (selectionMode.current === 'add' && !isSelected) {
-                daySlots.push(time);
-            } else if (selectionMode.current === 'remove' && isSelected) {
-                const index = daySlots.indexOf(time);
-                daySlots.splice(index, 1);
-            }
-            
+            if (selectionMode.current === 'add' && !isSelected) daySlots.push(time);
+            else if (selectionMode.current === 'remove' && isSelected) daySlots.splice(daySlots.indexOf(time), 1);
             return { ...prev, [dayId]: daySlots };
         });
     };
 
-    // **NEW UX FEATURE**: Clears all selected slots for a specific day
     const handleClearDay = (dayId) => {
         setSelectedSlots(prev => ({ ...prev, [dayId]: [] }));
     };
     
+    // This logic correctly overrides the old schedule with the new one on save
     const handleSave = () => {
         setIsLoading(true);
         setStatus({ message: '', type: '' });
-
         const availabilityPayload = [];
-        for (const dayId in selectedSlots) {
+        Object.keys(selectedSlots).forEach(dayId => {
             const slots = [...selectedSlots[dayId]].sort();
-            if (slots.length === 0) continue;
-
-            let currentBlock = { day_of_week: parseInt(dayId, 10), start_time: slots[0] };
+            if (slots.length === 0) return;
+            let currentBlock = { day_of_week: parseInt(dayId), start_time: slots[0] };
             for (let i = 1; i <= slots.length; i++) {
                 const prevTime = new Date(`1970-01-01T${slots[i-1]}`);
                 const currentTime = i < slots.length ? new Date(`1970-01-01T${slots[i]}`) : null;
-                
-                if (!currentTime || (currentTime - prevTime) > (30 * 60 * 1000)) {
+                if (!currentTime || (currentTime - prevTime) > (30 * 60 * 1000 + 1000)) {
                     const endTime = new Date(prevTime.getTime() + 30 * 60 * 1000);
-                    availabilityPayload.push({
-                        ...currentBlock,
-                        end_time: endTime.toTimeString().substring(0, 5)
-                    });
-                    if (currentTime) {
-                       currentBlock = { day_of_week: parseInt(dayId, 10), start_time: slots[i] };
-                    }
+                    availabilityPayload.push({ ...currentBlock, end_time: endTime.toTimeString().substring(0, 5) });
+                    if (currentTime) currentBlock = { day_of_week: parseInt(dayId), start_time: slots[i] };
                 }
             }
-        }
+        });
 
         authorizedFetch(`/api/doctor-availability/${selectedDoctor}`, {
             method: 'POST',
@@ -147,8 +136,7 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                 <button 
                     className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50" 
                     onClick={handleSave} 
-                    disabled={isLoading || !selectedDoctor}
-                >
+                    disabled={isLoading || !selectedDoctor}>
                     {isLoading ? 'Saving...' : 'Save Schedule'}
                 </button>
             </div>
@@ -159,8 +147,7 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                     id="doctor-select" 
                     className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"
                     value={selectedDoctor} 
-                    onChange={e => setSelectedDoctor(e.target.value)}
-                >
+                    onChange={e => setSelectedDoctor(e.target.value)}>
                     <option value="" disabled>-- Select a Doctor --</option>
                     {allDoctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
                 </select>
@@ -168,12 +155,12 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
             
             <StatusMessage message={status.message} type={status.type} />
             
-            <div className="grid border-t border-r border-slate-200" style={{ gridTemplateColumns: '100px repeat(24, 1fr)' }}>
+            <div className="grid border-t border-r border-slate-200" style={{ gridTemplateColumns: '120px repeat(24, 1fr)' }}>
                 {/* Header Row */}
                 <div className="font-semibold p-2 border-l border-b border-slate-200 bg-slate-50"></div>
-                {hourLabels.map(hour => (
-                    <div key={hour} className="text-center font-semibold p-2 border-l border-b border-slate-200 bg-slate-50" style={{ gridColumn: 'span 2' }}>
-                        {hour}:00
+                {hourLabels.map(hourLabel => (
+                    <div key={hourLabel} className="text-center text-sm font-semibold p-2 border-l border-b border-slate-200 bg-slate-50" style={{ gridColumn: 'span 2' }}>
+                        {hourLabel}
                     </div>
                 ))}
 
@@ -182,21 +169,19 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                     <React.Fragment key={day.id}>
                         <div className="font-semibold p-2 border-l border-b border-r border-slate-200 bg-slate-50 flex items-center justify-between">
                             <span>{day.name}</span>
-                            {/* **NEW**: Clear button for each day */}
-                            <button onClick={() => handleClearDay(day.id)} className="text-xs text-red-500 hover:text-red-700" title={`Clear ${day.name}`}>
+                            <button onClick={() => handleClearDay(day.id)} className="text-xs font-medium text-red-500 hover:text-red-700 px-1 rounded hover:bg-red-100" title={`Clear ${day.name}`}>
                                 Clear
                             </button>
                         </div>
                         {timeSlots.map((time, index) => {
                             const isSelected = (selectedSlots[day.id] || []).includes(time);
-                            // **IMPROVED**: Add borders for better readability
                             const borderClass = index % 2 === 0 ? 'border-l-slate-300' : 'border-l-slate-200';
                             return (
                                 <div
                                     key={`${day.id}-${time}`}
                                     onMouseDown={() => handleMouseDown(day.id, time)}
                                     onMouseEnter={() => handleMouseEnter(day.id, time)}
-                                    className={`h-12 border-b ${borderClass} cursor-pointer transition-colors ${isSelected ? 'bg-green-300' : 'bg-white hover:bg-green-100'}`}
+                                    className={`h-10 border-b ${borderClass} cursor-pointer transition-colors ${isSelected ? 'bg-green-300' : 'bg-white hover:bg-green-100'}`}
                                     title={`${day.name} - ${time}`}
                                 ></div>
                             );
