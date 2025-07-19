@@ -1,7 +1,7 @@
-// src/App.jsx (Updated)
+// src/App.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
-import './App.css';
+// import './App.css'; // <-- REMOVE THIS LINE
 import { useAuth } from './context/AuthContext';
 import LoginPage from './components/LoginPage';
 import Header from './components/Header';
@@ -23,13 +23,12 @@ const useHashNavigation = () => {
 };
 
 export default function App() {
-    const { isAuthenticated, user } = useAuth(); // <-- Use the context
+    const { isAuthenticated, user } = useAuth();
     const [clinics, setClinics] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [selectedClinic, setSelectedClinic] = useState('');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
-
     const currentPath = useHashNavigation();
 
     useEffect(() => {
@@ -62,14 +61,7 @@ export default function App() {
     }
 
     const renderPage = () => {
-        const pageProps = {
-            selectedClinic,
-            currentDate,
-            setCurrentDate,
-            doctors,
-            filteredDoctorIds,
-            user
-        };
+        const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, user };
         if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
 
         switch (currentPath) {
@@ -86,11 +78,7 @@ export default function App() {
     return (
         <div className="app-container">
             <div className={`main-layout ${!showSidebar ? 'no-sidebar' : ''}`}>
-                <Header
-                    clinics={clinics}
-                    selectedClinic={selectedClinic}
-                    onClinicChange={setSelectedClinic}
-                />
+                <Header clinics={clinics} selectedClinic={selectedClinic} onClinicChange={setSelectedClinic} />
                 {showSidebar && (
                     <Sidebar
                         currentDate={currentDate}
