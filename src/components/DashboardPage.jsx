@@ -5,17 +5,16 @@ import { format } from 'date-fns';
 import AppointmentModal from './AppointmentModal.jsx';
 import authorizedFetch from '../api.js';
 
-export default function DashboardPage({ selectedClinic, currentDate, doctors, filteredDoctorIds }) {
+export default function DashboardPage({ selectedClinic, currentDate, doctors, filteredDoctorIds, dailySchedule }) {
     const [dayAppointments, setDayAppointments] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
 
+    // Filter the doctors to display based on the sidebar selection
     const displayedDoctors = useMemo(() => {
-        // The `doctors` prop is already filtered by working schedule from App.jsx
         return doctors.filter(doc => filteredDoctorIds.includes(doc.id));
     }, [doctors, filteredDoctorIds]);
 
-    // Fetch only appointments, not the whole schedule again
     const fetchAppointments = () => {
         if (selectedClinic) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
@@ -29,7 +28,7 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
 
     const timeSlots = useMemo(() => {
         const slots = [];
-        for (let i = 7; i <= 20; i++) { // Generate slots for a wide range
+        for (let i = 7; i <= 20; i++) {
             for (let j = 0; j < 60; j += 30) {
                 slots.push(`${String(i).padStart(2, '0')}:${String(j).padStart(2, '0')}`);
             }
@@ -46,16 +45,16 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
         setIsModalOpen(false);
         setModalData(null);
         if (didBook) {
-            fetchAppointments(); // Re-fetch appointments after booking
+            fetchAppointments();
         }
     };
 
-    const isSlotInWorkingHours = (slotTime, doctor) => {
-        if (!doctor.start_time || !doctor.end_time) {
-            return false; // Not working if no schedule
+    const isSlotInWorkingHours = (slotTime, doctorId) => {
+        const schedule = dailySchedule[doctorId];
+        if (!schedule || !schedule.startTime || !schedule.endTime) {
+            return false;
         }
-        // Note: Assumes times are in "HH:mm" format
-        return slotTime >= doctor.start_time.substring(0, 5) && slotTime < doctor.end_time.substring(0, 5);
+        return slotTime >= schedule.startTime.substring(0, 5) && slotTime < schedule.endTime.substring(0, 5);
     };
 
     const CalendarGridHeader = ({ doctor }) => (
@@ -82,13 +81,13 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
                             
                             {displayedDoctors.map(doc => {
                                 const appointment = dayAppointments.find(app => app.doctor_id === doc.id && app.appointment_time.startsWith(time));
-                                const isWorking = isSlotInWorkingHours(time, doc);
+                                const isWorking = isSlotInWorkingHours(time, doc.id);
                                 
                                 let slotClass = "h-16 border-t border-r border-slate-200 relative p-0.5";
                                 if (!isWorking) {
-                                    slotClass += " bg-slate-50"; // Gray out non-working hours
+                                    slotClass += " bg-slate-50"; 
                                 } else {
-                                    slotClass += " group"; // Add group for hover effect only on working hours
+                                    slotClass += " group";
                                 }
 
                                 return (

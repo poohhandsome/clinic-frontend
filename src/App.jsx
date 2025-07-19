@@ -25,8 +25,8 @@ const useHashNavigation = () => {
 export default function App() {
     const { isAuthenticated, user } = useAuth();
     const [clinics, setClinics] = useState([]);
-    const [doctors, setDoctors] = useState([]);
-    const [allDoctorsForClinic, setAllDoctorsForClinic] = useState([]); // For the schedules page
+    const [doctors, setDoctors] = useState([]); // This will now hold ALL doctors for the clinic
+    const [dailySchedule, setDailySchedule] = useState({}); // New state to hold daily start/end times
     const [selectedClinic, setSelectedClinic] = useState('');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
@@ -46,21 +46,27 @@ export default function App() {
         }
     }, [isAuthenticated]);
 
-    // Effect to fetch the schedule for a specific day when clinic or date changes
+    // Effect to fetch ALL doctors for a clinic and the schedule for a specific day
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
+            // Fetch the schedule, which includes the list of all doctors and their hours for the day
             authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => {
-                    const workingDoctors = data.doctors.filter(doc => doc.start_time && doc.end_time);
-                    setDoctors(workingDoctors);
-                    setFilteredDoctorIds(workingDoctors.map(d => d.id));
-                    
-                    // Also store a full list of all doctors for the DoctorSchedulesPage
-                    if (!allDoctorsForClinic.length) {
-                         setAllDoctorsForClinic(data.all_doctors_in_clinic || data.doctors);
-                    }
+                    const allDocs = data.all_doctors_in_clinic || data.doctors || [];
+                    const scheduleMap = (data.doctors || []).reduce((acc, doc) => {
+                        acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
+                        return acc;
+                    }, {});
+
+                    setDoctors(allDocs);
+                    setDailySchedule(scheduleMap);
+                    // Initially, filter to show only doctors who are working today
+                    const workingDoctorIds = allDocs
+                        .filter(doc => scheduleMap[doc.id] && scheduleMap[doc.id].startTime)
+                        .map(doc => doc.id);
+                    setFilteredDoctorIds(workingDoctorIds);
                 });
         }
     }, [selectedClinic, currentDate, isAuthenticated]);
@@ -76,6 +82,7 @@ export default function App() {
             setCurrentDate,
             doctors,
             filteredDoctorIds,
+            dailySchedule, // Pass the daily schedule down
             user
         };
         if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
@@ -84,7 +91,7 @@ export default function App() {
             case '#dashboard': return <DashboardPage {...pageProps} />;
             case '#pending': return <PendingAppointmentsPage {...pageProps} />;
             case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
-            case '#schedules': return <DoctorSchedulesPage {...pageProps} doctors={allDoctorsForClinic} />;
+            case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
             default: return <DashboardPage {...pageProps} />;
         }
     };
@@ -107,6 +114,7 @@ export default function App() {
                         <Sidebar
                             currentDate={currentDate}
                             setCurrentDate={setCurrentDate}
+                            // The sidebar should show ALL doctors so the user can choose to see their schedules
                             doctors={doctors}
                             filteredDoctorIds={filteredDoctorIds}
                             setFilteredDoctorIds={setFilteredDoctorIds}
