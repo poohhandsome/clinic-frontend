@@ -10,7 +10,6 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 });
 
-// **IMPROVED**: Hour labels now show a range, e.g., "8:00 - 9:00"
 const hourLabels = Array.from({ length: 12 }, (_, i) => {
     const startHour = i + 8;
     return `${startHour}:00 - ${startHour + 1}:00`;
@@ -45,7 +44,6 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
         }
     }, [allDoctors, selectedDoctor]);
 
-    // This correctly fetches the existing schedule for the selected doctor
     useEffect(() => {
         if (selectedDoctor) {
             authorizedFetch(`/api/doctor-availability/${selectedDoctor}`)
@@ -99,7 +97,6 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
         setSelectedSlots(prev => ({ ...prev, [dayId]: [] }));
     };
     
-    // This logic correctly overrides the old schedule with the new one on save
     const handleSave = () => {
         setIsLoading(true);
         setStatus({ message: '', type: '' });
@@ -169,8 +166,16 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                     <React.Fragment key={day.id}>
                         <div className="font-semibold p-2 border-l border-b border-r border-slate-200 bg-slate-50 flex items-center justify-between">
                             <span>{day.name}</span>
-                            <button onClick={() => handleClearDay(day.id)} className="text-xs font-medium text-red-500 hover:text-red-700 px-1 rounded hover:bg-red-100" title={`Clear ${day.name}`}>
-                                Clear
+                            {/* **THE FIX IS HERE**: Replaced text with an SVG icon */}
+                            <button 
+                                onClick={() => handleClearDay(day.id)} 
+                                className="p-1 rounded-full text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors" 
+                                title={`Clear ${day.name}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
                             </button>
                         </div>
                         {timeSlots.map((time, index) => {
