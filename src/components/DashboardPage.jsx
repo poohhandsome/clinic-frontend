@@ -6,28 +6,30 @@ import AppointmentModal from './AppointmentModal.jsx';
 import authorizedFetch from '../api.js';
 
 export default function DashboardPage({ selectedClinic, currentDate, doctors, filteredDoctorIds }) {
-    const [dayData, setDayData] = useState({ appointments: [] });
+    const [dayAppointments, setDayAppointments] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
 
     const displayedDoctors = useMemo(() => {
+        // The `doctors` prop is already filtered by working schedule from App.jsx
         return doctors.filter(doc => filteredDoctorIds.includes(doc.id));
     }, [doctors, filteredDoctorIds]);
 
-    const fetchDayData = () => {
+    // Fetch only appointments, not the whole schedule again
+    const fetchAppointments = () => {
         if (selectedClinic) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
-            authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
+            authorizedFetch(`/appointments/by-date?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
-                .then(data => setDayData({ appointments: data.appointments || [] }));
+                .then(data => setDayAppointments(data.appointments || []));
         }
     };
 
-    useEffect(fetchDayData, [selectedClinic, currentDate]);
+    useEffect(fetchAppointments, [selectedClinic, currentDate]);
 
     const timeSlots = useMemo(() => {
         const slots = [];
-        for (let i = 7; i <= 20; i++) {
+        for (let i = 7; i <= 20; i++) { // Generate slots for a wide range
             for (let j = 0; j < 60; j += 30) {
                 slots.push(`${String(i).padStart(2, '0')}:${String(j).padStart(2, '0')}`);
             }
@@ -44,13 +46,20 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
         setIsModalOpen(false);
         setModalData(null);
         if (didBook) {
-            fetchDayData();
+            fetchAppointments(); // Re-fetch appointments after booking
         }
     };
 
-    // This is a new component for the sticky header to keep the main component clean
+    const isSlotInWorkingHours = (slotTime, doctor) => {
+        if (!doctor.start_time || !doctor.end_time) {
+            return false; // Not working if no schedule
+        }
+        // Note: Assumes times are in "HH:mm" format
+        return slotTime >= doctor.start_time.substring(0, 5) && slotTime < doctor.end_time.substring(0, 5);
+    };
+
     const CalendarGridHeader = ({ doctor }) => (
-        <div key={doctor.id} className="sticky top-0 z-10 bg-white p-3 border-b border-slate-200">
+        <div key={doctor.id} className="sticky top-0 z-10 bg-white p-3 border-b border-r border-slate-200">
             <div className="font-semibold text-slate-800 text-center">{doctor.name}</div>
         </div>
     );
@@ -62,35 +71,40 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
             <div className="flex-1 overflow-auto">
                 <div className="grid min-w-[900px]" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, 1fr)` }}>
                     
-                    {/* Time Gutter Header */}
                     <div className="sticky top-0 z-10 bg-white border-b border-r border-slate-200"></div>
-
-                    {/* Doctor Headers */}
                     {displayedDoctors.map(doc => <CalendarGridHeader key={doc.id} doctor={doc} />)}
 
-                    {/* Time Slots and Appointments */}
                     {timeSlots.map(time => (
                         <React.Fragment key={time}>
-                            {/* Time label in the gutter */}
                             <div className="h-16 text-right pr-2 text-xs text-slate-400 border-t border-r border-slate-200 pt-1">
                                 {time}
                             </div>
                             
-                            {/* Slots for each doctor */}
                             {displayedDoctors.map(doc => {
-                                const appointment = dayData.appointments.find(app => app.doctor_id === doc.id && app.appointment_time.startsWith(time));
+                                const appointment = dayAppointments.find(app => app.doctor_id === doc.id && app.appointment_time.startsWith(time));
+                                const isWorking = isSlotInWorkingHours(time, doc);
+                                
+                                let slotClass = "h-16 border-t border-r border-slate-200 relative p-0.5";
+                                if (!isWorking) {
+                                    slotClass += " bg-slate-50"; // Gray out non-working hours
+                                } else {
+                                    slotClass += " group"; // Add group for hover effect only on working hours
+                                }
+
                                 return (
                                     <div
                                         key={`${time}-${doc.id}`}
-                                        className="h-16 border-t border-r border-slate-200 relative p-0.5 group"
-                                        onClick={() => !appointment && handleSlotClick(time, doc.id)}
+                                        className={slotClass}
+                                        onClick={() => isWorking && !appointment && handleSlotClick(time, doc.id)}
                                     >
-                                        {appointment ? (
-                                            <div className="bg-sky-100 text-sky-800 rounded-md p-2 h-full w-full text-xs font-medium overflow-hidden">
-                                                {appointment.patient_name_at_booking || `Patient #${appointment.patient_id}`}
-                                            </div>
-                                        ) : (
-                                            <div className="w-full h-full rounded-md opacity-0 group-hover:opacity-100 bg-sky-50 transition-opacity cursor-pointer"></div>
+                                        {isWorking && (
+                                            appointment ? (
+                                                <div className="bg-sky-100 text-sky-800 rounded-md p-2 h-full w-full text-xs font-medium overflow-hidden">
+                                                    {appointment.patient_name_at_booking || `Patient #${appointment.patient_id}`}
+                                                </div>
+                                            ) : (
+                                                <div className="w-full h-full rounded-md opacity-0 group-hover:opacity-100 bg-sky-50 transition-opacity cursor-pointer"></div>
+                                            )
                                         )}
                                     </div>
                                 );

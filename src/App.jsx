@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
+import { format } from 'date-fns';
 import LoginPage from './components/LoginPage.jsx';
 import Header from './components/Header.jsx';
 import Sidebar from './components/Sidebar.jsx';
@@ -25,11 +26,13 @@ export default function App() {
     const { isAuthenticated, user } = useAuth();
     const [clinics, setClinics] = useState([]);
     const [doctors, setDoctors] = useState([]);
+    const [allDoctorsForClinic, setAllDoctorsForClinic] = useState([]); // For the schedules page
     const [selectedClinic, setSelectedClinic] = useState('');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const currentPath = useHashNavigation();
 
+    // Effect to fetch the list of available clinics
     useEffect(() => {
         if (isAuthenticated) {
             authorizedFetch('/clinics')
@@ -41,33 +44,47 @@ export default function App() {
                     }
                 });
         }
-    }, [isAuthenticated, selectedClinic]);
+    }, [isAuthenticated]);
 
+    // Effect to fetch the schedule for a specific day when clinic or date changes
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
-            const dateString = '2025-01-01';
+            const dateString = format(currentDate, 'yyyy-MM-dd');
             authorizedFetch(`/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => {
-                    setDoctors(data.doctors || []);
-                    setFilteredDoctorIds((data.doctors || []).map(d => d.id));
+                    const workingDoctors = data.doctors.filter(doc => doc.start_time && doc.end_time);
+                    setDoctors(workingDoctors);
+                    setFilteredDoctorIds(workingDoctors.map(d => d.id));
+                    
+                    // Also store a full list of all doctors for the DoctorSchedulesPage
+                    if (!allDoctorsForClinic.length) {
+                         setAllDoctorsForClinic(data.all_doctors_in_clinic || data.doctors);
+                    }
                 });
         }
-    }, [selectedClinic, isAuthenticated]);
+    }, [selectedClinic, currentDate, isAuthenticated]);
 
     if (!isAuthenticated) {
         return <LoginPage />;
     }
 
     const renderPage = () => {
-        const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, user };
+        const pageProps = {
+            selectedClinic,
+            currentDate,
+            setCurrentDate,
+            doctors,
+            filteredDoctorIds,
+            user
+        };
         if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
 
         switch (currentPath) {
             case '#dashboard': return <DashboardPage {...pageProps} />;
             case '#pending': return <PendingAppointmentsPage {...pageProps} />;
             case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
-            case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
+            case '#schedules': return <DoctorSchedulesPage {...pageProps} doctors={allDoctorsForClinic} />;
             default: return <DashboardPage {...pageProps} />;
         }
     };
