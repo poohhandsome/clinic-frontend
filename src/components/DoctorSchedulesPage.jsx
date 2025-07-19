@@ -191,12 +191,7 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                     <button onClick={() => setIsRemoveModalOpen(true)} className="px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-sm hover:bg-red-700 disabled:opacity-50" disabled={!selectedDoctor}>Remove Scheduled Day</button>
                     <button className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50" onClick={handleSave} disabled={isLoading || !selectedDoctor}>Save Weekly Schedule</button>
                 </div>
-                <button 
-                    className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50" 
-                    onClick={handleSave} 
-                    disabled={isLoading || !selectedDoctor}>
-                    {isLoading ? 'Saving...' : 'Save Schedule'}
-                </button>
+                
             </div>
 
             <div className="mb-6 max-w-xs">
