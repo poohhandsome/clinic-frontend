@@ -10,7 +10,6 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
 
-    // Filter the doctors to display based on the sidebar selection
     const displayedDoctors = useMemo(() => {
         return doctors.filter(doc => filteredDoctorIds.includes(doc.id));
     }, [doctors, filteredDoctorIds]);
@@ -18,9 +17,12 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
     const fetchAppointments = () => {
         if (selectedClinic) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
-            authorizedFetch(`/appointments/by-date?clinic_id=${selectedClinic}&date=${dateString}`)
+            // **THE FIX IS HERE**: The URL is now correct. It was `/appointments/by-date`
+            // and has been changed to `/api/clinic-day-schedule` to match the backend.
+            authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
-                .then(data => setDayAppointments(data.appointments || []));
+                .then(data => setDayAppointments(data.appointments || []))
+                .catch(err => console.error("Failed to fetch day appointments:", err));
         }
     };
 
