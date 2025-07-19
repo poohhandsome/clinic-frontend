@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import authorizedFetch from '../api';
 
 // --- Helper Functions & Constants ---
@@ -27,6 +28,59 @@ const StatusMessage = ({ message, type }) => {
     return <div className={`${baseClasses} ${typeClasses}`}>{message}</div>;
 };
 
+const AddScheduleModal = ({ doctor, onClose }) => {
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [startTime, setStartTime] = useState('08:00');
+    const [endTime, setEndTime] = useState('17:00');
+    const [error, setError] = useState('');
+    const [activeMonth, setActiveMonth] = useState(new Date());
+
+    const handleSubmit = () => {
+        if (new Date(`1970-01-01T${endTime}`) <= new Date(`1970-01-01T${startTime}`)) { setError('End time must be after start time.'); return; }
+        setError('');
+        authorizedFetch('/api/special-schedules', {
+            method: 'POST', body: JSON.stringify({ doctor_id: doctor.id, clinic_id: doctor.clinic_id, schedule_date: format(selectedDate, 'yyyy-MM-dd'), start_time: startTime, end_time: endTime, is_available: true }),
+        }).then(res => res.ok ? onClose(true) : setError('Failed to add schedule.'));
+    };
+
+    const calendarStart = startOfWeek(startOfMonth(activeMonth), { weekStartsOn: 1 });
+    const calendarEnd = endOfWeek(endOfMonth(activeMonth), { weekStartsOn: 1 });
+    const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-semibold">Add Special Schedule for {doctor.name}</h3><button onClick={() => onClose(false)} className="text-2xl">&times;</button></div>
+                <div>
+                    <div className="flex justify-between items-center mb-2"><button onClick={() => setActiveMonth(subMonths(activeMonth, 1))}>&lt;</button><span className="font-semibold">{format(activeMonth, 'MMMM yyyy')}</span><button onClick={() => setActiveMonth(addMonths(activeMonth, 1))}>&gt;</button></div>
+                    <div className="grid grid-cols-7 gap-1 text-center"><div className="text-xs">Mo</div><div className="text-xs">Tu</div><div className="text-xs">We</div><div className="text-xs">Th</div><div className="text-xs">Fr</div><div className="text-xs">Sa</div><div className="text-xs">Su</div>{calendarDays.map(d => (<button key={d.toString()} onClick={() => setSelectedDate(d)} className={`p-2 rounded-full text-sm ${isSameDay(d, selectedDate) ? 'bg-sky-600 text-white' : ''} ${!isSameMonth(d, activeMonth) ? 'text-slate-400' : ''} ${isToday(d) ? 'border border-sky-500' : ''}`}>{format(d, 'd')}</button>))}</div>
+                    <div className="flex gap-4 mt-4"><div className="flex-1"><label className="block text-sm">Start Time</label><select value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-2 border rounded">{timeOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div><div className="flex-1"><label className="block text-sm">End Time</label><select value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-2 border rounded">{timeOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div></div>
+                    {error && <p className="text-red-500 mt-2">{error}</p>}
+                </div>
+                <div className="flex justify-end gap-2 mt-6"><button className="px-4 py-2 bg-slate-200 rounded" onClick={() => onClose(false)}>Cancel</button><button className="px-4 py-2 bg-sky-600 text-white rounded" onClick={handleSubmit}>Add Day</button></div>
+            </div>
+        </div>
+    );
+};
+
+const RemoveScheduleModal = ({ doctor, onClose }) => {
+    const [removableDates, setRemovableDates] = useState([]);
+    const [selectedDate, setSelectedDate] = useState('');
+    useEffect(() => { authorizedFetch(`/api/removable-schedules/${doctor.id}`).then(res => res.json()).then(setRemovableDates); }, [doctor.id]);
+    const handleRemove = () => {
+        if (!selectedDate) return;
+        authorizedFetch('/api/special-schedules', { method: 'POST', body: JSON.stringify({ doctor_id: doctor.id, clinic_id: doctor.clinic_id, schedule_date: selectedDate, is_available: false, start_time: null, end_time: null }) }).then(res => res.ok && onClose(true));
+    };
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+                <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-semibold">Remove a Scheduled Day for {doctor.name}</h3><button onClick={() => onClose(false)} className="text-2xl">&times;</button></div>
+                <div><label>Select an upcoming work day to mark as unavailable:</label><select value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full p-2 border rounded mt-2">{removableDates.length === 0 ? <option>No upcoming work days found</option> : <><option value="">-- Select a date --</option>{removableDates.map(d => <option key={d.schedule_date} value={d.schedule_date}>{d.display_text}</option>)}</>}</select></div>
+                <div className="flex justify-end gap-2 mt-6"><button className="px-4 py-2 bg-slate-200 rounded" onClick={() => onClose(false)}>Cancel</button><button className="px-4 py-2 bg-red-600 text-white rounded" onClick={handleRemove} disabled={!selectedDate}>Remove Day</button></div>
+            </div>
+        </div>
+    );
+};
 // --- Main Component ---
 
 export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
@@ -34,7 +88,8 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
     const [selectedSlots, setSelectedSlots] = useState({});
     const [isLoading, setIsLoading] = useState(false);
     const [status, setStatus] = useState({ message: '', type: '' });
-    
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
     const isDragging = useRef(false);
     const selectionMode = useRef('add');
 
@@ -125,11 +180,17 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
         .catch(err => setStatus({ message: 'Error saving schedule. Please try again.', type: 'error' }))
         .finally(() => setIsLoading(false));
     };
+    const selectedDoctorInfo = allDoctors.find(d => d.id === parseInt(selectedDoctor, 10));
 
     return (
         <div onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-slate-800">Manage Doctor Schedules</h2>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setIsAddModalOpen(true)} className="px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700 disabled:opacity-50" disabled={!selectedDoctor}>Add Special Day</button>
+                    <button onClick={() => setIsRemoveModalOpen(true)} className="px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-sm hover:bg-red-700 disabled:opacity-50" disabled={!selectedDoctor}>Remove Scheduled Day</button>
+                    <button className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50" onClick={handleSave} disabled={isLoading || !selectedDoctor}>Save Weekly Schedule</button>
+                </div>
                 <button 
                     className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50" 
                     onClick={handleSave} 
@@ -194,6 +255,8 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                     </React.Fragment>
                 ))}
             </div>
+        {isAddModalOpen && selectedDoctorInfo && <AddScheduleModal doctor={selectedDoctorInfo} onClose={() => setIsAddModalOpen(false)} />}
+            {isRemoveModalOpen && selectedDoctorInfo && <RemoveScheduleModal doctor={selectedDoctorInfo} onClose={() => setIsRemoveModalOpen(false)} />}
         </div>
     );
 }
