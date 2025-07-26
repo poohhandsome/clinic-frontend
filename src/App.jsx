@@ -24,27 +24,19 @@ const useHashNavigation = () => {
 
 export default function App() {
     const { isAuthenticated, user } = useAuth();
-    const [clinics, setClinics] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [dailySchedule, setDailySchedule] = useState({});
-    const [selectedClinic, setSelectedClinic] = useState('ราชพฤกษ์'); // Default to first clinic
+    const [selectedClinic, setSelectedClinic] = useState(1); // THE FIX: Use clinic ID (number)
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const currentPath = useHashNavigation();
 
-    useEffect(() => {
-        if (isAuthenticated) {
-            authorizedFetch('/api/clinics').then(res => res.json()).then(data => {
-                setClinics(data);
-                // The default clinic is now hardcoded, but we still fetch for other potential uses
-            });
-        }
-    }, [isAuthenticated]);
-
+    // This effect fetches the schedule and doctor details.
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
+            // THE FIX: This now sends the correct numeric ID to the API
             authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json()).then(data => {
                     const allDocs = data.all_doctors_in_clinic || data.doctors || [];
@@ -82,9 +74,8 @@ export default function App() {
             <div className="flex flex-1 overflow-hidden">
                 <NewSidebar
                     isSidebarOpen={isSidebarOpen}
-                    clinics={clinics} // Passing fetched clinics, but will be overridden by hardcoded list as requested
                     selectedClinic={selectedClinic}
-                    onClinicChange={setSelectedClinic}
+                    onClinicChange={(id) => setSelectedClinic(Number(id))} // THE FIX: Ensure value is a number
                     currentDate={currentDate}
                     setCurrentDate={setCurrentDate}
                     doctors={doctors}

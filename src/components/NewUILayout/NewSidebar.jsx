@@ -42,8 +42,12 @@ export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChan
     const [isDoctorsOpen, setIsDoctorsOpen] = useState(true);
     const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
     
-    // As requested, using a hardcoded list for clinic options.
-    const hardcodedClinics = ['ราชพฤกษ์', 'ตั้งฮั่วเส็ง', 'สาย 4'];
+    // THE FIX: Using a list of objects with both id and name
+    const hardcodedClinics = [
+        { id: 1, name: 'ราชพฤกษ์' },
+        { id: 2, name: 'ตั้งฮั่วเส็ง' },
+        { id: 3, name: 'สาย 4' },
+    ];
 
     const handleSelectAll = (e) => {
         setFilteredDoctorIds(e.target.checked ? workingDoctorIds : []);
@@ -61,11 +65,11 @@ export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChan
                 <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} />
 
                 <div className="border-t border-slate-200 pt-4">
-                    <div className="flex items-center justify-between">
+                     <div className="flex items-center justify-between">
                          <label htmlFor="clinic-select-sidebar" className="text-sm font-medium text-gray-700">Clinic</label>
                          <select id="clinic-select-sidebar" value={selectedClinic} onChange={e => onClinicChange(e.target.value)} className="border-gray-300 text-sm font-semibold text-slate-700 bg-gray-50 cursor-pointer p-2 focus:ring-2 focus:ring-sky-500 rounded-md">
-                            {hardcodedClinics.map(clinicName => (
-                                <option key={clinicName} value={clinicName}>{clinicName}</option>
+                            {hardcodedClinics.map(clinic => (
+                                <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
                             ))}
                         </select>
                     </div>
