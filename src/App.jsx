@@ -26,17 +26,15 @@ export default function App() {
     const { isAuthenticated, user } = useAuth();
     const [doctors, setDoctors] = useState([]);
     const [dailySchedule, setDailySchedule] = useState({});
-    const [selectedClinic, setSelectedClinic] = useState(1); // THE FIX: Use clinic ID (number)
+    const [selectedClinic, setSelectedClinic] = useState(1);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const currentPath = useHashNavigation();
 
-    // This effect fetches the schedule and doctor details.
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
-            // THE FIX: This now sends the correct numeric ID to the API
             authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json()).then(data => {
                     const allDocs = data.all_doctors_in_clinic || data.doctors || [];
@@ -75,7 +73,7 @@ export default function App() {
                 <NewSidebar
                     isSidebarOpen={isSidebarOpen}
                     selectedClinic={selectedClinic}
-                    onClinicChange={(id) => setSelectedClinic(Number(id))} // THE FIX: Ensure value is a number
+                    onClinicChange={(id) => setSelectedClinic(Number(id))}
                     currentDate={currentDate}
                     setCurrentDate={setCurrentDate}
                     doctors={doctors}
@@ -83,7 +81,8 @@ export default function App() {
                     setFilteredDoctorIds={setFilteredDoctorIds}
                     dailySchedule={dailySchedule}
                 />
-                <main className={`flex-1 overflow-hidden p-4 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+                {/* THE FIX: Removed padding 'p-4' to eliminate the gap */}
+                <main className={`flex-1 overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
                     {renderPage()}
                 </main>
             </div>
