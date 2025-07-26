@@ -44,9 +44,10 @@ export default function Header({ clinics, selectedClinic, onClinicChange }) {
     return (
         <header className="bg-white border-b border-slate-200 flex items-center justify-between px-6 h-16 z-20 shrink-0">
             <div className="flex items-center gap-6">
-                <div className="text-xl font-bold text-slate-800">
+                {/* THIS IS THE FIX: Wrapped the logo in an <a> tag */}
+                <a href="#dashboard" className="text-xl font-bold text-slate-800 no-underline">
                     Newtrend <span className="text-sky-600">Dental</span>
-                </div>
+                </a>
 
                 <div className="flex items-center gap-6 text-sm text-slate-500">
                     <div className="border-l border-slate-200 pl-6 flex items-center gap-2">
