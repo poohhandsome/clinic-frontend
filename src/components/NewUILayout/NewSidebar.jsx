@@ -42,7 +42,6 @@ export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChan
     const [isDoctorsOpen, setIsDoctorsOpen] = useState(true);
     const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
     
-    // THE FIX: The clinic IDs and names are now correctly mapped as per your request.
     const hardcodedClinics = [
         { id: 1, name: 'ตั้งฮั่วเส็ง' },
         { id: 2, name: 'สาย 4' },
@@ -56,8 +55,9 @@ export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChan
     const areAllWorkingSelected = workingDoctorIds.length > 0 && workingDoctorIds.every(id => filteredDoctorIds.includes(id));
 
     return (
-        <aside className={`bg-white border-r border-slate-200 flex flex-col gap-6 shrink-0 w-64 z-20 absolute md:relative h-full transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-            <div className="p-4 flex flex-col gap-6">
+        // THE FIX: Animation logic simplified for robustness. No longer uses absolute positioning.
+        <aside className={`bg-white border-r border-slate-200 flex flex-col shrink-0 z-20 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0'}`}>
+            <div className={`p-4 flex flex-col gap-6 overflow-hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
                 <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-md border border-slate-200 hover:bg-slate-50">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 12.998h-6v6h-2v-6H5v-2h6v-6h2v6h6z"/></svg>
                     Create

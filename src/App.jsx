@@ -62,7 +62,7 @@ export default function App() {
     };
 
     return (
-        <div className="h-screen w-full bg-slate-100 flex flex-col">
+        <div className="h-screen w-full bg-white flex flex-col">
             <NewHeader 
                 currentDate={currentDate} 
                 setCurrentDate={setCurrentDate} 
@@ -81,8 +81,8 @@ export default function App() {
                     setFilteredDoctorIds={setFilteredDoctorIds}
                     dailySchedule={dailySchedule}
                 />
-                {/* THE FIX: Removed padding 'p-4' to eliminate the gap */}
-                <main className={`flex-1 overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+                {/* THE FIX: The main content now correctly fills the space without gaps. */}
+                <main className="flex-1 overflow-hidden">
                     {renderPage()}
                 </main>
             </div>
