@@ -1,14 +1,22 @@
 // src/components/DashboardPage.jsx (REPLACE)
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { format } from 'date-fns';
 import AppointmentModal from './AppointmentModal.jsx';
 import authorizedFetch from '../api.js';
+
+// Helper function to convert time string "HH:mm:ss" to minutes from midnight
+const timeToMinutes = (time) => {
+    if (!time) return 0;
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 60 + minutes;
+};
 
 export default function DashboardPage({ selectedClinic, currentDate, doctors, filteredDoctorIds, dailySchedule }) {
     const [dayAppointments, setDayAppointments] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
+    const containerRef = useRef(null);
 
     const displayedDoctors = useMemo(() => {
         return doctors.filter(doc => filteredDoctorIds.includes(doc.id));
@@ -17,8 +25,6 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
     const fetchAppointments = () => {
         if (selectedClinic) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
-            // **THE FIX IS HERE**: The URL is now correct. It was `/appointments/by-date`
-            // and has been changed to `/api/clinic-day-schedule` to match the backend.
             authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
                 .then(res => res.json())
                 .then(data => setDayAppointments(data.appointments || []))
@@ -28,15 +34,14 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
 
     useEffect(fetchAppointments, [selectedClinic, currentDate]);
 
-    const timeSlots = useMemo(() => {
-        const slots = [];
-        for (let i = 7; i <= 20; i++) {
-            for (let j = 0; j < 60; j += 30) {
-                slots.push(`${String(i).padStart(2, '0')}:${String(j).padStart(2, '0')}`);
-            }
+    // Scroll to 8 AM on initial load
+    useEffect(() => {
+        if (containerRef.current) {
+            const hourHeight = 60; // Corresponds to h-15 in Tailwind config (15 * 4px)
+            containerRef.current.scrollTop = 7 * hourHeight; // Scroll to 7 AM to show 8 AM clearly
         }
-        return slots;
-    }, []);
+    }, [displayedDoctors]);
+
 
     const handleSlotClick = (time, doctorId) => {
         setModalData({ time, doctorId, date: currentDate });
@@ -51,66 +56,68 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
         }
     };
 
-    const isSlotInWorkingHours = (slotTime, doctorId) => {
-        const schedule = dailySchedule[doctorId];
-        if (!schedule || !schedule.startTime || !schedule.endTime) {
-            return false;
-        }
-        return slotTime >= schedule.startTime.substring(0, 5) && slotTime < schedule.endTime.substring(0, 5);
-    };
-
-    const CalendarGridHeader = ({ doctor }) => (
-        <div key={doctor.id} className="sticky top-0 z-10 bg-white p-3 border-b border-r border-slate-200">
-            <div className="font-semibold text-slate-800 text-center">{doctor.name}</div>
-        </div>
-    );
+    const hours = Array.from({ length: 24 }, (_, i) => i);
 
     return (
-        <div className="h-full w-full bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
+        <div className="h-full w-full bg-white rounded-lg shadow-sm flex flex-col">
             {isModalOpen && <AppointmentModal data={modalData} clinicId={selectedClinic} onClose={handleModalClose} />}
             
-            <div className="flex-1 overflow-auto">
-                <div className="grid min-w-[900px]" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, 1fr)` }}>
-                    
-                    <div className="sticky top-0 z-10 bg-white border-b border-r border-slate-200"></div>
-                    {displayedDoctors.map(doc => <CalendarGridHeader key={doc.id} doctor={doc} />)}
+            {/* Doctors Header */}
+            <div className="grid shrink-0" style={{ gridTemplateColumns: `4rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
+                <div className="p-2 border-r border-b border-slate-200">
+                    <div className="text-center font-bold text-slate-700 uppercase">
+                        {format(currentDate, 'EEE')}
+                        <div className="text-2xl">{format(currentDate, 'd')}</div>
+                    </div>
+                </div>
+                {displayedDoctors.map(doc => (
+                    <div key={doc.id} className="p-3 border-b border-r border-slate-200 text-center">
+                        <span className="font-semibold text-slate-800">{doc.name}</span>
+                    </div>
+                ))}
+            </div>
 
-                    {timeSlots.map(time => (
-                        <React.Fragment key={time}>
-                            <div className="h-16 text-right pr-2 text-xs text-slate-400 border-t border-r border-slate-200 pt-1">
-                                {time}
+            {/* Timeline Content */}
+            <div ref={containerRef} className="flex-1 overflow-y-auto">
+                <div className="grid relative" style={{ gridTemplateColumns: `4rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
+                    {/* Time Gutter */}
+                    <div className="col-start-1 col-end-2 row-start-1 row-end-[-1]">
+                        {hours.map(hour => (
+                            <div key={hour} className="h-15 relative border-r border-slate-200">
+                                <span className="absolute -top-2 right-2 text-xs text-slate-400">
+                                    {format(new Date(0, 0, 0, hour), 'ha')}
+                                </span>
                             </div>
+                        ))}
+                    </div>
+                    
+                    {/* Doctor Columns */}
+                    {displayedDoctors.map((doc, index) => (
+                        <div key={doc.id} className="col-start-[-1] relative border-r border-slate-200" style={{ gridColumnStart: index + 2 }}>
+                            {/* Hour lines for this column */}
+                            {hours.map(hour => (
+                                <div key={hour} className="h-15 border-b border-slate-200"></div>
+                            ))}
                             
-                            {displayedDoctors.map(doc => {
-                                const appointment = dayAppointments.find(app => app.doctor_id === doc.id && app.appointment_time.startsWith(time));
-                                const isWorking = isSlotInWorkingHours(time, doc.id);
-                                
-                                let slotClass = "h-16 border-t border-r border-slate-200 relative p-0.5";
-                                if (!isWorking) {
-                                    slotClass += " bg-slate-50"; 
-                                } else {
-                                    slotClass += " group";
-                                }
-
-                                return (
-                                    <div
-                                        key={`${time}-${doc.id}`}
-                                        className={slotClass}
-                                        onClick={() => isWorking && !appointment && handleSlotClick(time, doc.id)}
-                                    >
-                                        {isWorking && (
-                                            appointment ? (
-                                                <div className="bg-sky-100 text-sky-800 rounded-md p-2 h-full w-full text-xs font-medium overflow-hidden">
-                                                    {appointment.patient_name_at_booking || `Patient #${appointment.patient_id}`}
-                                                </div>
-                                            ) : (
-                                                <div className="w-full h-full rounded-md opacity-0 group-hover:opacity-100 bg-sky-50 transition-opacity cursor-pointer"></div>
-                                            )
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </React.Fragment>
+                            {/* Appointments for this doctor */}
+                            {dayAppointments
+                                .filter(app => app.doctor_id === doc.id)
+                                .map(app => {
+                                    const top = timeToMinutes(app.appointment_time) * (60 / 60); // 60px per hour
+                                    const height = (timeToMinutes(app.end_time) - timeToMinutes(app.appointment_time)) * (60 / 60);
+                                    
+                                    return (
+                                        <div
+                                            key={app.id}
+                                            className="absolute w-full p-2 rounded-lg bg-sky-500 text-white cursor-pointer"
+                                            style={{ top: `${top}px`, height: `${height}px` }}
+                                        >
+                                            <p className="font-bold text-xs">{app.details || 'Appointment'}</p>
+                                            <p className="text-xs opacity-80">{app.patient_name_at_booking}</p>
+                                        </div>
+                                    );
+                                })}
+                        </div>
                     ))}
                 </div>
             </div>
