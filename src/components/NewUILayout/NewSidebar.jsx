@@ -17,8 +17,8 @@ const MiniCalendar = ({ currentDate, setCurrentDate }) => {
             <div className="flex justify-between items-center mb-2 px-2">
                 <span className="text-sm font-semibold text-slate-800">{format(activeMonth, 'MMMM yyyy')}</span>
                 <div className="flex">
-                    <button onClick={() => setActiveMonth(subMonths(activeMonth, 1))} className="p-1 rounded-full hover:bg-slate-100 text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="m14 18l-6-6l6-6l1.4 1.4l-4.6 4.6l4.6 4.6L14 18Z"/></svg></button>
-                    <button onClick={() => setActiveMonth(addMonths(activeMonth, 1))} className="p-1 rounded-full hover:bg-slate-100 text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M10 18l6-6l-6-6l-1.4 1.4l4.6 4.6l-4.6 4.6L10 18Z"/></svg></button>
+                    <button onClick={() => setActiveMonth(subMonths(activeMonth, 1))} className="p-1 rounded-full hover:bg-slate-200 text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="m14 18l-6-6l6-6l1.4 1.4l-4.6 4.6l4.6 4.6L14 18Z"/></svg></button>
+                    <button onClick={() => setActiveMonth(addMonths(activeMonth, 1))} className="p-1 rounded-full hover:bg-slate-200 text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M10 18l6-6l-6-6l-1.4 1.4l4.6 4.6l-4.6 4.6L10 18Z"/></svg></button>
                 </div>
             </div>
             <div className="grid grid-cols-7 gap-y-1 text-center">
@@ -42,41 +42,30 @@ export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChan
     const [isDoctorsOpen, setIsDoctorsOpen] = useState(true);
     const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
     
-    const hardcodedClinics = [
-        { id: 1, name: 'ตั้งฮั่วเส็ง' },
-        { id: 2, name: 'สาย 4' },
-        { id: 3, name: 'ราชพฤกษ์' },
-    ];
+    const hardcodedClinics = [ { id: 1, name: 'ตั้งฮั่วเส็ง' }, { id: 2, name: 'สาย 4' }, { id: 3, name: 'ราชพฤกษ์' }];
 
-    const handleSelectAll = (e) => {
-        setFilteredDoctorIds(e.target.checked ? workingDoctorIds : []);
-    };
+    const handleSelectAll = (e) => setFilteredDoctorIds(e.target.checked ? workingDoctorIds : []);
     
     const areAllWorkingSelected = workingDoctorIds.length > 0 && workingDoctorIds.every(id => filteredDoctorIds.includes(id));
 
     return (
-        // THE FIX: Animation logic simplified for robustness. No longer uses absolute positioning.
-        <aside className={`bg-white border-r border-slate-200 flex flex-col shrink-0 z-20 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0'}`}>
-            <div className={`p-4 flex flex-col gap-6 overflow-hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-md border border-slate-200 hover:bg-slate-50">
+        <aside className={`bg-slate-50 flex flex-col shrink-0 z-20 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0'}`}>
+            <div className={`p-4 flex flex-col gap-8 overflow-hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-md border border-slate-200 hover:bg-slate-200">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 12.998h-6v6h-2v-6H5v-2h6v-6h2v6h6z"/></svg>
                     Create
                 </button>
                 <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} />
-
-                <div className="border-t border-slate-200 pt-4">
+                <div>
                      <div className="flex items-center justify-between">
                          <label htmlFor="clinic-select-sidebar" className="text-sm font-medium text-gray-700">Clinic</label>
-                         <select id="clinic-select-sidebar" value={selectedClinic} onChange={e => onClinicChange(e.target.value)} className="border-gray-300 text-sm font-semibold text-slate-700 bg-gray-50 cursor-pointer p-2 focus:ring-2 focus:ring-sky-500 rounded-md">
-                            {hardcodedClinics.map(clinic => (
-                                <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
-                            ))}
+                         <select id="clinic-select-sidebar" value={selectedClinic} onChange={e => onClinicChange(e.target.value)} className="border-gray-300 text-sm font-semibold text-slate-700 bg-white cursor-pointer p-2 focus:ring-2 focus:ring-sky-500 rounded-md">
+                            {hardcodedClinics.map(clinic => ( <option key={clinic.id} value={clinic.id}>{clinic.name}</option>))}
                         </select>
                     </div>
                 </div>
-
-                <div className="border-t border-slate-200 pt-4">
-                    <button onClick={() => setIsDoctorsOpen(!isDoctorsOpen)} className="w-full flex justify-between items-center py-2">
+                <div>
+                    <button onClick={() => setIsDoctorsOpen(!isDoctorsOpen)} className="w-full flex justify-between items-center">
                         <h3 className="text-sm font-semibold text-slate-800 uppercase">Doctors</h3>
                         {isDoctorsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                     </button>
@@ -86,15 +75,15 @@ export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChan
                                 const isWorking = workingDoctorIds.includes(doc.id);
                                 return (
                                     <li key={doc.id}>
-                                       <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 cursor-pointer">
+                                       <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-200 cursor-pointer">
                                             <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500" checked={filteredDoctorIds.includes(doc.id)} onChange={() => setFilteredDoctorIds(prev => prev.includes(doc.id) ? prev.filter(id => id !== doc.id) : [...prev, doc.id])} />
                                             <span className={`text-sm font-medium ${isWorking ? 'text-slate-700' : 'text-slate-400'}`}>{doc.name}</span>
                                        </label>
                                     </li>
                                 );
                             })}
-                             <li className="mt-2 border-t border-slate-200 pt-2">
-                                <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-50 cursor-pointer">
+                             <li className="mt-2">
+                                <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-200 cursor-pointer">
                                     <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500" checked={areAllWorkingSelected} onChange={handleSelectAll} disabled={workingDoctorIds.length === 0} />
                                     <span className="text-sm font-semibold text-slate-800">Select All Working</span>
                                 </label>
