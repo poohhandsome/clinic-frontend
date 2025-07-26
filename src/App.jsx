@@ -5,17 +5,12 @@ import { useAuth } from './context/AuthContext.jsx';
 import { format } from 'date-fns';
 import LoginPage from './components/LoginPage.jsx';
 import Header from './components/Header.jsx';
-import NewSidebar from './components/NewSidebar.jsx'; // <-- Import the new sidebar
+import Sidebar from './components/Sidebar.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
 import authorizedFetch from './api.js';
-
-// A placeholder for the new page we will build next
-const AddManualAppointmentPage = () => <h1 className="text-2xl font-bold">Add Manual Appointment Page (Under Construction)</h1>;
-const ProfilePage = () => <h1 className="text-2xl font-bold">Profile Page (Under Construction)</h1>;
-
 
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
@@ -86,24 +81,37 @@ export default function App() {
             case '#pending': return <PendingAppointmentsPage {...pageProps} />;
             case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
-            case '#add-manual-appointment': return <AddManualAppointmentPage />;
-            case '#profile': return <ProfilePage />;
             default: return <DashboardPage {...pageProps} />;
         }
     };
 
-    return (
-        <div className="flex h-screen w-full bg-slate-50">
-            {/* The new sidebar is always present when logged in */}
-            <NewSidebar />
+    const showSidebar = currentPath === '#dashboard';
 
-            <div className="flex-1 flex flex-col pl-[6.5rem]"> {/* Add padding to the left for the sidebar */}
-                <Header
-                    clinics={clinics}
-                    selectedClinic={selectedClinic}
-                    onClinicChange={setSelectedClinic}
-                />
-                <main className="flex-1 overflow-y-auto p-6">
+    return (
+        <div className="h-screen w-full bg-slate-50">
+            <div className={`h-full w-full grid ${showSidebar ? 'grid-cols-[18rem_1fr]' : 'grid-cols-[1fr]'} grid-rows-[auto_1fr]`}>
+                <header className="col-span-full row-start-1">
+                    <Header
+                        clinics={clinics}
+                        selectedClinic={selectedClinic}
+                        onClinicChange={setSelectedClinic}
+                    />
+                </header>
+
+                {showSidebar && (
+                     <div className="row-start-2 overflow-y-auto">
+                        <Sidebar
+                            currentDate={currentDate}
+                            setCurrentDate={setCurrentDate}
+                            doctors={doctors}
+                            filteredDoctorIds={filteredDoctorIds}
+                            setFilteredDoctorIds={setFilteredDoctorIds}
+                            dailySchedule={dailySchedule}
+                        />
+                    </div>
+                )}
+
+                <main className="row-start-2 overflow-y-auto p-6">
                     {renderPage()}
                 </main>
             </div>
