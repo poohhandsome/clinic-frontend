@@ -7,11 +7,9 @@ import { CgMenuGridO } from 'react-icons/cg';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { useAuth } from '../../context/AuthContext';
 
-// New sub-component for the popup menu
-const AppMenu = ({ setIsAppMenuOpen }) => {
+const AppMenu = ({ setIsAppMenuOpen, pendingCount }) => {
     const menuRef = useRef(null);
 
-    // Close the menu if a click occurs outside of it
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -36,7 +34,13 @@ const AppMenu = ({ setIsAppMenuOpen }) => {
                 <li>
                     <a href="#pending" className={menuLinkClass} onClick={() => setIsAppMenuOpen(false)}>
                         <CalendarArrowDown className="text-slate-500" size={18} />
-                        Pending List
+                        <span className="flex-1">Pending List</span>
+                        {/* THE FIX: Badge with count inside the menu */}
+                        {pendingCount > 0 && (
+                            <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                {pendingCount}
+                            </span>
+                        )}
                     </a>
                 </li>
                 <li>
@@ -51,7 +55,7 @@ const AppMenu = ({ setIsAppMenuOpen }) => {
 };
 
 
-export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, setIsSidebarOpen }) {
+export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, setIsSidebarOpen, pendingCount }) {
     const { user } = useAuth();
     const [isAppMenuOpen, setIsAppMenuOpen] = useState(false);
     
@@ -97,12 +101,15 @@ export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, 
                 <button className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><Search size={20} /></button>
                 <button className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><Settings size={20} /></button>
                 
-                {/* THE FIX: New App Menu Button */}
                 <button 
                     onClick={() => setIsAppMenuOpen(!isAppMenuOpen)}
-                    className="p-2 rounded-full hover:bg-slate-200 text-slate-500"
+                    className="relative p-2 rounded-full hover:bg-slate-200 text-slate-500"
                 >
                     <CgMenuGridO size={20} />
+                    {/* THE FIX: Red dot notification on the grid icon */}
+                    {pendingCount > 0 && (
+                        <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-slate-50"></span>
+                    )}
                 </button>
 
                 <div className="w-px h-6 bg-slate-300 mx-2"></div>
@@ -112,8 +119,7 @@ export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, 
                 </div>
             </div>
             
-            {/* THE FIX: Conditionally render the new popup menu */}
-            {isAppMenuOpen && <AppMenu setIsAppMenuOpen={setIsAppMenuOpen} />}
+            {isAppMenuOpen && <AppMenu setIsAppMenuOpen={setIsAppMenuOpen} pendingCount={pendingCount} />}
         </header>
     );
 }

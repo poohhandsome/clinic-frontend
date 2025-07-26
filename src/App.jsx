@@ -30,8 +30,10 @@ export default function App() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [pendingCount, setPendingCount] = useState(0); // State for notification count
     const currentPath = useHashNavigation();
 
+    // Effect for fetching schedule data
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
@@ -48,6 +50,22 @@ export default function App() {
                 });
         }
     }, [selectedClinic, currentDate, isAuthenticated]);
+
+    // THE FIX: New effect to fetch pending count for notifications
+    useEffect(() => {
+        if (selectedClinic && isAuthenticated) {
+            const fetchPending = () => {
+                authorizedFetch(`/api/pending-appointments?clinic_id=${selectedClinic}`)
+                    .then(res => res.json())
+                    .then(data => setPendingCount(data.length || 0))
+                    .catch(err => console.error("Failed to fetch pending count:", err));
+            };
+            fetchPending();
+            const interval = setInterval(fetchPending, 30000); // Refresh every 30 seconds
+            return () => clearInterval(interval);
+        }
+    }, [selectedClinic, isAuthenticated]);
+
 
     if (!isAuthenticated) return <LoginPage />;
 
@@ -68,6 +86,7 @@ export default function App() {
                 setCurrentDate={setCurrentDate} 
                 isSidebarOpen={isSidebarOpen}
                 setIsSidebarOpen={setIsSidebarOpen}
+                pendingCount={pendingCount} // Pass count to header
             />
             <div className="flex flex-1 overflow-hidden">
                 <NewSidebar
@@ -81,7 +100,6 @@ export default function App() {
                     setFilteredDoctorIds={setFilteredDoctorIds}
                     dailySchedule={dailySchedule}
                 />
-                {/* THE FIX: The main content now correctly fills the space without gaps. */}
                 <main className="flex-1 overflow-hidden">
                     {renderPage()}
                 </main>
