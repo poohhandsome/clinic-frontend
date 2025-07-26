@@ -76,7 +76,6 @@ export default function Sidebar({ currentDate, setCurrentDate, doctors, filtered
         }
     };
     
-    // Check if all WORKING doctors are selected
     const areAllWorkingSelected = workingDoctorIds.length > 0 && workingDoctorIds.every(id => filteredDoctorIds.includes(id));
 
     return (
@@ -114,7 +113,6 @@ export default function Sidebar({ currentDate, setCurrentDate, doctors, filtered
                                 className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
                                 checked={areAllWorkingSelected}
                                 onChange={handleSelectAll}
-                                // Disable if there are no doctors working today
                                 disabled={workingDoctorIds.length === 0}
                             />
                             <span className="text-sm font-semibold text-slate-800">Select All Working</span>
