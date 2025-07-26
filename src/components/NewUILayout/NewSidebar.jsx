@@ -42,11 +42,11 @@ export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChan
     const [isDoctorsOpen, setIsDoctorsOpen] = useState(true);
     const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
     
-    // THE FIX: Using a list of objects with both id and name
+    // THE FIX: The clinic IDs and names are now correctly mapped as per your request.
     const hardcodedClinics = [
-        { id: 1, name: 'ราชพฤกษ์' },
-        { id: 2, name: 'ตั้งฮั่วเส็ง' },
-        { id: 3, name: 'สาย 4' },
+        { id: 1, name: 'ตั้งฮั่วเส็ง' },
+        { id: 2, name: 'สาย 4' },
+        { id: 3, name: 'ราชพฤกษ์' },
     ];
 
     const handleSelectAll = (e) => {
