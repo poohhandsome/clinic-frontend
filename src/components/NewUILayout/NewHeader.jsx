@@ -1,21 +1,28 @@
-// src/components/NewUILayout/NewHeader.jsx (CREATE NEW FILE)
+// src/components/NewUILayout/NewHeader.jsx (REPLACE)
 
 import React from 'react';
 import { format, addDays, subDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, Search, Settings, HelpCircle, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Settings, HelpCircle, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-export default function NewHeader({ currentDate, setCurrentDate }) {
+export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, setIsSidebarOpen }) {
     const { user } = useAuth();
     
     return (
-        <header className="bg-white border-b border-slate-200 flex items-center justify-between px-6 h-16 shrink-0">
+        <header className="relative bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 h-16 shrink-0 z-40">
             {/* Left Side: Logo and Date Navigation */}
-            <div className="flex items-center gap-6">
-                <a href="#dashboard" className="text-xl font-bold text-slate-800 no-underline">
+            <div className="flex items-center gap-4">
+                <button 
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+                    className="p-2 rounded-full hover:bg-slate-100 text-slate-500"
+                >
+                    <Menu size={22} />
+                </button>
+                <a href="#dashboard" className="hidden sm:block text-xl font-bold text-slate-800 no-underline">
                     Newtrend <span className="text-sky-600">Dental</span>
                 </a>
-                <div className="flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-2">
+                    <div className="w-px h-6 bg-slate-200 ml-2"></div>
                     <button 
                         onClick={() => setCurrentDate(new Date())}
                         className="px-3 py-1.5 border border-slate-300 rounded-md text-sm font-semibold text-slate-700 hover:bg-slate-50"

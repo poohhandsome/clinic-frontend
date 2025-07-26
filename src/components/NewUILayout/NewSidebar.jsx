@@ -1,4 +1,4 @@
-// src/components/NewUILayout/NewSidebar.jsx (CREATE NEW FILE)
+// src/components/NewUILayout/NewSidebar.jsx (REPLACE)
 
 import React, { useState } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameDay, isSameMonth } from 'date-fns';
@@ -6,11 +6,8 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const MiniCalendar = ({ currentDate, setCurrentDate }) => {
     const [activeMonth, setActiveMonth] = useState(currentDate);
-
-    const firstDayOfMonth = startOfMonth(activeMonth);
-    const lastDayOfMonth = endOfMonth(activeMonth);
-    const firstDayOfCalendar = startOfWeek(firstDayOfMonth, { weekStartsOn: 0 }); // Sunday
-    const lastDayOfCalendar = endOfWeek(lastDayOfMonth, { weekStartsOn: 0 });
+    const firstDayOfCalendar = startOfWeek(startOfMonth(activeMonth), { weekStartsOn: 0 });
+    const lastDayOfCalendar = endOfWeek(endOfMonth(activeMonth), { weekStartsOn: 0 });
     const days = eachDayOfInterval({ start: firstDayOfCalendar, end: lastDayOfCalendar });
     const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -29,7 +26,6 @@ const MiniCalendar = ({ currentDate, setCurrentDate }) => {
                     const isSelected = isSameDay(day, currentDate);
                     const isToday = isSameDay(day, new Date());
                     const isOtherMonth = !isSameMonth(day, activeMonth);
-
                     return (
                         <button key={i} onClick={() => setCurrentDate(day)} className={`w-9 h-9 rounded-full text-sm transition-colors duration-150 ${isOtherMonth ? 'text-slate-300' : 'text-slate-700'} ${isSelected ? 'bg-sky-600 text-white hover:bg-sky-700' : 'hover:bg-slate-100'} ${isToday && !isSelected ? 'font-bold text-sky-600' : ''}`}>
                             {format(day, 'd')}
@@ -41,8 +37,7 @@ const MiniCalendar = ({ currentDate, setCurrentDate }) => {
     );
 };
 
-
-export default function NewSidebar({ currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
+export default function NewSidebar({ clinics, selectedClinic, onClinicChange, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
     const [isDoctorsOpen, setIsDoctorsOpen] = useState(true);
     const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
 
@@ -53,12 +48,27 @@ export default function NewSidebar({ currentDate, setCurrentDate, doctors, filte
     const areAllWorkingSelected = workingDoctorIds.length > 0 && workingDoctorIds.every(id => filteredDoctorIds.includes(id));
 
     return (
-        <aside className="bg-white border-r border-slate-200 p-4 flex flex-col gap-6 shrink-0 w-64">
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700">
+        <aside className="bg-white border-r border-slate-200 p-4 flex flex-col gap-6 shrink-0 w-64 z-30">
+            <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-md border border-slate-200 hover:bg-slate-50">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 12.998h-6v6h-2v-6H5v-2h6v-6h2v6h6z"/></svg>
                 Create
             </button>
             <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} />
+
+            <div className="border-t border-slate-200 pt-4">
+                 <label htmlFor="clinic-select-sidebar" className="block text-sm font-medium text-gray-700 mb-1">Clinic</label>
+                 <select
+                    id="clinic-select-sidebar"
+                    value={selectedClinic}
+                    onChange={e => onClinicChange(e.target.value)}
+                    className="w-full border-gray-300 font-semibold text-slate-700 bg-gray-50 cursor-pointer p-2 focus:ring-2 focus:ring-sky-500 rounded-md"
+                >
+                    {clinics.map(clinic => (
+                        <option key={clinic.id} value={clinic.id}>{clinic.name}</option>
+                    ))}
+                </select>
+            </div>
+
             <div className="border-t border-slate-200 pt-4">
                 <button onClick={() => setIsDoctorsOpen(!isDoctorsOpen)} className="w-full flex justify-between items-center py-2">
                     <h3 className="text-sm font-semibold text-slate-800 uppercase">Doctors</h3>

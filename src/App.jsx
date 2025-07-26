@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
 import { format } from 'date-fns';
 import LoginPage from './components/LoginPage.jsx';
-import NewHeader from './components/NewUILayout/NewHeader.jsx'; // <-- Import new header
-import NewSidebar from './components/NewUILayout/NewSidebar.jsx'; // <-- Import new sidebar
+import NewHeader from './components/NewUILayout/NewHeader.jsx';
+import NewSidebar from './components/NewUILayout/NewSidebar.jsx';
 import DashboardPage from './components/DashboardPage.jsx';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
@@ -30,6 +30,7 @@ export default function App() {
     const [selectedClinic, setSelectedClinic] = useState('');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // State to control sidebar visibility
     const currentPath = useHashNavigation();
 
     useEffect(() => {
@@ -72,16 +73,26 @@ export default function App() {
 
     return (
         <div className="flex h-screen w-full bg-slate-100">
-            <NewSidebar
-                currentDate={currentDate}
-                setCurrentDate={setCurrentDate}
-                doctors={doctors}
-                filteredDoctorIds={filteredDoctorIds}
-                setFilteredDoctorIds={setFilteredDoctorIds}
-                dailySchedule={dailySchedule}
-            />
+            {isSidebarOpen && (
+                <NewSidebar
+                    clinics={clinics}
+                    selectedClinic={selectedClinic}
+                    onClinicChange={setSelectedClinic}
+                    currentDate={currentDate}
+                    setCurrentDate={setCurrentDate}
+                    doctors={doctors}
+                    filteredDoctorIds={filteredDoctorIds}
+                    setFilteredDoctorIds={setFilteredDoctorIds}
+                    dailySchedule={dailySchedule}
+                />
+            )}
             <div className="flex-1 flex flex-col">
-                <NewHeader currentDate={currentDate} setCurrentDate={setCurrentDate} />
+                <NewHeader 
+                    currentDate={currentDate} 
+                    setCurrentDate={setCurrentDate} 
+                    isSidebarOpen={isSidebarOpen}
+                    setIsSidebarOpen={setIsSidebarOpen}
+                />
                 <main className="flex-1 overflow-hidden p-4">
                     {renderPage()}
                 </main>
