@@ -1,0 +1,56 @@
+// src/components/NewUILayout/NewHeader.jsx (CREATE NEW FILE)
+
+import React from 'react';
+import { format, addDays, subDays } from 'date-fns';
+import { ChevronLeft, ChevronRight, Search, Settings, HelpCircle, User } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+
+export default function NewHeader({ currentDate, setCurrentDate }) {
+    const { user } = useAuth();
+    
+    return (
+        <header className="bg-white border-b border-slate-200 flex items-center justify-between px-6 h-16 shrink-0">
+            {/* Left Side: Logo and Date Navigation */}
+            <div className="flex items-center gap-6">
+                <a href="#dashboard" className="text-xl font-bold text-slate-800 no-underline">
+                    Newtrend <span className="text-sky-600">Dental</span>
+                </a>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => setCurrentDate(new Date())}
+                        className="px-3 py-1.5 border border-slate-300 rounded-md text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                        Today
+                    </button>
+                    <button 
+                        onClick={() => setCurrentDate(subDays(currentDate, 1))}
+                        className="p-2 rounded-md hover:bg-slate-100 text-slate-500"
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <button 
+                        onClick={() => setCurrentDate(addDays(currentDate, 1))}
+                        className="p-2 rounded-md hover:bg-slate-100 text-slate-500"
+                    >
+                        <ChevronRight size={20} />
+                    </button>
+                    <h2 className="text-lg font-semibold text-slate-700 ml-2">
+                        {format(currentDate, 'MMMM d, yyyy')}
+                    </h2>
+                </div>
+            </div>
+
+            {/* Right Side: Actions and User */}
+            <div className="flex items-center gap-3">
+                <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><Search size={20} /></button>
+                <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><HelpCircle size={20} /></button>
+                <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><Settings size={20} /></button>
+                <div className="w-px h-6 bg-slate-200 mx-2"></div>
+                <span className="text-sm font-medium text-slate-600">{user.username}</span>
+                <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center font-bold text-sky-600 text-sm">
+                    {user.username.charAt(0).toUpperCase()}
+                </div>
+            </div>
+        </header>
+    );
+}

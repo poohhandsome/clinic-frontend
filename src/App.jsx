@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
 import { format } from 'date-fns';
 import LoginPage from './components/LoginPage.jsx';
-import Header from './components/Header.jsx';
-import Sidebar from './components/Sidebar.jsx';
+import NewHeader from './components/NewUILayout/NewHeader.jsx'; // <-- Import new header
+import NewSidebar from './components/NewUILayout/NewSidebar.jsx'; // <-- Import new sidebar
 import DashboardPage from './components/DashboardPage.jsx';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
@@ -34,14 +34,10 @@ export default function App() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            authorizedFetch('/api/clinics')
-                .then(res => res.json())
-                .then(data => {
-                    setClinics(data);
-                    if (data.length > 0 && !selectedClinic) {
-                        setSelectedClinic(data[0].id);
-                    }
-                });
+            authorizedFetch('/api/clinics').then(res => res.json()).then(data => {
+                setClinics(data);
+                if (data.length > 0 && !selectedClinic) setSelectedClinic(data[0].id);
+            });
         }
     }, [isAuthenticated]);
 
@@ -49,35 +45,24 @@ export default function App() {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
             authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
-                .then(res => res.json())
-                .then(data => {
+                .then(res => res.json()).then(data => {
                     const allDocs = data.all_doctors_in_clinic || data.doctors || [];
-                     const scheduleMap = (data.doctors || []).reduce((acc, doc) => {
-                        if (doc.start_time && doc.end_time) {
-                            acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
-                        }
+                    const scheduleMap = (data.doctors || []).reduce((acc, doc) => {
+                        if (doc.start_time && doc.end_time) acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
                         return acc;
                     }, {});
-
                     setDoctors(allDocs);
                     setDailySchedule(scheduleMap);
-                    
-                    const workingDoctorIds = Object.keys(scheduleMap).map(id => parseInt(id, 10));
-                    setFilteredDoctorIds(workingDoctorIds);
+                    setFilteredDoctorIds(Object.keys(scheduleMap).map(id => parseInt(id, 10)));
                 });
         }
     }, [selectedClinic, currentDate, isAuthenticated]);
 
-    if (!isAuthenticated) {
-        return <LoginPage />;
-    }
+    if (!isAuthenticated) return <LoginPage />;
 
     const renderPage = () => {
         const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, dailySchedule, user };
-        if (currentPath === '#login' || currentPath === '') window.location.hash = '#dashboard';
-
         switch (currentPath) {
-            case '#dashboard': return <DashboardPage {...pageProps} />;
             case '#pending': return <PendingAppointmentsPage {...pageProps} />;
             case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
@@ -85,33 +70,19 @@ export default function App() {
         }
     };
 
-    const showSidebar = currentPath === '#dashboard';
-
     return (
-        <div className="h-screen w-full bg-slate-50">
-            <div className={`h-full w-full grid ${showSidebar ? 'grid-cols-[18rem_1fr]' : 'grid-cols-[1fr]'} grid-rows-[auto_1fr]`}>
-                <header className="col-span-full row-start-1">
-                    <Header
-                        clinics={clinics}
-                        selectedClinic={selectedClinic}
-                        onClinicChange={setSelectedClinic}
-                    />
-                </header>
-
-                {showSidebar && (
-                     <div className="row-start-2 overflow-y-auto">
-                        <Sidebar
-                            currentDate={currentDate}
-                            setCurrentDate={setCurrentDate}
-                            doctors={doctors}
-                            filteredDoctorIds={filteredDoctorIds}
-                            setFilteredDoctorIds={setFilteredDoctorIds}
-                            dailySchedule={dailySchedule}
-                        />
-                    </div>
-                )}
-
-                <main className="row-start-2 overflow-y-auto p-6">
+        <div className="flex h-screen w-full bg-slate-100">
+            <NewSidebar
+                currentDate={currentDate}
+                setCurrentDate={setCurrentDate}
+                doctors={doctors}
+                filteredDoctorIds={filteredDoctorIds}
+                setFilteredDoctorIds={setFilteredDoctorIds}
+                dailySchedule={dailySchedule}
+            />
+            <div className="flex-1 flex flex-col">
+                <NewHeader currentDate={currentDate} setCurrentDate={setCurrentDate} />
+                <main className="flex-1 overflow-hidden p-4">
                     {renderPage()}
                 </main>
             </div>
