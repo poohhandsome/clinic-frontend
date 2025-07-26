@@ -27,17 +27,17 @@ export default function App() {
     const [clinics, setClinics] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [dailySchedule, setDailySchedule] = useState({});
-    const [selectedClinic, setSelectedClinic] = useState('');
+    const [selectedClinic, setSelectedClinic] = useState('ราชพฤกษ์'); // Default to first clinic
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true); // State to control sidebar visibility
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const currentPath = useHashNavigation();
 
     useEffect(() => {
         if (isAuthenticated) {
             authorizedFetch('/api/clinics').then(res => res.json()).then(data => {
                 setClinics(data);
-                if (data.length > 0 && !selectedClinic) setSelectedClinic(data[0].id);
+                // The default clinic is now hardcoded, but we still fetch for other potential uses
             });
         }
     }, [isAuthenticated]);
@@ -72,10 +72,17 @@ export default function App() {
     };
 
     return (
-        <div className="flex h-screen w-full bg-slate-100">
-            {isSidebarOpen && (
+        <div className="h-screen w-full bg-slate-100 flex flex-col">
+            <NewHeader 
+                currentDate={currentDate} 
+                setCurrentDate={setCurrentDate} 
+                isSidebarOpen={isSidebarOpen}
+                setIsSidebarOpen={setIsSidebarOpen}
+            />
+            <div className="flex flex-1 overflow-hidden">
                 <NewSidebar
-                    clinics={clinics}
+                    isSidebarOpen={isSidebarOpen}
+                    clinics={clinics} // Passing fetched clinics, but will be overridden by hardcoded list as requested
                     selectedClinic={selectedClinic}
                     onClinicChange={setSelectedClinic}
                     currentDate={currentDate}
@@ -85,15 +92,7 @@ export default function App() {
                     setFilteredDoctorIds={setFilteredDoctorIds}
                     dailySchedule={dailySchedule}
                 />
-            )}
-            <div className="flex-1 flex flex-col">
-                <NewHeader 
-                    currentDate={currentDate} 
-                    setCurrentDate={setCurrentDate} 
-                    isSidebarOpen={isSidebarOpen}
-                    setIsSidebarOpen={setIsSidebarOpen}
-                />
-                <main className="flex-1 overflow-hidden p-4">
+                <main className={`flex-1 overflow-hidden p-4 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
                     {renderPage()}
                 </main>
             </div>
