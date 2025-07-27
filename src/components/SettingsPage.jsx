@@ -134,7 +134,6 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (selectedDoctorForEdit) {
-            // Split comma-separated string from DB back into an array for the dropdown
             const specialtiesArray = selectedDoctorForEdit.specialty ? selectedDoctorForEdit.specialty.split(', ') : [];
             setEditSpecialties(specialtiesArray);
             setEditSelectedClinics(selectedDoctorForEdit.clinics.map(c => c.id));
