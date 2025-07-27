@@ -12,6 +12,9 @@ import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
 import authorizedFetch from './api.js';
 
+import SettingsPage from './components/SettingsPage.jsx'; // Corrected import
+
+
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
     useEffect(() => {
@@ -75,15 +78,16 @@ export default function App() {
             case '#pending': return <PendingAppointmentsPage {...pageProps} />;
             case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
+            case '#settings': return <SettingsPage {...pageProps} />; // ✅ ADDED THIS LINE
             default: return <DashboardPage {...pageProps} />;
         }
     };
 
     return (
         <div className="h-screen w-full bg-white flex flex-col">
-            <NewHeader 
-                currentDate={currentDate} 
-                setCurrentDate={setCurrentDate} 
+            <NewHeader
+                currentDate={currentDate}
+                setCurrentDate={setCurrentDate}
                 isSidebarOpen={isSidebarOpen}
                 setIsSidebarOpen={setIsSidebarOpen}
                 pendingCount={pendingCount} // Pass count to header

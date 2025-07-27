@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Search, Settings, HelpCircle, Menu, Calendar
 import { CgMenuGridO } from 'react-icons/cg';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { useAuth } from '../../context/AuthContext';
-
+import { Link } from 'react-router-dom';
 const AppMenu = ({ setIsAppMenuOpen, pendingCount }) => {
     const menuRef = useRef(null);
 
@@ -99,7 +99,9 @@ export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, 
 
             <div className="flex items-center gap-2">
                 <button className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><Search size={20} /></button>
-                <button className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><Settings size={20} /></button>
+                <a href="#settings" className="p-2 rounded-full hover:bg-slate-200 text-slate-500">
+    <Settings size={20} />
+</a>
                 
                 <button 
                     onClick={() => setIsAppMenuOpen(!isAppMenuOpen)}
