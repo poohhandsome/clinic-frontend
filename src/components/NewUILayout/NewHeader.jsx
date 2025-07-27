@@ -99,9 +99,9 @@ export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, 
 
             <div className="flex items-center gap-2">
                 <button className="p-2 rounded-full hover:bg-slate-200 text-slate-500"><Search size={20} /></button>
-                <a href="#settings" className="p-2 rounded-full hover:bg-slate-200 text-slate-500">
+                <button href="#settings" className="p-2 rounded-full hover:bg-slate-200 text-slate-500">
     <Settings size={20} />
-</a>
+</button>
                 
                 <button 
                     onClick={() => setIsAppMenuOpen(!isAppMenuOpen)}
