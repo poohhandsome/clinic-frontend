@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import authorizedFetch from '../api';
 import { FaTag, FaTrashAlt } from 'react-icons/fa';
-import { Calendar, Clock, PlusCircle } from 'lucide-react';
+import { Calendar, Clock, PlusCircle, VenetianMask } from 'lucide-react';
 import { format, parseISO, startOfMonth, getDay, addMonths } from 'date-fns';
 
 // --- Helper Components & Constants ---
