@@ -11,8 +11,7 @@ import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
 import authorizedFetch from './api.js';
-
-import SettingsPage from './components/SettingsPage.jsx'; // Corrected import
+import SettingsPage from './components/SettingsPage.jsx'; // Make sure this import is here
 
 
 const useHashNavigation = () => {
@@ -33,10 +32,9 @@ export default function App() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [pendingCount, setPendingCount] = useState(0); // State for notification count
+    const [pendingCount, setPendingCount] = useState(0); 
     const currentPath = useHashNavigation();
 
-    // Effect for fetching schedule data
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
@@ -54,7 +52,6 @@ export default function App() {
         }
     }, [selectedClinic, currentDate, isAuthenticated]);
 
-    // THE FIX: New effect to fetch pending count for notifications
     useEffect(() => {
         if (selectedClinic && isAuthenticated) {
             const fetchPending = () => {
@@ -64,7 +61,7 @@ export default function App() {
                     .catch(err => console.error("Failed to fetch pending count:", err));
             };
             fetchPending();
-            const interval = setInterval(fetchPending, 30000); // Refresh every 30 seconds
+            const interval = setInterval(fetchPending, 30000);
             return () => clearInterval(interval);
         }
     }, [selectedClinic, isAuthenticated]);
@@ -78,19 +75,20 @@ export default function App() {
             case '#pending': return <PendingAppointmentsPage {...pageProps} />;
             case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
-            case '#settings': return <SettingsPage {...pageProps} />; // ✅ ADDED THIS LINE
+            // ✅ THIS IS THE FIX: Added the case for the settings page
+            case '#settings': return <SettingsPage {...pageProps} />;
             default: return <DashboardPage {...pageProps} />;
         }
     };
 
     return (
         <div className="h-screen w-full bg-white flex flex-col">
-            <NewHeader
-                currentDate={currentDate}
-                setCurrentDate={setCurrentDate}
+            <NewHeader 
+                currentDate={currentDate} 
+                setCurrentDate={setCurrentDate} 
                 isSidebarOpen={isSidebarOpen}
                 setIsSidebarOpen={setIsSidebarOpen}
-                pendingCount={pendingCount} // Pass count to header
+                pendingCount={pendingCount}
             />
             <div className="flex flex-1 overflow-hidden">
                 <NewSidebar
@@ -104,7 +102,7 @@ export default function App() {
                     setFilteredDoctorIds={setFilteredDoctorIds}
                     dailySchedule={dailySchedule}
                 />
-                <main className="flex-1 overflow-hidden">
+                <main className="flex-1 overflow-y-auto bg-slate-50"> {/* Added overflow-y-auto */}
                     {renderPage()}
                 </main>
             </div>
