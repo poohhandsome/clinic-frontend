@@ -46,6 +46,7 @@ const CurrentTimeIndicator = ({ hourHeight, timelineStartHour, timelineEndHour }
 
 export default function DashboardPage({ selectedClinic, currentDate, doctors, filteredDoctorIds, dailySchedule }) {
     const [dayAppointments, setDayAppointments] = useState([]);
+    const [dailySchedule, setDailySchedule] = useState({});
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
     const hourHeight = 80;
@@ -64,7 +65,35 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
                 .catch(err => console.error("Failed to fetch day appointments:", err));
         }
     };
-    useEffect(fetchAppointments, [selectedClinic, currentDate, filteredDoctorIds]);
+
+    const fetchSchedules = async () => {
+        const scheduleMap = {};
+        for (const doctorId of filteredDoctorIds) {
+            try {
+                const res = await authorizedFetch(`/api/doctor-availability/\${doctorId}`);
+                const availability = await res.json();
+                if (availability.length > 0) {
+                    const today = currentDate.getDay();
+                    const match = availability.find(a => a.day_of_week === today);
+                    if (match) {
+                        scheduleMap[doctorId] = {
+                            startTime: match.start_time,
+                            endTime: match.end_time,
+                        };
+                    }
+                }
+            } catch (err) {
+                console.error(`Failed to load availability for doctor \${doctorId}:`, err);
+            }
+        }
+        setDailySchedule(scheduleMap);
+    };
+
+    useEffect(() => {
+        fetchAppointments();
+        fetchSchedules();
+    }, [selectedClinic, currentDate, filteredDoctorIds]);
+
 
     const handleSlotClick = (time, doctorId) => {
         setModalData({ time, doctorId, date: currentDate });

@@ -104,37 +104,37 @@ export default function DoctorSchedulesPage() {
     }, []);
 
     useEffect(() => {
-        if (selectedDoctorId) {
-            setSchedules({}); 
-            authorizedFetch(`/api/doctor-availability/${selectedDoctorId}`)
-                .then(res => {
-                    if (!res.ok) throw new Error('Failed to fetch schedule');
-                    return res.json();
-                })
-                .then(data => {
-                    const newSchedules = {};
-                    daysOfWeek.forEach(day => {
-                        newSchedules[day.id] = [];
-                        const dayAvailability = data.filter(d => d.day_of_week === day.id);
-                        dayAvailability.forEach(avail => {
-                            const start = new Date(`1970-01-01T${avail.start_time}`);
-                            const end = new Date(`1970-01-01T${avail.end_time}`);
-                            for (let d = start; d < end; d.setMinutes(d.getMinutes() + 30)) {
-                                newSchedules[day.id].push({
-                                    time: d.toTimeString().substring(0, 5),
-                                    clinic_id: avail.clinic_id
-                                });
-                            }
-                        });
+    if (selectedDoctorId) {
+        setSchedules({});
+        authorizedFetch(`/api/doctor-availability/${selectedDoctorId}`)
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to fetch schedule');
+                return res.json();
+            })
+            .then(data => {
+                const newSchedules = {};
+                daysOfWeek.forEach(day => {
+                    newSchedules[day.id] = [];
+                    const dayAvailability = data.filter(d => d.day_of_week === day.id);
+                    dayAvailability.forEach(avail => {
+                        const start = new Date(`1970-01-01T${avail.start_time}`);
+                        const end = new Date(`1970-01-01T${avail.end_time}`);
+                        for (let d = new Date(start); d < end; d.setMinutes(d.getMinutes() + 30)) {
+                            newSchedules[day.id].push({
+                                time: d.toTimeString().substring(0, 5),
+                                clinic_id: avail.clinic_id  // <-- 💡 KEEP clinic ID here
+                            });
+                        }
                     });
-                    setSchedules(newSchedules);
-                })
-                .catch(err => {
-                    console.error("Failed to fetch schedules:", err);
-                    setStatus({ message: `Could not load schedule for the selected doctor.`, type: 'error' });
                 });
-        }
-    }, [selectedDoctorId]);
+                setSchedules(newSchedules);
+            })
+            .catch(err => {
+                console.error("Failed to fetch schedules:", err);
+                setStatus({ message: `Could not load schedule for the selected doctor.`, type: 'error' });
+            });
+    }
+}, [selectedDoctorId]);
 
     const selectedDoctor = useMemo(() => allDoctors.find(doc => doc.id === selectedDoctorId), [allDoctors, selectedDoctorId]);
 
