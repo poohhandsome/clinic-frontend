@@ -29,7 +29,6 @@ const ClinicCheckboxList = ({ clinics, selected, onChange }) => (
     </div>
 );
 
-// ✅ NEW: Animated dropdown for specialties
 const dentistSpecialties = [
     "General Dentistry",
     "Orthodontics",
@@ -97,14 +96,14 @@ export default function SettingsPage() {
 
     // State for Add Form
     const [addFullName, setAddFullName] = useState('');
-    const [addSpecialties, setAddSpecialties] = useState([]); // Changed from string to array
+    const [addSpecialties, setAddSpecialties] = useState([]);
     const [addSelectedClinics, setAddSelectedClinics] = useState([]);
     const [addStatus, setAddStatus] = useState({ message: '', type: '' });
     const [isAdding, setIsAdding] = useState(false);
 
     // State for Edit Form
     const [editDoctorId, setEditDoctorId] = useState('');
-    const [editSpecialties, setEditSpecialties] = useState([]); // Changed from string to array
+    const [editSpecialties, setEditSpecialties] = useState([]);
     const [editSelectedClinics, setEditSelectedClinics] = useState([]);
     const [editStatus, setEditStatus] = useState({ message: '', type: '' });
     const [isEditing, setIsEditing] = useState(false);
@@ -155,7 +154,7 @@ export default function SettingsPage() {
         try {
             await api.post('/doctors', {
                 fullName: addFullName.trim(),
-                specialty: addSpecialties.join(', '), // Join array into string for DB
+                specialty: addSpecialties.join(', '),
                 clinicIds: addSelectedClinics
             });
             setAddStatus({ message: 'Doctor added successfully!', type: 'success' });
@@ -180,7 +179,7 @@ export default function SettingsPage() {
         setEditStatus({ message: '', type: '' });
         try {
             await api.put(`/doctors/${editDoctorId}/clinics`, {
-                specialty: editSpecialties.join(', '), // Join array into string for DB
+                specialty: editSpecialties.join(', '),
                 clinicIds: editSelectedClinics
             });
             setEditStatus({ message: 'Doctor updated successfully!', type: 'success' });
@@ -197,67 +196,72 @@ export default function SettingsPage() {
             <h2 className="text-2xl font-bold text-slate-800 mb-2">Doctor Management</h2>
             <p className="text-slate-500 mb-6">Add a new doctor or edit clinic assignments for an existing doctor.</p>
 
-            <div className="border-b border-gray-200 mb-6">
-                <nav className="-mb-px flex space-x-6">
-                    <button onClick={() => setView('add')} className={`py-3 px-1 border-b-2 font-medium text-sm ${view === 'add' ? 'border-sky-500 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        Add Doctor
-                    </button>
-                    <button onClick={() => setView('edit')} className={`py-3 px-1 border-b-2 font-medium text-sm ${view === 'edit' ? 'border-sky-500 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        Edit Doctor
-                    </button>
-                </nav>
-            </div>
-
-            <div className="max-w-xl mx-auto bg-white p-6 rounded-lg shadow-md border border-slate-200">
-                {view === 'add' && (
-                    <form onSubmit={handleAddSubmit} className="space-y-5">
-                        <div>
-                            <label htmlFor="addFullName" className="block text-sm font-medium text-slate-700 mb-1">Doctor's Full Name</label>
-                            <input type="text" id="addFullName" value={addFullName} onChange={(e) => setAddFullName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500" placeholder="e.g., Dr. Jane Smith" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Specialty</label>
-                            <SpecialtyDropdown selected={addSpecialties} onChange={setAddSpecialties} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Assign to Clinics</label>
-                            <ClinicCheckboxList clinics={clinics} selected={addSelectedClinics} onChange={(id) => setAddSelectedClinics(p => p.includes(id) ? p.filter(i => i !== id) : [...p, id])} />
-                        </div>
-                        <StatusMessage message={addStatus.message} type={addStatus.type} />
-                        <button type="submit" disabled={isAdding} className="w-full px-4 py-2.5 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50">
-                            {isAdding ? 'Adding...' : 'Add Doctor'}
+            {/* ✅ FIX: Main white container now wraps both tabs and the form content */}
+            <div className="max-w-2xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-md border border-slate-200">
+                <div className="border-b border-gray-200 mb-6">
+                    <nav className="-mb-px flex space-x-6">
+                        <button onClick={() => setView('add')} className={`py-3 px-1 border-b-2 font-medium text-sm ${view === 'add' ? 'border-sky-500 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                            Add Doctor
                         </button>
-                    </form>
-                )}
+                        <button onClick={() => setView('edit')} className={`py-3 px-1 border-b-2 font-medium text-sm ${view === 'edit' ? 'border-sky-500 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
+                            Edit Doctor
+                        </button>
+                    </nav>
+                </div>
 
-                {view === 'edit' && (
-                    <form onSubmit={handleEditSubmit} className="space-y-5">
-                        <div>
-                            <label htmlFor="doctor-select" className="block text-sm font-medium text-slate-700 mb-1">Select Doctor to Edit</label>
-                            <select id="doctor-select" value={editDoctorId} onChange={e => setEditDoctorId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500">
-                                <option value="">-- Please Select --</option>
-                                {doctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
-                            </select>
-                        </div>
+                <div>
+                    {/* Add Doctor View */}
+                    {view === 'add' && (
+                        <form onSubmit={handleAddSubmit} className="space-y-5">
+                            <div>
+                                <label htmlFor="addFullName" className="block text-sm font-medium text-slate-700 mb-1">Doctor's Full Name</label>
+                                <input type="text" id="addFullName" value={addFullName} onChange={(e) => setAddFullName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500" placeholder="e.g., Dr. Jane Smith" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Specialty</label>
+                                <SpecialtyDropdown selected={addSpecialties} onChange={setAddSpecialties} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Assign to Clinics</label>
+                                <ClinicCheckboxList clinics={clinics} selected={addSelectedClinics} onChange={(id) => setAddSelectedClinics(p => p.includes(id) ? p.filter(i => i !== id) : [...p, id])} />
+                            </div>
+                            <StatusMessage message={addStatus.message} type={addStatus.type} />
+                            <button type="submit" disabled={isAdding} className="w-full px-4 py-2.5 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50">
+                                {isAdding ? 'Adding...' : 'Add Doctor'}
+                            </button>
+                        </form>
+                    )}
 
-                        {editDoctorId && (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Specialty</label>
-                                    <SpecialtyDropdown selected={editSpecialties} onChange={setEditSpecialties} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Manage Clinic Assignments</label>
-                                    <ClinicCheckboxList clinics={clinics} selected={editSelectedClinics} onChange={(id) => setEditSelectedClinics(p => p.includes(id) ? p.filter(i => i !== id) : [...p, id])} />
-                                </div>
-                                <StatusMessage message={editStatus.message} type={editStatus.type} />
-                                <button type="submit" disabled={isEditing} className="w-full px-4 py-2.5 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 disabled:opacity-50">
-                                    {isEditing ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            </>
-                        )}
-                    </form>
-                )}
+                    {/* Edit Doctor View */}
+                    {view === 'edit' && (
+                        <form onSubmit={handleEditSubmit} className="space-y-5">
+                            <div>
+                                <label htmlFor="doctor-select" className="block text-sm font-medium text-slate-700 mb-1">Select Doctor to Edit</label>
+                                <select id="doctor-select" value={editDoctorId} onChange={e => setEditDoctorId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500">
+                                    <option value="">-- Please Select --</option>
+                                    {doctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
+                                </select>
+                            </div>
+
+                            {editDoctorId && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Specialty</label>
+                                        <SpecialtyDropdown selected={editSpecialties} onChange={setEditSpecialties} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Manage Clinic Assignments</label>
+                                        <ClinicCheckboxList clinics={clinics} selected={editSelectedClinics} onChange={(id) => setEditSelectedClinics(p => p.includes(id) ? p.filter(i => i !== id) : [...p, id])} />
+                                    </div>
+                                    <StatusMessage message={editStatus.message} type={editStatus.type} />
+                                    <button type="submit" disabled={isEditing} className="w-full px-4 py-2.5 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 disabled:opacity-50">
+                                        {isEditing ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </>
+                            )}
+                        </form>
+                    )}
+                </div>
             </div>
         </div>
     );
