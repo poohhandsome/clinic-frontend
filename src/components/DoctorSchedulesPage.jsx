@@ -79,30 +79,38 @@ export default function DoctorSchedulesPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [status, setStatus] = useState({ message: '', type: '' });
     const [isClinicModalOpen, setIsClinicModalOpen] = useState(false);
-    const [tempScheduleData, setTempScheduleData] = useState(null); // { dayId, slots }
+    const [tempScheduleData, setTempScheduleData] = useState(null);
 
     const isDragging = useRef(false);
-    const selectionMode = useRef('add'); // 'add' or 'remove'
+    const selectionMode = useRef('add');
     const dragData = useRef({ dayId: null, slots: [] });
 
-    // Fetch the unique list of all doctors on component mount
     useEffect(() => {
         authorizedFetch('/api/doctors/unique')
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to fetch');
+                return res.json()
+            })
             .then(data => {
                 setAllDoctors(data);
-                if (data.length > 0) {
+                if (data.length > 0 && !selectedDoctorId) {
                     setSelectedDoctorId(data[0].id);
                 }
             })
-            .catch(err => console.error("Failed to fetch unique doctors:", err));
+            .catch(err => {
+                console.error("Failed to fetch unique doctors:", err);
+                setStatus({ message: 'Could not load doctors from the server.', type: 'error' });
+            });
     }, []);
 
-    // Fetch schedules when a doctor is selected
     useEffect(() => {
         if (selectedDoctorId) {
+            setSchedules({}); // Clear previous schedule to avoid flash of old data
             authorizedFetch(`/api/doctor-availability/${selectedDoctorId}`)
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to fetch schedule');
+                    return res.json();
+                })
                 .then(data => {
                     const newSchedules = {};
                     daysOfWeek.forEach(day => {
@@ -120,6 +128,10 @@ export default function DoctorSchedulesPage() {
                         });
                     });
                     setSchedules(newSchedules);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch schedules:", err);
+                    setStatus({ message: `Could not load schedule for the selected doctor.`, type: 'error' });
                 });
         }
     }, [selectedDoctorId]);
@@ -131,7 +143,7 @@ export default function DoctorSchedulesPage() {
         const currentSlots = schedules[dayId] || [];
         const existingSlot = currentSlots.find(s => s.time === time);
         selectionMode.current = existingSlot ? 'remove' : 'add';
-        dragData.current = { dayId, slots: [{ time, clinic_id: existingSlot?.clinic_id }] }; // Start tracking drag
+        dragData.current = { dayId, slots: [{ time, clinic_id: existingSlot?.clinic_id }] };
         toggleSlot(dayId, time, existingSlot?.clinic_id);
     };
 
@@ -140,7 +152,7 @@ export default function DoctorSchedulesPage() {
             const isAlreadyDragged = dragData.current.slots.some(s => s.time === time);
             if (!isAlreadyDragged) {
                 const existingSlot = (schedules[dayId] || []).find(s => s.time === time);
-                 dragData.current.slots.push({ time, clinic_id: existingSlot?.clinic_id });
+                dragData.current.slots.push({ time, clinic_id: existingSlot?.clinic_id });
                 toggleSlot(dayId, time, existingSlot?.clinic_id);
             }
         }
@@ -149,19 +161,17 @@ export default function DoctorSchedulesPage() {
     const handleMouseUp = () => {
         if (!isDragging.current) return;
         isDragging.current = false;
-        
+
         if (selectionMode.current === 'add' && selectedDoctor) {
             if (selectedDoctor.clinics.length > 1) {
-                // If doctor works at multiple clinics, open modal
                 setTempScheduleData({ dayId: dragData.current.dayId, slots: dragData.current.slots.map(s => s.time) });
                 setIsClinicModalOpen(true);
             } else if (selectedDoctor.clinics.length === 1) {
-                // If only one clinic, assign it automatically
                 const clinicId = selectedDoctor.clinics[0].id;
-                handleClinicSelection(clinicId);
+                const newTempData = { dayId: dragData.current.dayId, slots: dragData.current.slots.map(s => s.time) };
+                handleClinicSelection(clinicId, newTempData);
             }
         }
-        // Reset drag data
         dragData.current = { dayId: null, slots: [] };
     };
 
@@ -169,25 +179,21 @@ export default function DoctorSchedulesPage() {
         setSchedules(prev => {
             const daySlots = prev[dayId] ? [...prev[dayId]] : [];
             const isSelected = daySlots.some(s => s.time === time);
+            let updatedDaySlots = daySlots;
 
             if (selectionMode.current === 'add' && !isSelected) {
-                // Temporarily add with a null clinic_id for visual feedback
-                daySlots.push({ time, clinic_id: null });
+                updatedDaySlots = [...daySlots, { time, clinic_id: null }];
             } else if (selectionMode.current === 'remove' && isSelected) {
-                const index = daySlots.findIndex(s => s.time === time && s.clinic_id === clinicIdToRemove);
-                if (index > -1) {
-                    daySlots.splice(index, 1);
-                }
+                updatedDaySlots = daySlots.filter(s => s.time !== time);
             }
-            return { ...prev, [dayId]: daySlots };
+            return { ...prev, [dayId]: updatedDaySlots };
         });
     };
-    
-    const handleClinicSelection = (clinicId) => {
-        // Apply the selected clinicId to the temporary slots
+
+    const handleClinicSelection = (clinicId, currentTempData = tempScheduleData) => {
         setSchedules(prev => {
-            const dayId = tempScheduleData.dayId;
-            const newSlots = tempScheduleData.slots;
+            const dayId = currentTempData.dayId;
+            const newSlots = currentTempData.slots;
             const daySchedule = [...prev[dayId]];
             newSlots.forEach(time => {
                 const index = daySchedule.findIndex(s => s.time === time && s.clinic_id === null);
@@ -202,8 +208,7 @@ export default function DoctorSchedulesPage() {
     };
 
     const cancelClinicSelection = () => {
-        // Revert the temporary visual change
-         if (tempScheduleData) {
+        if (tempScheduleData) {
             setSchedules(prev => {
                 const dayId = tempScheduleData.dayId;
                 const daySchedule = prev[dayId].filter(s => s.clinic_id !== null);
@@ -214,7 +219,6 @@ export default function DoctorSchedulesPage() {
         setTempScheduleData(null);
     };
 
-
     const handleSave = () => {
         setIsLoading(true);
         setStatus({ message: '', type: '' });
@@ -224,14 +228,14 @@ export default function DoctorSchedulesPage() {
             const slotsForDay = [...schedules[dayId]].sort((a, b) => a.time.localeCompare(b.time));
             if (slotsForDay.length === 0) return;
 
-            // Group by clinic
             const slotsByClinic = slotsForDay.reduce((acc, slot) => {
-                if (!acc[slot.clinic_id]) acc[slot.clinic_id] = [];
-                acc[slot.clinic_id].push(slot.time);
+                if(slot.clinic_id) {
+                    if (!acc[slot.clinic_id]) acc[slot.clinic_id] = [];
+                    acc[slot.clinic_id].push(slot.time);
+                }
                 return acc;
             }, {});
 
-            // Process each clinic's schedule for the day
             for (const clinicId in slotsByClinic) {
                 const slots = slotsByClinic[clinicId];
                 if (slots.length === 0) continue;
@@ -261,7 +265,7 @@ export default function DoctorSchedulesPage() {
         })
         .then(res => res.ok ? res.json() : Promise.reject('Failed to save schedule.'))
         .then(() => setStatus({ message: 'Schedule saved successfully!', type: 'success' }))
-        .catch(err => setStatus({ message: `Error saving schedule: ${err.message}`, type: 'error' }))
+        .catch(err => setStatus({ message: `Error saving schedule. Please try again.`, type: 'error' }))
         .finally(() => setIsLoading(false));
     };
 
