@@ -105,7 +105,7 @@ export default function DoctorSchedulesPage() {
 
     useEffect(() => {
         if (selectedDoctorId) {
-            setSchedules({}); // Clear previous schedule to avoid flash of old data
+            setSchedules({}); 
             authorizedFetch(`/api/doctor-availability/${selectedDoctorId}`)
                 .then(res => {
                     if (!res.ok) throw new Error('Failed to fetch schedule');
@@ -144,7 +144,7 @@ export default function DoctorSchedulesPage() {
         const existingSlot = currentSlots.find(s => s.time === time);
         selectionMode.current = existingSlot ? 'remove' : 'add';
         dragData.current = { dayId, slots: [{ time, clinic_id: existingSlot?.clinic_id }] };
-        toggleSlot(dayId, time, existingSlot?.clinic_id);
+        toggleSlot(dayId, time);
     };
 
     const handleMouseEnter = (dayId, time) => {
@@ -153,7 +153,7 @@ export default function DoctorSchedulesPage() {
             if (!isAlreadyDragged) {
                 const existingSlot = (schedules[dayId] || []).find(s => s.time === time);
                 dragData.current.slots.push({ time, clinic_id: existingSlot?.clinic_id });
-                toggleSlot(dayId, time, existingSlot?.clinic_id);
+                toggleSlot(dayId, time);
             }
         }
     };
@@ -163,19 +163,19 @@ export default function DoctorSchedulesPage() {
         isDragging.current = false;
 
         if (selectionMode.current === 'add' && selectedDoctor) {
+            const addedSlots = dragData.current.slots.map(s => s.time);
             if (selectedDoctor.clinics.length > 1) {
-                setTempScheduleData({ dayId: dragData.current.dayId, slots: dragData.current.slots.map(s => s.time) });
+                setTempScheduleData({ dayId: dragData.current.dayId, slots: addedSlots });
                 setIsClinicModalOpen(true);
             } else if (selectedDoctor.clinics.length === 1) {
                 const clinicId = selectedDoctor.clinics[0].id;
-                const newTempData = { dayId: dragData.current.dayId, slots: dragData.current.slots.map(s => s.time) };
-                handleClinicSelection(clinicId, newTempData);
+                handleClinicSelection(clinicId, { dayId: dragData.current.dayId, slots: addedSlots });
             }
         }
         dragData.current = { dayId: null, slots: [] };
     };
 
-    const toggleSlot = (dayId, time, clinicIdToRemove) => {
+    const toggleSlot = (dayId, time) => {
         setSchedules(prev => {
             const daySlots = prev[dayId] ? [...prev[dayId]] : [];
             const isSelected = daySlots.some(s => s.time === time);
@@ -192,10 +192,9 @@ export default function DoctorSchedulesPage() {
 
     const handleClinicSelection = (clinicId, currentTempData = tempScheduleData) => {
         setSchedules(prev => {
-            const dayId = currentTempData.dayId;
-            const newSlots = currentTempData.slots;
-            const daySchedule = [...prev[dayId]];
-            newSlots.forEach(time => {
+            const { dayId, slots } = currentTempData;
+            const daySchedule = [...(prev[dayId] || [])];
+            slots.forEach(time => {
                 const index = daySchedule.findIndex(s => s.time === time && s.clinic_id === null);
                 if (index !== -1) {
                     daySchedule[index].clinic_id = clinicId;
@@ -268,7 +267,6 @@ export default function DoctorSchedulesPage() {
         .catch(err => setStatus({ message: `Error saving schedule. Please try again.`, type: 'error' }))
         .finally(() => setIsLoading(false));
     };
-
 
     return (
         <div className="p-6 h-full overflow-y-auto" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
