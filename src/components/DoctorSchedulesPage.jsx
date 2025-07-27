@@ -387,7 +387,20 @@ function RecurringRuleScheduler({ doctor, onUpdate }) {
     );
 }
 function SpecialSchedulesList({ schedules, onUpdate }) {
-    const handleDelete = async (id) => { /* ... same as before ... */ };
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this special schedule?")) return;
+        try {
+            const res = await authorizedFetch(`/api/special-schedules/${id}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Failed to delete schedule');
+            }
+            onUpdate(); // Refresh list
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
     return (
         <div className="bg-white p-6 rounded-lg shadow-md border border-slate-200">
             <div className="font-semibold text-slate-700 mb-4">Existing Special Schedules</div>
@@ -395,7 +408,20 @@ function SpecialSchedulesList({ schedules, onUpdate }) {
                 {schedules.length === 0 && <div className="text-sm text-slate-500 text-center py-4">No special schedules found.</div>}
                 {schedules.map(s => (
                     <div key={s.id} className="flex items-center justify-between p-3 rounded-md border bg-slate-50">
-                        {/* ... (Display logic for each schedule item, unchanged) ... */}
+                        <div>
+                            <div className="font-bold text-slate-800">{format(parseISO(s.schedule_date), 'EEEE, d MMMM yyyy')}</div>
+                            <div className="text-sm text-slate-600">{s.clinic_name}</div>
+                        </div>
+                        <div className="text-right">
+                            {s.is_available ? (
+                                <div className="font-semibold text-green-600 flex items-center gap-2"><Clock size={14}/> {s.start_time} - {s.end_time}</div>
+                            ) : (
+                                <div className="font-semibold text-red-500">Not Working</div>
+                            )}
+                        </div>
+                        <button onClick={() => handleDelete(s.id)} className="p-2 text-slate-400 hover:text-red-600 rounded-full hover:bg-red-100">
+                            <FaTrashAlt size={14} />
+                        </button>
                     </div>
                 ))}
             </div>
