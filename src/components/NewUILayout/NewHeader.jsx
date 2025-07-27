@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Search, Settings, HelpCircle, Menu, Calendar
 import { CgMenuGridO } from 'react-icons/cg';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { useAuth } from '../../context/AuthContext';
-import { Link } from 'react-router-dom';
+
 const AppMenu = ({ setIsAppMenuOpen, pendingCount }) => {
     const menuRef = useRef(null);
 
