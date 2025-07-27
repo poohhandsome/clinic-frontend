@@ -1,6 +1,3 @@
-/* -------------------------------------------------- */
-/* FILE 6: src/components/PendingAppointmentsPage.jsx (REPLACE) */
-/* -------------------------------------------------- */
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import authorizedFetch from '../api';
@@ -10,7 +7,6 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
 
     const fetchPending = () => {
         if (selectedClinic) {
-            // **THE FIX IS HERE**: Added '/api' to the fetch URL
             authorizedFetch(`/api/pending-appointments?clinic_id=${selectedClinic}`)
                 .then(res => res.json())
                 .then(data => setPending(data));
@@ -18,13 +14,12 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
     };
 
     useEffect(() => {
-        fetchPending(); 
+        fetchPending();
         const intervalId = setInterval(fetchPending, 10000);
         return () => clearInterval(intervalId);
     }, [selectedClinic]);
 
     const handleAction = (appointmentId, newStatus) => {
-        // **THE FIX IS HERE**: Added '/api' to the fetch URL
         authorizedFetch(`/api/appointments/${appointmentId}`, {
             method: 'PATCH',
             body: JSON.stringify({ status: newStatus }),
@@ -32,29 +27,37 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
     };
 
     return (
-        <div>
-            <div className="page-header"><h2>Unconfirmed Appointments</h2></div>
-            <div className="table-container">
-                <table>
-                    <thead>
-                        <tr><th>Date</th><th>Time</th><th>Patient</th><th>Doctor</th><th>Actions</th></tr>
+        <div className="p-6 h-full overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+                 <h2 className="text-2xl font-bold text-slate-800">Unconfirmed Appointments</h2>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
+                <table className="w-full">
+                    <thead className="bg-slate-50">
+                        <tr>
+                            <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                            <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Time</th>
+                            <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Patient</th>
+                            <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Doctor</th>
+                            <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+                        </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-slate-200">
                         {pending.map(app => (
                             <tr key={app.id}>
-                                <td>{format(new Date(app.appointment_date), 'MMM d, yyyy')}</td>
-                                <td>{app.appointment_time}</td>
-                                <td>{app.patient_name}</td>
-                                <td>{app.doctor_name}</td>
-                                <td className="actions">
-                                    <button className="primary" onClick={() => handleAction(app.id, 'confirmed')}>Approve</button>
-                                    <button className="secondary" onClick={() => handleAction(app.id, 'cancelled')}>Deny</button>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{format(new Date(app.appointment_date), 'MMM d, yyyy')}</td>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{app.appointment_time}</td>
+                                <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{app.patient_name}</td>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{app.doctor_name}</td>
+                                <td className="p-3 whitespace-nowrap text-sm font-medium space-x-2">
+                                    <button className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200" onClick={() => handleAction(app.id, 'confirmed')}>Approve</button>
+                                    <button className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold hover:bg-red-200" onClick={() => handleAction(app.id, 'cancelled')}>Deny</button>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-                 {pending.length === 0 && <p style={{textAlign: 'center', padding: '1rem'}}>No pending appointments.</p>}
+                 {pending.length === 0 && <p className="text-center text-slate-500 py-8">No pending appointments.</p>}
             </div>
         </div>
     );

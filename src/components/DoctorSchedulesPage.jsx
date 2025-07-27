@@ -43,6 +43,14 @@ const AddScheduleModal = ({ doctor, onClose }) => {
         }).then(res => res.ok ? onClose(true) : setError('Failed to add schedule.'));
     };
 
+    const timeOptions = Array.from({ length: 25 }, (_, i) => {
+        const totalMinutes = 8 * 60 + i * 30;
+        const hour = Math.floor(totalMinutes / 60);
+        const minute = totalMinutes % 60;
+        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    });
+
+
     const calendarStart = startOfWeek(startOfMonth(activeMonth), { weekStartsOn: 1 });
     const calendarEnd = endOfWeek(endOfMonth(activeMonth), { weekStartsOn: 1 });
     const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
@@ -81,7 +89,6 @@ const RemoveScheduleModal = ({ doctor, onClose }) => {
         </div>
     );
 };
-// --- Main Component ---
 
 export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
     const [selectedDoctor, setSelectedDoctor] = useState('');
@@ -137,7 +144,7 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
     const handleMouseUp = () => {
         isDragging.current = false;
     };
-    
+
     const toggleSlot = (dayId, time) => {
         setSelectedSlots(prev => {
             const daySlots = prev[dayId] ? [...prev[dayId]] : [];
@@ -151,7 +158,7 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
     const handleClearDay = (dayId) => {
         setSelectedSlots(prev => ({ ...prev, [dayId]: [] }));
     };
-    
+
     const handleSave = () => {
         setIsLoading(true);
         setStatus({ message: '', type: '' });
@@ -183,31 +190,30 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
     const selectedDoctorInfo = allDoctors.find(d => d.id === parseInt(selectedDoctor, 10));
 
     return (
-        <div onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-            <div className="flex justify-between items-center mb-6">
+        <div className="p-6 h-full overflow-y-auto" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-slate-800">Manage Doctor Schedules</h2>
                 <div className="flex items-center gap-2">
                     <button onClick={() => setIsAddModalOpen(true)} className="px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700 disabled:opacity-50" disabled={!selectedDoctor}>Add Special Day</button>
                     <button onClick={() => setIsRemoveModalOpen(true)} className="px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-sm hover:bg-red-700 disabled:opacity-50" disabled={!selectedDoctor}>Remove Scheduled Day</button>
                     <button className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50" onClick={handleSave} disabled={isLoading || !selectedDoctor}>Save Weekly Schedule</button>
                 </div>
-                
             </div>
 
             <div className="mb-6 max-w-xs">
                 <label htmlFor="doctor-select" className="block text-sm font-medium text-gray-700 mb-1">Select Doctor</label>
-                <select 
-                    id="doctor-select" 
+                <select
+                    id="doctor-select"
                     className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500"
-                    value={selectedDoctor} 
+                    value={selectedDoctor}
                     onChange={e => setSelectedDoctor(e.target.value)}>
                     <option value="" disabled>-- Select a Doctor --</option>
                     {allDoctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
                 </select>
             </div>
-            
+
             <StatusMessage message={status.message} type={status.type} />
-            
+
             <div className="grid border-t border-r border-slate-200" style={{ gridTemplateColumns: '120px repeat(24, 1fr)' }}>
                 {/* Header Row */}
                 <div className="font-semibold p-2 border-l border-b border-slate-200 bg-slate-50"></div>
@@ -222,10 +228,9 @@ export default function DoctorSchedulesPage({ doctors: allDoctors = [] }) {
                     <React.Fragment key={day.id}>
                         <div className="font-semibold p-2 border-l border-b border-r border-slate-200 bg-slate-50 flex items-center justify-between">
                             <span>{day.name}</span>
-                            {/* **THE FIX IS HERE**: Replaced text with an SVG icon */}
-                            <button 
-                                onClick={() => handleClearDay(day.id)} 
-                                className="p-1 rounded-full text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors" 
+                            <button
+                                onClick={() => handleClearDay(day.id)}
+                                className="p-1 rounded-full text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors"
                                 title={`Clear ${day.name}`}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
