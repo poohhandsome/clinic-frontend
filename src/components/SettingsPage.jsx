@@ -1,7 +1,7 @@
 // src/components/SettingsPage.jsx (REPLACE)
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import api from '../api'; 
+import authorizedFetch from '../api'; // ✅ Corrected to use your authorizedFetch
 import { ChevronDown } from 'lucide-react';
 
 // --- Helper Components ---
@@ -94,14 +94,12 @@ export default function SettingsPage() {
     const [doctors, setDoctors] = useState([]);
     const [view, setView] = useState('add');
 
-    // State for Add Form
     const [addFullName, setAddFullName] = useState('');
     const [addSpecialties, setAddSpecialties] = useState([]);
     const [addSelectedClinics, setAddSelectedClinics] = useState([]);
     const [addStatus, setAddStatus] = useState({ message: '', type: '' });
     const [isAdding, setIsAdding] = useState(false);
 
-    // State for Edit Form
     const [editDoctorId, setEditDoctorId] = useState('');
     const [editSpecialties, setEditSpecialties] = useState([]);
     const [editSelectedClinics, setEditSelectedClinics] = useState([]);
@@ -111,15 +109,19 @@ export default function SettingsPage() {
     const fetchAllData = async () => {
         try {
             const [clinicsRes, doctorsRes] = await Promise.all([
-                api.get('/clinics'),
-                api.get('/doctors/unique')
+                authorizedFetch('/api/clinics'),
+                authorizedFetch('/api/doctors/unique')
             ]);
-            setClinics(clinicsRes.data);
-            setDoctors(doctorsRes.data);
+            if (!clinicsRes.ok || !doctorsRes.ok) throw new Error('Failed to load clinic or doctor data.');
+            
+            const clinicsData = await clinicsRes.json();
+            const doctorsData = await doctorsRes.json();
+
+            setClinics(clinicsData);
+            setDoctors(doctorsData);
         } catch (err) {
-            const errorMsg = err.response?.data?.message || 'Failed to load data.';
-            setAddStatus({ message: errorMsg, type: 'error' });
-            setEditStatus({ message: errorMsg, type: 'error' });
+            setAddStatus({ message: err.message, type: 'error' });
+            setEditStatus({ message: err.message, type: 'error' });
         }
     };
 
@@ -152,18 +154,25 @@ export default function SettingsPage() {
         setIsAdding(true);
         setAddStatus({ message: '', type: '' });
         try {
-            await api.post('/doctors', {
-                fullName: addFullName.trim(),
-                specialty: addSpecialties.join(', '),
-                clinicIds: addSelectedClinics
+            const res = await authorizedFetch('/api/doctors', {
+                method: 'POST',
+                body: JSON.stringify({
+                    fullName: addFullName.trim(),
+                    specialty: addSpecialties.join(', '),
+                    clinicIds: addSelectedClinics
+                }),
             });
+             if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Failed to add doctor');
+            }
             setAddStatus({ message: 'Doctor added successfully!', type: 'success' });
             setAddFullName('');
             setAddSpecialties([]);
             setAddSelectedClinics([]);
             fetchAllData(); 
         } catch (err) {
-            setAddStatus({ message: err.response?.data?.message || 'An error occurred.', type: 'error' });
+            setAddStatus({ message: err.message, type: 'error' });
         } finally {
             setIsAdding(false);
         }
@@ -178,14 +187,21 @@ export default function SettingsPage() {
         setIsEditing(true);
         setEditStatus({ message: '', type: '' });
         try {
-            await api.put(`/doctors/${editDoctorId}/clinics`, {
-                specialty: editSpecialties.join(', '),
-                clinicIds: editSelectedClinics
+            const res = await authorizedFetch(`/api/doctors/${editDoctorId}/clinics`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    specialty: editSpecialties.join(', '),
+                    clinicIds: editSelectedClinics
+                }),
             });
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Failed to update doctor');
+            }
             setEditStatus({ message: 'Doctor updated successfully!', type: 'success' });
             fetchAllData(); 
         } catch (err) {
-            setEditStatus({ message: err.response?.data?.message || 'An error occurred.', type: 'error' });
+            setEditStatus({ message: err.message, type: 'error' });
         } finally {
             setIsEditing(false);
         }
@@ -196,7 +212,6 @@ export default function SettingsPage() {
             <h2 className="text-2xl font-bold text-slate-800 mb-2">Doctor Management</h2>
             <p className="text-slate-500 mb-6">Add a new doctor or edit clinic assignments for an existing doctor.</p>
 
-            {/* ✅ FIX: Main white container now wraps both tabs and the form content */}
             <div className="max-w-2xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-md border border-slate-200">
                 <div className="border-b border-gray-200 mb-6">
                     <nav className="-mb-px flex space-x-6">
@@ -210,7 +225,6 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                    {/* Add Doctor View */}
                     {view === 'add' && (
                         <form onSubmit={handleAddSubmit} className="space-y-5">
                             <div>
@@ -232,7 +246,6 @@ export default function SettingsPage() {
                         </form>
                     )}
 
-                    {/* Edit Doctor View */}
                     {view === 'edit' && (
                         <form onSubmit={handleEditSubmit} className="space-y-5">
                             <div>
