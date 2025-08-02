@@ -56,7 +56,7 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
             onMouseLeave={() => setIsHovering(false)}
         >
             {/* Logo Section - Simplified and fixed for centering */}
-            <div className="flex items-center h-16 px-4 border-b border-slate-200">
+            <div className="flex items-center h-16 px-2 border-b border-slate-200">
                 <img
                     src={clinicLogo}
                     alt="Clinic Logo"
