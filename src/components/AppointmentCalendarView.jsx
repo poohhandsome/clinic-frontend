@@ -1,4 +1,4 @@
-// src/components/AppointmentCalendarView.jsx (NEW FILE)
+// src/components/AppointmentCalendarView.jsx (REPLACE)
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { format, getHours, getMinutes, isToday } from 'date-fns';
@@ -10,10 +10,8 @@ const timeToMinutes = (time) => {
     return hours * 60 + minutes;
 };
 
-// This component is a simplified version of the one from the main dashboard
 const CurrentTimeIndicator = ({ hourHeight, timelineStartHour }) => {
     const [topPosition, setTopPosition] = useState(0);
-
     useEffect(() => {
         const updatePosition = () => {
             const now = new Date();
@@ -21,7 +19,6 @@ const CurrentTimeIndicator = ({ hourHeight, timelineStartHour }) => {
             const minutesSinceTimelineStart = (currentHour - timelineStartHour) * 60 + getMinutes(now);
             setTopPosition(minutesSinceTimelineStart * (hourHeight / 60));
         };
-
         updatePosition();
         const interval = setInterval(updatePosition, 60000); 
         return () => clearInterval(interval);
@@ -39,9 +36,9 @@ const CurrentTimeIndicator = ({ hourHeight, timelineStartHour }) => {
 };
 
 
-export default function AppointmentCalendarView({ currentDate, selectedClinic }) {
+export default function AppointmentCalendarView({ currentDate, selectedClinic, onSlotClick }) {
     const [schedule, setSchedule] = useState({ doctors: [], appointments: [] });
-    const hourHeight = 80; // Corresponds to h-20 in Tailwind
+    const hourHeight = 80;
     const timelineStartHour = 8;
     const timelineEndHour = 20;
     const hours = Array.from({ length: timelineEndHour - timelineStartHour + 1 }, (_, i) => i + timelineStartHour);
@@ -68,7 +65,6 @@ export default function AppointmentCalendarView({ currentDate, selectedClinic })
 
     return (
         <div className="bg-white border rounded-lg shadow-sm flex flex-col h-full">
-            {/* Header Row */}
             <div className="grid shrink-0" style={{ gridTemplateColumns: `5rem repeat(${schedule.doctors.length}, minmax(0, 1fr))` }}>
                 <div className="p-2 border-r border-b"></div>
                 {schedule.doctors.map(doc => (
@@ -78,10 +74,8 @@ export default function AppointmentCalendarView({ currentDate, selectedClinic })
                 ))}
             </div>
 
-            {/* Timeline View */}
             <div className="flex-1 overflow-y-auto relative">
                 <div className="grid relative" style={{ gridTemplateColumns: `5rem repeat(${schedule.doctors.length}, minmax(0, 1fr))` }}>
-                    {/* Time Gutter */}
                     <div className="col-start-1 col-end-2 row-start-1 row-end-[-1]">
                         {hours.map(hour => (
                             <div key={hour} className="h-20 relative border-r border-slate-200">
@@ -92,23 +86,20 @@ export default function AppointmentCalendarView({ currentDate, selectedClinic })
                         ))}
                     </div>
 
-                    {/* Doctor Columns */}
                     {schedule.doctors.map((doc, index) => (
                         <div key={doc.id} className="relative border-r border-slate-200" style={{ gridColumnStart: index + 2 }}>
-                            {/* Background Slots */}
                             {hours.map(hour => (
                                 <React.Fragment key={hour}>
-                                    <div className="h-10 border-b border-slate-200 cursor-pointer hover:bg-sky-50" />
-                                    <div className="h-10 border-b border-slate-200 cursor-pointer hover:bg-sky-50" />
+                                    <div className="h-10 border-b border-slate-200 cursor-pointer hover:bg-sky-50" onClick={() => onSlotClick({ time: `${String(hour).padStart(2, '0')}:00`, doctorId: doc.id })} />
+                                    <div className="h-10 border-b border-slate-200 cursor-pointer hover:bg-sky-50" onClick={() => onSlotClick({ time: `${String(hour).padStart(2, '0')}:30`, doctorId: doc.id })} />
                                 </React.Fragment>
                             ))}
 
-                            {/* Appointments */}
                             {schedule.appointments.filter(app => app.doctor_id === doc.id).map(app => {
                                 const appointmentStartMinutes = timeToMinutes(app.appointment_time);
                                 const top = (appointmentStartMinutes - (timelineStartHour * 60)) * (hourHeight / 60);
                                 const height = (timeToMinutes(app.end_time) - appointmentStartMinutes) * (hourHeight / 60);
-                                if (top < 0) return null; // Don't render appointments before timeline start
+                                if (top < 0) return null;
 
                                 return (
                                     <div key={app.id} className="absolute w-[calc(100%-0.5rem)] left-1 p-2 rounded-lg bg-sky-500 text-white shadow-md z-10" style={{ top: `${top}px`, height: `${height}px` }}>

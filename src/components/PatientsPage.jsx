@@ -1,13 +1,13 @@
 // src/components/PatientsPage.jsx (REPLACE)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw, UserPlus } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
 import AddNewPatientModal from './AddNewPatientModal';
 import SearchPatientModal from './SearchPatientModal';
 import AppointmentModal from './AppointmentModal';
 import authorizedFetch from '../api';
-import AppointmentCalendarView from './AppointmentCalendarView'; // <-- IMPORT NEW CALENDAR
+import AppointmentCalendarView from './AppointmentCalendarView';
 
 // --- Helper Components ---
 const StatusTag = ({ status }) => {
@@ -17,46 +17,67 @@ const StatusTag = ({ status }) => {
         'rescheduled': { icon: <RefreshCw size={14} />, color: 'text-blue-600 bg-blue-100', label: 'Reschedule' },
         'pending_confirmation': { icon: <RefreshCw size={14} />, color: 'text-yellow-600 bg-yellow-100', label: 'Pending' },
     };
-    const { icon, color, label } = statusMap[status.toLowerCase()] || statusMap['pending_confirmation'];
+    const statusKey = status ? status.toLowerCase() : 'pending_confirmation';
+    const { icon, color, label } = statusMap[statusKey] || statusMap['pending_confirmation'];
     return <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-full ${color}`}>{icon}{label}</span>;
 };
 
 const DoctorTag = ({ name }) => (
-    <span className="px-2 py-1 text-xs font-medium bg-sky-100 text-sky-800 rounded-full">{name}</span>
+    <span className="px-2 py-1 text-xs font-medium bg-sky-100 text-sky-800 rounded-full">{name || 'N/A'}</span>
 );
 
 // --- Main Component ---
 export default function PatientsPage({ selectedClinic }) {
-    const [view, setView] = useState('list'); // 'list' or 'calendar'
+    const [view, setView] = useState('list');
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [appointments, setAppointments] = useState([]);
+    const [allAppointments, setAllAppointments] = useState([]);
+    const [doctorsOnDay, setDoctorsOnDay] = useState([]);
+    
     const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
+    const [appointmentModalData, setAppointmentModalData] = useState(null);
+
+    // Filter states
+    const [doctorFilter, setDoctorFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
 
     const fetchAppointments = () => {
         const dateString = format(currentDate, 'yyyy-MM-dd');
-        // This endpoint gets all confirmed appointments for the day, which is what we need for the list view.
-        authorizedFetch(`/api/confirmed-appointments?clinic_id=${selectedClinic}&startDate=${dateString}&endDate=${dateString}`)
+        authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
             .then(res => res.json())
-            .then(setAppointments)
-            .catch(err => console.error("Failed to fetch appointments", err));
+            .then(data => {
+                setAllAppointments(data.appointments || []);
+                setDoctorsOnDay(data.doctors || []);
+            })
+            .catch(err => console.error("Failed to fetch schedule", err));
     };
 
     useEffect(fetchAppointments, [currentDate, selectedClinic]);
 
+    const filteredAppointments = useMemo(() => {
+        return allAppointments.filter(app => {
+            const doctorMatch = doctorFilter === 'all' || app.doctor_id === parseInt(doctorFilter);
+            const statusMatch = statusFilter === 'all' || (app.status && app.status.toLowerCase() === statusFilter);
+            return doctorMatch && statusMatch;
+        });
+    }, [allAppointments, doctorFilter, statusFilter]);
+    
+    const handleSlotClick = (data) => {
+        setAppointmentModalData({ ...data, date: currentDate });
+        setIsAddAppointmentModalOpen(true);
+    };
+
     return (
         <div className="p-6 h-full flex flex-col bg-slate-50">
-            {/* --- Floating Add Appointment Button --- */}
             <button
-                onClick={() => setIsAddAppointmentModalOpen(true)}
+                onClick={() => handleSlotClick({ time: '09:00', doctorId: null })}
                 className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40"
                 aria-label="Add Appointment"
             >
                 <Plus size={28} />
             </button>
             
-            {/* --- Header & View Toggles --- */}
             <div className="flex justify-between items-center mb-4">
                  <div className="flex items-center gap-4">
                     <h2 className="text-2xl font-bold text-slate-800">Appointments</h2>
@@ -77,7 +98,6 @@ export default function PatientsPage({ selectedClinic }) {
                 </div>
             </div>
 
-            {/* --- Filter Panel --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm">
                     <button onClick={() => setCurrentDate(subDays(currentDate, 1))} className="p-2 rounded hover:bg-slate-100"><ChevronLeft size={20}/></button>
@@ -91,12 +111,20 @@ export default function PatientsPage({ selectedClinic }) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                         <input type="text" placeholder="Search Appointments..." className="w-full pl-10 pr-4 py-2 border rounded-md"/>
                     </div>
-                     <select className="p-2 border rounded-md text-sm"><option>All Doctors</option></select>
-                     <select className="p-2 border rounded-md text-sm"><option>All Statuses</option></select>
+                     <select value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="p-2 border rounded-md text-sm">
+                        <option value="all">All Doctors</option>
+                        {doctorsOnDay.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
+                    </select>
+                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-md text-sm">
+                        <option value="all">All Statuses</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="rescheduled">Rescheduled</option>
+                        <option value="pending_confirmation">Pending</option>
+                    </select>
                  </div>
             </div>
 
-            {/* --- Main Content: Table or Calendar --- */}
             <div className="flex-grow overflow-hidden">
                  {view === 'list' ? (
                     <div className="bg-white border border-slate-200 rounded-lg shadow-sm h-full overflow-y-auto">
@@ -111,11 +139,11 @@ export default function PatientsPage({ selectedClinic }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200">
-                                {appointments.map(app => (
+                                {filteredAppointments.map(app => (
                                     <tr key={app.id}>
-                                        <td className="p-3 whitespace-nowrap text-sm font-mono text-slate-700">{app.booking_time}</td>
-                                        <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{app.patient_name}</td>
-                                        <td className="p-3 whitespace-nowrap"><DoctorTag name={app.doctor_name} /></td>
+                                        <td className="p-3 whitespace-nowrap text-sm font-mono text-slate-700">{format(parseISO(`${format(currentDate, 'yyyy-MM-dd')}T${app.appointment_time}`), 'HH:mm')}</td>
+                                        <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{app.patient_name_at_booking}</td>
+                                        <td className="p-3 whitespace-nowrap"><DoctorTag name={doctorsOnDay.find(d => d.id === app.doctor_id)?.name} /></td>
                                         <td className="p-3 whitespace-nowrap"><StatusTag status={app.status} /></td>
                                         <td className="p-3 whitespace-nowrap text-sm font-medium space-x-2">
                                             <button className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200">Check-in</button>
@@ -126,16 +154,16 @@ export default function PatientsPage({ selectedClinic }) {
                                 ))}
                             </tbody>
                         </table>
-                        {appointments.length === 0 && <p className="text-center text-slate-500 py-8">No appointments for this day.</p>}
+                        {filteredAppointments.length === 0 && <p className="text-center text-slate-500 py-8">No appointments match the current filters.</p>}
                     </div>
                  ) : (
-                    <AppointmentCalendarView currentDate={currentDate} selectedClinic={selectedClinic} />
+                    <AppointmentCalendarView currentDate={currentDate} selectedClinic={selectedClinic} onSlotClick={handleSlotClick} />
                  )}
             </div>
 
             {isAddPatientModalOpen && <AddNewPatientModal onClose={() => setIsAddPatientModalOpen(false)} onUpdate={() => {}} />}
             {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={() => {}} />}
-            {isAddAppointmentModalOpen && <AppointmentModal data={{date: currentDate, time: '09:00', doctorId: null}} clinicId={selectedClinic} onClose={(didBook) => { setIsAddAppointmentModalOpen(false); if(didBook) fetchAppointments(); }} />}
+            {isAddAppointmentModalOpen && <AppointmentModal data={appointmentModalData} clinicId={selectedClinic} onClose={(didBook) => { setIsAddAppointmentModalOpen(false); if(didBook) fetchAppointments(); }} />}
         </div>
     );
 }
