@@ -1,13 +1,14 @@
+// src/components/PatientsPage.jsx (REPLACE)
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw, UserPlus } from 'lucide-react';
+import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw, UserPlus, Bell } from 'lucide-react';
 import { format, addDays, subDays, parseISO } from 'date-fns';
 import AddNewPatientModal from './AddNewPatientModal';
 import SearchPatientModal from './SearchPatientModal';
 import AppointmentModal from './AppointmentModal';
 import authorizedFetch from '../api';
 import AppointmentCalendarView from './AppointmentCalendarView';
-import AppointmentActionModal from './AppointmentActionModal'; // <-- IMPORT NEW ACTION MODAL
+import AppointmentActionModal from './AppointmentActionModal';
 
 // --- Helper Components ---
 const StatusTag = ({ status }) => {
@@ -38,10 +39,13 @@ export default function PatientsPage({ selectedClinic }) {
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
     const [appointmentModalData, setAppointmentModalData] = useState(null);
-
-    // State for the new action modal
     const [actionModal, setActionModal] = useState({ isOpen: false, action: null, appointment: null });
 
+    // New state for pending appointments
+    const [pendingCount, setPendingCount] = useState(0);
+    const [showOnlyPending, setShowOnlyPending] = useState(false);
+
+    // Filter states
     const [doctorFilter, setDoctorFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
 
@@ -54,19 +58,37 @@ export default function PatientsPage({ selectedClinic }) {
 
         authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
             .then(res => res.json())
-            .then(data => setDoctorsOnDay(data.all_doctors_in_clinic || [])) // Use all doctors for filters
+            .then(data => setDoctorsOnDay(data.all_doctors_in_clinic || []))
             .catch(err => console.error("Failed to fetch doctors for the day", err));
+    };
+
+    const fetchPendingCount = () => {
+        authorizedFetch(`/api/pending-appointments?clinic_id=${selectedClinic}`)
+            .then(res => res.json())
+            .then(data => setPendingCount(data.length || 0))
+            .catch(err => console.error("Failed to fetch pending count", err));
     };
 
     useEffect(fetchAppointments, [currentDate, selectedClinic]);
 
+    useEffect(() => {
+        fetchPendingCount();
+        const interval = setInterval(fetchPendingCount, 30000); // Refresh every 30 seconds
+        return () => clearInterval(interval);
+    }, [selectedClinic]);
+
     const filteredAppointments = useMemo(() => {
+        // If the "Show Pending" toggle is active, it overrides other filters
+        if (showOnlyPending) {
+            return allAppointments.filter(app => app.status && app.status.toLowerCase() === 'pending_confirmation');
+        }
+        // Otherwise, apply the regular filters
         return allAppointments.filter(app => {
             const doctorMatch = doctorFilter === 'all' || app.doctor_id === parseInt(doctorFilter);
             const statusMatch = statusFilter === 'all' || (app.status && app.status.toLowerCase() === statusFilter);
             return doctorMatch && statusMatch;
         });
-    }, [allAppointments, doctorFilter, statusFilter]);
+    }, [allAppointments, doctorFilter, statusFilter, showOnlyPending]);
     
     const handleSlotClick = (data) => {
         setAppointmentModalData({ ...data, date: currentDate });
@@ -75,6 +97,13 @@ export default function PatientsPage({ selectedClinic }) {
 
     const handleActionClick = (action, appointment) => {
         setActionModal({ isOpen: true, action, appointment });
+    };
+
+    const toggleShowPending = () => {
+        // When we toggle the pending filter, reset the other filters for a clean slate
+        setShowOnlyPending(prev => !prev);
+        setStatusFilter('all');
+        setDoctorFilter('all');
     };
 
     return (
@@ -91,6 +120,21 @@ export default function PatientsPage({ selectedClinic }) {
                     </button>
                     <button onClick={() => setIsSearchModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 border border-slate-300 font-semibold rounded-lg shadow-sm hover:bg-slate-50 text-sm">
                         <Search size={16} /> Search Patient
+                    </button>
+                    <button 
+                        onClick={toggleShowPending} 
+                        className={`relative flex items-center gap-2 px-3 py-1.5 border font-semibold rounded-lg shadow-sm text-sm transition-colors ${
+                            showOnlyPending 
+                                ? 'bg-yellow-500 text-white border-yellow-600' 
+                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        }`}
+                    >
+                        <Bell size={16} /> Show Pending
+                        {pendingCount > 0 && (
+                            <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white">
+                                {pendingCount}
+                            </span>
+                        )}
                     </button>
                 </div>
                 <div className="flex items-center gap-2 p-1 bg-slate-200 rounded-lg">
@@ -116,11 +160,11 @@ export default function PatientsPage({ selectedClinic }) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                         <input type="text" placeholder="Search Appointments..." className="w-full pl-10 pr-4 py-2 border rounded-md"/>
                     </div>
-                     <select value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="p-2 border rounded-md text-sm">
+                     <select disabled={showOnlyPending} value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="p-2 border rounded-md text-sm disabled:opacity-50 disabled:bg-slate-100">
                         <option value="all">All Doctors</option>
                         {doctorsOnDay.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
                     </select>
-                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-md text-sm">
+                     <select disabled={showOnlyPending} value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-md text-sm disabled:opacity-50 disabled:bg-slate-100">
                         <option value="all">All Statuses</option>
                         <option value="confirmed">Confirmed</option>
                         <option value="cancelled">Cancelled</option>
