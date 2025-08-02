@@ -5,8 +5,9 @@ import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, X
 import { format, addDays, subDays } from 'date-fns';
 import AddNewPatientModal from './AddNewPatientModal';
 import SearchPatientModal from './SearchPatientModal';
-import AppointmentModal from './AppointmentModal'; // Using this for "Add Appointment"
+import AppointmentModal from './AppointmentModal';
 import authorizedFetch from '../api';
+import AppointmentCalendarView from './AppointmentCalendarView'; // <-- IMPORT NEW CALENDAR
 
 // --- Helper Components ---
 const StatusTag = ({ status }) => {
@@ -35,6 +36,7 @@ export default function PatientsPage({ selectedClinic }) {
 
     const fetchAppointments = () => {
         const dateString = format(currentDate, 'yyyy-MM-dd');
+        // This endpoint gets all confirmed appointments for the day, which is what we need for the list view.
         authorizedFetch(`/api/confirmed-appointments?clinic_id=${selectedClinic}&startDate=${dateString}&endDate=${dateString}`)
             .then(res => res.json())
             .then(setAppointments)
@@ -95,11 +97,11 @@ export default function PatientsPage({ selectedClinic }) {
             </div>
 
             {/* --- Main Content: Table or Calendar --- */}
-            <div className="flex-grow overflow-y-auto">
+            <div className="flex-grow overflow-hidden">
                  {view === 'list' ? (
-                    <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
+                    <div className="bg-white border border-slate-200 rounded-lg shadow-sm h-full overflow-y-auto">
                         <table className="w-full">
-                            <thead className="bg-slate-50">
+                            <thead className="bg-slate-50 sticky top-0">
                                 <tr>
                                     <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">เวลา</th>
                                     <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">คนไข้</th>
@@ -127,11 +129,7 @@ export default function PatientsPage({ selectedClinic }) {
                         {appointments.length === 0 && <p className="text-center text-slate-500 py-8">No appointments for this day.</p>}
                     </div>
                  ) : (
-                    <div className="bg-white border rounded-lg shadow-sm p-8 text-center text-slate-500">
-                        <Calendar size={48} className="mx-auto mb-4 text-slate-300" />
-                        <h3 className="text-lg font-semibold">Calendar View</h3>
-                        <p>This feature is coming soon!</p>
-                    </div>
+                    <AppointmentCalendarView currentDate={currentDate} selectedClinic={selectedClinic} />
                  )}
             </div>
 
