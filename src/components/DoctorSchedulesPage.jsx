@@ -1,9 +1,9 @@
 // src/components/DoctorSchedulesPage.jsx (REPLACE)
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import authorizedFetch from '../api';
 import { FaTag } from 'react-icons/fa';
-import { Clock, PlusCircle, Trash2, VenetianMask } from 'lucide-react';
+import { PlusCircle, Trash2, VenetianMask } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import SettingsPage from './SettingsPage';
 
@@ -146,7 +146,7 @@ function TimetableManager({ doctor, onClose }) {
         try {
             const res = await authorizedFetch(`/api/special-schedules/${id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete schedule');
-            fetchSchedules(); // Re-fetch all schedules
+            fetchSchedules();
         } catch (err) {
             alert(err.message);
         }
@@ -165,11 +165,11 @@ function TimetableManager({ doctor, onClose }) {
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-y-auto">
                         <WeeklyScheduleEditor doctor={doctor} schedules={weeklySchedules} setSchedules={setWeeklySchedules} />
-                        <MonthlyScheduleEditor doctor={doctor} onUpdate={fetchSchedules} />
+                        <RecurringScheduleEditor doctor={doctor} onUpdate={fetchSchedules} />
                         <div className="bg-slate-50 p-4 rounded-lg border">
-                            <h4 className="font-semibold text-slate-700 mb-3">Special Dates & Vacations</h4>
+                            <h4 className="font-semibold text-slate-700 mb-3">Special Dates (Overrides)</h4>
                              <button onClick={() => setIsVacationModalOpen(true)} className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white font-semibold rounded-md shadow-sm hover:bg-red-600">
-                                <VenetianMask size={16}/> Set Vacation / Day Off
+                                <VenetianMask size={16}/> Set Vacation / Specific Day Off
                             </button>
                             <div className="space-y-2">
                                 {specialSchedules.map(s => (
@@ -263,9 +263,11 @@ function WeeklyScheduleEditor({ doctor, schedules, setSchedules }) {
     );
 }
 
-function MonthlyScheduleEditor({ doctor, onUpdate }) {
+function RecurringScheduleEditor({ doctor, onUpdate }) {
     const [clinicId, setClinicId] = useState(doctor.clinics[0]?.id || '');
     const [rule, setRule] = useState({ week: '1', day: '0' });
+    const [startTime, setStartTime] = useState('09:00');
+    const [endTime, setEndTime] = useState('17:00');
     const [status, setStatus] = useState({ message: '', type: '' });
     const [isLoading, setIsLoading] = useState(false);
 
@@ -276,11 +278,13 @@ function MonthlyScheduleEditor({ doctor, onUpdate }) {
         try {
             const payload = {
                 doctor_id: doctor.id, clinic_id: parseInt(clinicId, 10),
-                is_available: false, rule: { week: parseInt(rule.week), day: parseInt(rule.day) },
+                is_available: true, // This form is for setting days ON
+                start_time: startTime, end_time: endTime,
+                rule: { week: parseInt(rule.week), day: parseInt(rule.day) },
             };
             const res = await authorizedFetch('/api/special-schedules', { method: 'POST', body: JSON.stringify(payload) });
             if (!res.ok) throw new Error((await res.json()).message || 'Failed to add rule');
-            setStatus({ message: 'Recurring day off added!', type: 'success' });
+            setStatus({ message: 'Recurring schedule added!', type: 'success' });
             onUpdate();
         } catch (err) {
             setStatus({ message: err.message, type: 'error' });
@@ -291,9 +295,9 @@ function MonthlyScheduleEditor({ doctor, onUpdate }) {
     
     return (
         <div className="bg-slate-50 p-4 rounded-lg border">
-            <h4 className="font-semibold text-slate-700 mb-3">Recurring Days Off (Monthly)</h4>
+            <h4 className="font-semibold text-slate-700 mb-3">Recurring Schedule (Monthly)</h4>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-xs text-slate-500">Set a specific day of the month as unavailable (e.g., every 1st Sunday).</p>
+                <p className="text-xs text-slate-500">Use this for doctors who only work on specific days of the month (e.g., the 1st Sunday only).</p>
                 <div className="flex gap-2 items-center">
                     <select value={rule.week} onChange={e => setRule({...rule, week: e.target.value})} className="w-full p-2 border bg-white rounded-md text-sm">
                         <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
@@ -303,14 +307,24 @@ function MonthlyScheduleEditor({ doctor, onUpdate }) {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-slate-700">For Clinic</label>
+                    <label className="block text-sm font-medium text-slate-700">At Clinic</label>
                     <select value={clinicId} onChange={e => setClinicId(e.target.value)} className="w-full p-2 border bg-white rounded-md text-sm">
                         {doctor.clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </div>
+                 <div className="flex gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700">Start Time</label>
+                        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-1.5 border rounded-md text-sm"/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700">End Time</label>
+                        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-1.5 border rounded-md text-sm"/>
+                    </div>
+                </div>
                 <StatusMessage message={status.message} type={status.type} />
-                <button type="submit" disabled={isLoading} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white font-semibold rounded-md shadow-sm hover:bg-amber-600 disabled:opacity-50">
-                    <PlusCircle size={16}/> {isLoading ? 'Adding Rule...' : 'Add Recurring Day Off'}
+                <button type="submit" disabled={isLoading} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700 disabled:opacity-50">
+                    <PlusCircle size={16}/> {isLoading ? 'Adding Rule...' : 'Add Recurring Schedule'}
                 </button>
             </form>
         </div>
