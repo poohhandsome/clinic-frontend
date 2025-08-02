@@ -1,8 +1,7 @@
-// src/components/PatientsPage.jsx (REPLACE)
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw, UserPlus } from 'lucide-react';
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, parseISO } from 'date-fns';
 import AddNewPatientModal from './AddNewPatientModal';
 import SearchPatientModal from './SearchPatientModal';
 import AppointmentModal from './AppointmentModal';
@@ -44,13 +43,17 @@ export default function PatientsPage({ selectedClinic }) {
 
     const fetchAppointments = () => {
         const dateString = format(currentDate, 'yyyy-MM-dd');
+        // Fetch ALL appointments for the list view
+        authorizedFetch(`/api/all-appointments?clinic_id=${selectedClinic}&startDate=${dateString}&endDate=${dateString}`)
+            .then(res => res.json())
+            .then(setAllAppointments)
+            .catch(err => console.error("Failed to fetch appointments", err));
+
+        // Fetch only working doctors for the filter dropdown and calendar view
         authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
             .then(res => res.json())
-            .then(data => {
-                setAllAppointments(data.appointments || []);
-                setDoctorsOnDay(data.doctors || []);
-            })
-            .catch(err => console.error("Failed to fetch schedule", err));
+            .then(data => setDoctorsOnDay(data.doctors || []))
+            .catch(err => console.error("Failed to fetch doctors for the day", err));
     };
 
     useEffect(fetchAppointments, [currentDate, selectedClinic]);
@@ -141,9 +144,9 @@ export default function PatientsPage({ selectedClinic }) {
                             <tbody className="divide-y divide-slate-200">
                                 {filteredAppointments.map(app => (
                                     <tr key={app.id}>
-                                        <td className="p-3 whitespace-nowrap text-sm font-mono text-slate-700">{format(parseISO(`${format(currentDate, 'yyyy-MM-dd')}T${app.appointment_time}`), 'HH:mm')}</td>
-                                        <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{app.patient_name_at_booking}</td>
-                                        <td className="p-3 whitespace-nowrap"><DoctorTag name={doctorsOnDay.find(d => d.id === app.doctor_id)?.name} /></td>
+                                        <td className="p-3 whitespace-nowrap text-sm font-mono text-slate-700">{app.booking_time}</td>
+                                        <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{app.patient_name}</td>
+                                        <td className="p-3 whitespace-nowrap"><DoctorTag name={app.doctor_name} /></td>
                                         <td className="p-3 whitespace-nowrap"><StatusTag status={app.status} /></td>
                                         <td className="p-3 whitespace-nowrap text-sm font-medium space-x-2">
                                             <button className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200">Check-in</button>
