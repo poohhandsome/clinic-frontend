@@ -6,13 +6,15 @@ import clinicLogo from '../../assets/clinic-logo.png'; // Import the logo
 const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
     <li>
         <a 
-            href={href}
-            className={`flex items-center p-3 my-1 rounded-lg transition-colors group
-                ${active 
-                    ? 'bg-sky-100 text-sky-800 font-semibold' 
-                    : 'text-slate-600 hover:bg-slate-200'
-                }`}
-        >
+    href={href}
+    className={`flex items-center p-3 my-1 rounded-lg transition-colors group
+        ${active 
+            ? 'bg-sky-100 text-sky-800 font-semibold' 
+            : 'text-slate-600 hover:bg-slate-200'
+        }
+        ${isSidebarOpen ? '' : 'justify-center'}
+    `}
+>
             {icon}
             <span 
                 className={`overflow-hidden transition-all whitespace-nowrap 
@@ -47,21 +49,20 @@ export default function NewSidebar({ isSidebarOpen, currentPath }) {
         // 1. Reverted to light theme, keeping the responsive width
         <aside 
             className={`h-screen bg-white flex flex-col transition-all duration-300 ease-in-out border-r border-slate-200
-                ${isSidebarOpen ? 'w-[280px]' : 'w-20'}`}
+                ${isSidebarOpen ? 'w-[280px]' : 'w-[64px]'}`}
         >
             {/* Logo and Clinic Name Section */}
-            <div className="flex items-center h-16 px-4 border-b border-slate-200">
-                <div className="flex items-center overflow-hidden">
-                    <img src={clinicLogo} alt="Clinic Logo" className="h-10 w-10 flex-shrink-0 rounded-md" />
-                    <span 
-                        className={`font-bold text-xl ml-3 whitespace-nowrap transition-opacity duration-300 text-slate-800
-                            ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
-                    >
-                        Newtrend
-                    </span>
-                </div>
-            </div>
-
+            <div className={`flex items-center h-16 ${isSidebarOpen ? 'px-4' : 'px-2'} border-b border-slate-200`}>
+    <div className="flex items-center overflow-hidden">
+        <img src={clinicLogo} alt="Clinic Logo" className="h-10 w-10 flex-shrink-0 rounded-md" />
+        <span 
+            className={`font-bold text-xl ml-3 whitespace-nowrap transition-opacity duration-300 text-slate-800
+                ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
+        >
+            Newtrend
+        </span>
+    </div>
+</div>
             {/* Navigation Menu */}
             <nav className="flex-1 px-3 py-4">
                 <ul>
