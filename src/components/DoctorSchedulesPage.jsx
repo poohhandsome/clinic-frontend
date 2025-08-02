@@ -1,8 +1,8 @@
 // src/components/DoctorSchedulesPage.jsx (REPLACE)
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import authorizedFetch from '../api';
-import { FaTag } from 'react-icons/fa';
+import { FaTag, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import { PlusCircle, Trash2, VenetianMask } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import SettingsPage from './SettingsPage';
@@ -36,6 +36,7 @@ export default function DoctorSchedulesPage() {
     const [doctors, setDoctors] = useState([]);
     const [selectedDoctor, setSelectedDoctor] = useState(null);
     const [error, setError] = useState('');
+    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
 
     const fetchDoctors = () => {
          authorizedFetch('/api/doctors/unique')
@@ -45,21 +46,61 @@ export default function DoctorSchedulesPage() {
     }
 
     useEffect(fetchDoctors, []);
+
+    const sortedDoctors = useMemo(() => {
+        let sortableDoctors = [...doctors];
+        if (sortConfig.key !== null) {
+            sortableDoctors.sort((a, b) => {
+                let aValue = a[sortConfig.key];
+                let bValue = b[sortConfig.key];
+
+                // Handle sorting by nested clinic name
+                if (sortConfig.key === 'clinics') {
+                    aValue = a.clinics[0]?.name || '';
+                    bValue = b.clinics[0]?.name || '';
+                }
+
+                if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortableDoctors;
+    }, [doctors, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const SortableHeader = ({ label, sortKey }) => {
+        const icon = sortConfig.key === sortKey
+            ? (sortConfig.direction === 'ascending' ? <FaSortUp /> : <FaSortDown />)
+            : <FaSort />;
+        return (
+            <button onClick={() => requestSort(sortKey)} className="flex items-center gap-2">
+                {label} {icon}
+            </button>
+        );
+    };
     
     const DoctorList = () => (
         <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
             <table className="w-full">
                 <thead className="bg-slate-50">
                     <tr>
-                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Doctor Name</th>
-                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Clinics</th>
-                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"><SortableHeader label="Doctor Name" sortKey="name" /></th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"><SortableHeader label="Clinics" sortKey="clinics" /></th>
+                        <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider"><SortableHeader label="Status" sortKey="status" /></th>
                         <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Color</th>
                         <th className="p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                    {doctors.map(doc => (
+                    {sortedDoctors.map(doc => (
                         <tr key={doc.id}>
                             <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{doc.name}</td>
                             <td className="p-3 text-sm text-slate-700">
@@ -136,24 +177,26 @@ function TimetableManager({ doctor, onClose }) {
     };
 
     useEffect(fetchSchedules, [doctor]);
-
+    
     const handleDelete = async (type, id) => {
-        const confirm = window.confirm("Are you sure you want to delete this schedule entry?");
-        if (!confirm) return;
-        
+        const confirmDelete = window.confirm("Are you sure you want to delete this schedule entry?");
+        if (!confirmDelete) return;
+
         let url = '';
-        if (type === 'weekly') url = `/api/doctor-availability/${id}`; // Note: This needs a dedicated DELETE endpoint by availability ID
+        // This is a placeholder for deleting weekly schedules. A new backend endpoint is needed.
+        if (type === 'weekly') { alert('Delete functionality for weekly schedules is not yet implemented.'); return; }
         if (type === 'recurring') url = `/api/doctor-rules/${id}`;
         if (type === 'special') url = `/api/special-schedules/${id}`;
 
         try {
             const res = await authorizedFetch(url, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed to delete');
-            fetchSchedules(); // Refresh all data
-        } catch(err) {
+            if (!res.ok) throw new Error('Failed to delete schedule entry.');
+            fetchSchedules();
+        } catch (err) {
             alert(err.message);
         }
     };
+
 
     return (
         <>
@@ -323,7 +366,7 @@ function ScheduleOverviewTable({ weekly, recurring, onDelete }) {
                 {weekly.map(w => (
                     <tr key={w.id}>
                         <td className="p-2">{daysOfWeek.find(d => d.id === w.day_of_week)?.name}</td>
-                        <td className="p-2">{w.clinic_name || 'N/A'}</td>
+                        <td className="p-2">{w.clinic_name}</td>
                         <td className="p-2 font-mono">{w.start_time} - {w.end_time}</td>
                         <td className="p-2 text-right"><button onClick={() => onDelete('weekly', w.id)} className="text-red-500"><Trash2 size={14} /></button></td>
                     </tr>
@@ -345,7 +388,6 @@ function ScheduleOverviewTable({ weekly, recurring, onDelete }) {
 }
 
 function VacationPlannerModal({ doctor, onClose, onUpdate }) {
-    // ... (This component remains unchanged)
     const [workingDays, setWorkingDays] = useState([]);
     const [selectedDays, setSelectedDays] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
