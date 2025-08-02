@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import authorizedFetch from '../api';
-import { FaTag, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaTag, FaSort, FaSortUp, FaSortDown, FaEdit } from 'react-icons/fa';
 import { PlusCircle, Trash2, VenetianMask } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import SettingsPage from './SettingsPage';
+import EditDoctorModal from './EditDoctorModal'; // <-- Import the new modal
 
 // --- Helper Components & Constants ---
 const daysOfWeek = [
@@ -34,6 +35,8 @@ const StatusMessage = ({ message, type }) => {
 export default function DoctorSchedulesPage() {
     const [view, setView] = useState('schedule');
     const [doctors, setDoctors] = useState([]);
+    const [clinics, setClinics] = useState([]);
+    const [editingDoctor, setEditingDoctor] = useState(null); // <-- State for the edit modal
     const [selectedDoctor, setSelectedDoctor] = useState(null);
     const [error, setError] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
@@ -44,8 +47,17 @@ export default function DoctorSchedulesPage() {
             .then(data => setDoctors(data))
             .catch(err => setError(err.message));
     }
+    const fetchClinics = () => {
+        authorizedFetch('/api/clinics')
+            .then(res => res.ok ? res.json() : Promise.reject('Could not fetch clinics.'))
+            .then(setClinics)
+            .catch(err => setError(err.message));
+    }
 
-    useEffect(fetchDoctors, []);
+    useEffect(() => {
+        fetchDoctors();
+        fetchClinics();
+    }, []);
 
     const sortedDoctors = useMemo(() => {
         let sortableDoctors = [...doctors];
@@ -54,7 +66,6 @@ export default function DoctorSchedulesPage() {
                 let aValue = a[sortConfig.key];
                 let bValue = b[sortConfig.key];
 
-                // Handle sorting by nested clinic name
                 if (sortConfig.key === 'clinics') {
                     aValue = a.clinics[0]?.name || '';
                     bValue = b.clinics[0]?.name || '';
@@ -119,8 +130,9 @@ export default function DoctorSchedulesPage() {
                             <td className="p-3 whitespace-nowrap">
                                 <div className="w-5 h-5 rounded-full border border-slate-300" style={{ backgroundColor: doc.color || '#cccccc' }}></div>
                             </td>
-                            <td className="p-3 whitespace-nowrap text-sm font-medium">
+                            <td className="p-3 whitespace-nowrap text-sm font-medium space-x-2">
                                 <button onClick={() => setSelectedDoctor(doc)} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold hover:bg-blue-200">Manage Timetable</button>
+                                <button onClick={() => setEditingDoctor(doc)} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold hover:bg-slate-200">Edit</button>
                             </td>
                         </tr>
                     ))}
@@ -150,6 +162,7 @@ export default function DoctorSchedulesPage() {
                 <>
                     <DoctorList />
                     {selectedDoctor && <TimetableManager doctor={selectedDoctor} onClose={() => setSelectedDoctor(null)} />}
+                    {editingDoctor && <EditDoctorModal doctor={editingDoctor} clinics={clinics} onClose={() => setEditingDoctor(null)} onUpdate={fetchDoctors} />}
                 </>
             ) : <SettingsPage onDataChange={fetchDoctors} />}
         </div>
@@ -157,6 +170,7 @@ export default function DoctorSchedulesPage() {
 }
 
 // --- Timetable Manager Components ---
+// ... (The rest of this file remains the same as the previous step)
 function TimetableManager({ doctor, onClose }) {
     const [weeklySchedules, setWeeklySchedules] = useState([]);
     const [recurringRules, setRecurringRules] = useState([]);
@@ -183,7 +197,6 @@ function TimetableManager({ doctor, onClose }) {
         if (!confirmDelete) return;
 
         let url = '';
-        // This is a placeholder for deleting weekly schedules. A new backend endpoint is needed.
         if (type === 'weekly') { alert('Delete functionality for weekly schedules is not yet implemented.'); return; }
         if (type === 'recurring') url = `/api/doctor-rules/${id}`;
         if (type === 'special') url = `/api/special-schedules/${id}`;
@@ -242,8 +255,6 @@ function TimetableManager({ doctor, onClose }) {
         </>
     );
 }
-
-// --- Schedule Form & Table Components ---
 
 function WeeklyScheduleForm({ doctor, onUpdate }) {
     const [form, setForm] = useState({ day_of_week: 1, clinic_id: doctor.clinics[0]?.id || '', start_time: '09:00', end_time: '17:00' });

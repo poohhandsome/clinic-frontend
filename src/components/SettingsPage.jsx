@@ -1,11 +1,10 @@
 // src/components/SettingsPage.jsx (REPLACE)
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import authorizedFetch from '../api';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, PlusCircle } from 'lucide-react';
 
 // --- Helper Components ---
-
 const StatusMessage = ({ message, type }) => {
     if (!message) return null;
     const baseClasses = "p-3 rounded-md my-4 font-medium text-sm";
@@ -35,7 +34,6 @@ const dentistSpecialties = [
 ];
 
 const SpecialtyDropdown = ({ selected, onChange }) => {
-    // ... (This component remains unchanged)
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
     useEffect(() => {
@@ -72,10 +70,6 @@ const SpecialtyDropdown = ({ selected, onChange }) => {
 // --- Main Component ---
 export default function SettingsPage({ onDataChange }) {
     const [clinics, setClinics] = useState([]);
-    const [doctors, setDoctors] = useState([]);
-    const [view, setView] = useState('add');
-
-    // Add Form State
     const [addForm, setAddForm] = useState({
         fullName: '', specialties: [], selectedClinics: [],
         email: '', password: '', color: '#4299e1', status: 'active'
@@ -83,52 +77,12 @@ export default function SettingsPage({ onDataChange }) {
     const [addStatus, setAddStatus] = useState({ message: '', type: '' });
     const [isAdding, setIsAdding] = useState(false);
 
-    // Edit Form State
-    const [editDoctorId, setEditDoctorId] = useState('');
-    const [editForm, setEditForm] = useState({
-        specialties: [], selectedClinics: [], email: '',
-        color: '#4299e1', status: 'active', password: ''
-    });
-    const [editStatus, setEditStatus] = useState({ message: '', type: '' });
-    const [isEditing, setIsEditing] = useState(false);
-    
-    const fetchAllData = async () => {
-        try {
-            const [clinicsRes, doctorsRes] = await Promise.all([
-                authorizedFetch('/api/clinics'),
-                authorizedFetch('/api/doctors/unique')
-            ]);
-            if (!clinicsRes.ok || !doctorsRes.ok) throw new Error('Failed to load initial data.');
-            
-            setClinics(await clinicsRes.json());
-            setDoctors(await doctorsRes.json());
-        } catch (err) {
-            setAddStatus({ message: err.message, type: 'error' });
-            setEditStatus({ message: err.message, type: 'error' });
-        }
-    };
-
     useEffect(() => {
-        fetchAllData();
+        authorizedFetch('/api/clinics')
+            .then(res => res.ok ? res.json() : Promise.reject('Could not load clinics.'))
+            .then(setClinics)
+            .catch(err => setAddStatus({ message: err.message, type: 'error' }));
     }, []);
-
-    const selectedDoctorForEdit = useMemo(() => 
-        doctors.find(d => d.id === parseInt(editDoctorId, 10)),
-    [doctors, editDoctorId]);
-
-    useEffect(() => {
-        if (selectedDoctorForEdit) {
-            setEditForm({
-                specialties: selectedDoctorForEdit.specialty ? selectedDoctorForEdit.specialty.split(', ') : [],
-                selectedClinics: selectedDoctorForEdit.clinics.map(c => c.id),
-                email: selectedDoctorForEdit.email || '',
-                color: selectedDoctorForEdit.color || '#4299e1',
-                status: selectedDoctorForEdit.status || 'active',
-                password: '' // Don't pre-fill password
-            });
-        }
-    }, [selectedDoctorForEdit]);
-
 
     const handleAddSubmit = async (e) => {
         e.preventDefault();
@@ -161,149 +115,52 @@ export default function SettingsPage({ onDataChange }) {
         }
     };
     
-    const handleEditSubmit = async (e) => {
-        e.preventDefault();
-        if (!editDoctorId) return;
-        setIsEditing(true);
-        setEditStatus({ message: '', type: '' });
-        try {
-             const payload = {
-                specialty: editForm.specialties.join(', '),
-                clinicIds: editForm.selectedClinics,
-                email: editForm.email,
-                color: editForm.color,
-                status: editForm.status,
-            };
-            // Only include password if it's changed
-            if(editForm.password) {
-                payload.password = editForm.password;
-            }
-            const res = await authorizedFetch(`/api/doctors/${editDoctorId}/clinics`, { method: 'PUT', body: JSON.stringify(payload) });
-            if (!res.ok) throw new Error((await res.json()).message || 'Failed to update doctor');
-
-            setEditStatus({ message: 'Doctor updated successfully!', type: 'success' });
-            onDataChange(); // Notify parent to re-fetch doctor list
-            fetchAllData(); // Re-fetch all data for this component
-        } catch (err) {
-            setEditStatus({ message: err.message, type: 'error' });
-        } finally {
-            setIsEditing(false);
-        }
-    };
-    
     const handleAddFormChange = (e) => setAddForm(prev => ({...prev, [e.target.name]: e.target.value}));
-    const handleEditFormChange = (e) => setEditForm(prev => ({...prev, [e.target.name]: e.target.value}));
 
     return (
         <div className="max-w-2xl mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-md border border-slate-200">
-            <div className="border-b border-gray-200 mb-6">
-                <nav className="-mb-px flex space-x-6">
-                    <button onClick={() => setView('add')} className={`py-3 px-1 border-b-2 font-medium text-sm ${view === 'add' ? 'border-sky-500 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        Add Doctor
-                    </button>
-                    <button onClick={() => setView('edit')} className={`py-3 px-1 border-b-2 font-medium text-sm ${view === 'edit' ? 'border-sky-500 text-sky-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
-                        Edit Doctor
-                    </button>
-                </nav>
-            </div>
-
-            <div>
-                {view === 'add' && (
-                    <form onSubmit={handleAddSubmit} className="space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
-                                <input type="text" name="fullName" value={addForm.fullName} onChange={handleAddFormChange} className="w-full p-2 border rounded-md" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-                                <input type="email" name="email" value={addForm.email} onChange={handleAddFormChange} className="w-full p-2 border rounded-md" />
-                            </div>
-                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Password *</label>
-                                <input type="password" name="password" value={addForm.password} onChange={handleAddFormChange} className="w-full p-2 border rounded-md" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Specialty</label>
-                                <SpecialtyDropdown selected={addForm.specialties} onChange={val => setAddForm(p => ({...p, specialties: val}))} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                                    <select name="status" value={addForm.status} onChange={handleAddFormChange} className="w-full p-2 border rounded-md">
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Color</label>
-                                    <input type="color" name="color" value={addForm.color} onChange={handleAddFormChange} className="w-full h-10 p-1 border rounded-md" />
-                                </div>
-                            </div>
-                        </div>
+             <h3 className="text-lg font-semibold text-slate-800 mb-4">Add New Doctor</h3>
+             <form onSubmit={handleAddSubmit} className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
+                        <input type="text" name="fullName" value={addForm.fullName} onChange={handleAddFormChange} className="w-full p-2 border rounded-md" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+                        <input type="email" name="email" value={addForm.email} onChange={handleAddFormChange} className="w-full p-2 border rounded-md" />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Password *</label>
+                        <input type="password" name="password" value={addForm.password} onChange={handleAddFormChange} className="w-full p-2 border rounded-md" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Specialty</label>
+                        <SpecialtyDropdown selected={addForm.specialties} onChange={val => setAddForm(p => ({...p, specialties: val}))} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Assign to Clinics *</label>
-                            <ClinicCheckboxList clinics={clinics} selected={addForm.selectedClinics} onChange={(id) => setAddForm(p => ({...p, selectedClinics: p.selectedClinics.includes(id) ? p.selectedClinics.filter(i => i !== id) : [...p.selectedClinics, id]}))} />
-                        </div>
-                        <StatusMessage message={addStatus.message} type={addStatus.type} />
-                        <button type="submit" disabled={isAdding} className="w-full px-4 py-2.5 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50">
-                            {isAdding ? 'Adding...' : 'Add Doctor'}
-                        </button>
-                    </form>
-                )}
-
-                {view === 'edit' && (
-                    <form onSubmit={handleEditSubmit} className="space-y-5">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Select Doctor to Edit</label>
-                            <select value={editDoctorId} onChange={e => setEditDoctorId(e.target.value)} className="w-full p-2 border rounded-md">
-                                <option value="">-- Please Select --</option>
-                                {doctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                            <select name="status" value={addForm.status} onChange={handleAddFormChange} className="w-full p-2 border rounded-md">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
                             </select>
                         </div>
-
-                        {editDoctorId && (
-                            <>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-                                        <input type="email" name="email" value={editForm.email} onChange={handleEditFormChange} className="w-full p-2 border rounded-md" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">New Password (optional)</label>
-                                        <input type="password" name="password" value={editForm.password} onChange={handleEditFormChange} className="w-full p-2 border rounded-md" placeholder="Leave blank to keep same"/>
-                                    </div>
-                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Specialty</label>
-                                        <SpecialtyDropdown selected={editForm.specialties} onChange={val => setEditForm(p => ({...p, specialties: val}))} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                                            <select name="status" value={editForm.status} onChange={handleEditFormChange} className="w-full p-2 border rounded-md">
-                                                <option value="active">Active</option>
-                                                <option value="inactive">Inactive</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Color</label>
-                                            <input type="color" name="color" value={editForm.color} onChange={handleEditFormChange} className="w-full h-10 p-1 border rounded-md" />
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Manage Clinic Assignments *</label>
-                                    <ClinicCheckboxList clinics={clinics} selected={editForm.selectedClinics} onChange={(id) => setEditForm(p => ({...p, selectedClinics: p.selectedClinics.includes(id) ? p.selectedClinics.filter(i => i !== id) : [...p.selectedClinics, id]}))}/>
-                                </div>
-                                <StatusMessage message={editStatus.message} type={editStatus.type} />
-                                <button type="submit" disabled={isEditing} className="w-full px-4 py-2.5 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 disabled:opacity-50">
-                                    {isEditing ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            </>
-                        )}
-                    </form>
-                )}
-            </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Color</label>
+                            <input type="color" name="color" value={addForm.color} onChange={handleAddFormChange} className="w-full h-10 p-1 border rounded-md" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Assign to Clinics *</label>
+                    <ClinicCheckboxList clinics={clinics} selected={addForm.selectedClinics} onChange={(id) => setAddForm(p => ({...p, selectedClinics: p.selectedClinics.includes(id) ? p.selectedClinics.filter(i => i !== id) : [...p.selectedClinics, id]}))} />
+                </div>
+                <StatusMessage message={addStatus.message} type={addStatus.type} />
+                <button type="submit" disabled={isAdding} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50">
+                    <PlusCircle size={16}/> {isAdding ? 'Adding...' : 'Add Doctor'}
+                </button>
+            </form>
         </div>
     );
 }
