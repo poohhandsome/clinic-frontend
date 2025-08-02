@@ -60,7 +60,7 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
                 <img
                     src={clinicLogo}
                     alt="Clinic Logo"
-                    className="h-10 w-10 rounded-md flex-shrink-0"
+                    className="h-10 w-10 rounded-md flex-shrink-0 object-contain"
                 />
                 {/* This text is now conditionally rendered, so it doesn't take up space when hidden */}
                 {showSidebar && (
