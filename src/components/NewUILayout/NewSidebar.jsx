@@ -1,7 +1,6 @@
-
 import React from 'react';
-// Corrected: Replaced the non-existent 'UserMd' with 'UserRound'
-import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, FileInvoiceDollar, FlaskConical, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
+// Corrected: Replaced 'FileInvoiceDollar' with 'Receipt'
+import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const NavItem = ({ icon, text, active, isSidebarOpen }) => (
     <li className={`relative flex items-center py-3 px-4 my-1 font-medium rounded-md cursor-pointer transition-colors group ${active ? 'bg-gradient-to-tr from-sky-200 to-sky-100 text-sky-800' : 'hover:bg-slate-200 text-slate-600'}`}>
@@ -20,10 +19,10 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
         { id: '#dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
         { id: '#clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
         { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={20} /> },
-        // Corrected: Using the imported UserRound icon
         { id: '#doctors', text: 'Doctors Management', icon: <UserRound size={20} /> },
         { id: '#treatments', text: 'Treatments', icon: <Syringe size={20} /> },
-        { id: '#billing', text: 'Billing', icon: <FileInvoiceDollar size={20} /> },
+        // Corrected: Using the imported Receipt icon for Billing
+        { id: '#billing', text: 'Billing', icon: <Receipt size={20} /> },
         { id: '#lab-costs', text: 'Lab Costs', icon: <FlaskConical size={20} /> },
         { id: '#summary', text: 'Summary', icon: <BarChart3 size={20} /> },
     ];
