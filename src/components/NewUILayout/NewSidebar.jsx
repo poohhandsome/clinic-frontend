@@ -58,7 +58,7 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
             {/* Logo Section - Simplified and fixed for centering */}
             <div 
   className={`relative h-16 border-b border-slate-200 transition-all duration-300 flex items-center 
-    ${showSidebar ? 'px-4 justify-start' : 'justify-center px-0'}
+    ${showSidebar ? 'px-4 justify-start' : 'justify-center px-4'}
   `}
 >
   <div className="relative flex items-center justify-center w-10 h-10">
