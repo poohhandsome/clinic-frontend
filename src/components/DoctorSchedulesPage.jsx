@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import authorizedFetch from '../api';
 import { FaTag } from 'react-icons/fa';
-import { PlusCircle, Trash2, VenetianMask, Clock } from 'lucide-react'; // CORRECTED: Added Clock
+import { PlusCircle, Trash2, VenetianMask } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import SettingsPage from './SettingsPage';
 
@@ -12,13 +12,16 @@ const daysOfWeek = [
     { id: 1, name: 'Monday' }, { id: 2, name: 'Tuesday' }, { id: 3, name: 'Wednesday' },
     { id: 4, name: 'Thursday' }, { id: 5, name: 'Friday' }, { id: 6, 'name': 'Saturday' }, { id: 0, name: 'Sunday' }
 ];
-const clinicColors = {
-    1: { bg: 'bg-sky-100', text: 'text-sky-800' },
-    2: { bg: 'bg-green-100', text: 'text-green-800' },
-    3: { bg: 'bg-indigo-100', text: 'text-indigo-800' },
-    default: { bg: 'bg-slate-100', text: 'text-slate-800' }
+const weeksOfMonth = [
+    { id: 1, name: '1st' }, { id: 2, name: '2nd' }, { id: 3, name: '3rd' }, { id: 4, name: '4th' }, { id: 5, name: '5th' }
+];
+const getClinicColor = (clinicId) => {
+    const colors = {
+        1: { bg: 'bg-sky-100', text: 'text-sky-800' }, 2: { bg: 'bg-green-100', text: 'text-green-800' },
+        3: { bg: 'bg-indigo-100', text: 'text-indigo-800' }, default: { bg: 'bg-slate-100', text: 'text-slate-800' }
+    };
+    return colors[clinicId] || colors.default;
 };
-const getClinicColor = (clinicId) => clinicColors[clinicId] || clinicColors.default;
 
 const StatusMessage = ({ message, type }) => {
     if (!message) return null;
@@ -26,7 +29,6 @@ const StatusMessage = ({ message, type }) => {
     const typeClasses = type === 'success' ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
     return <div className={`${baseClasses} ${typeClasses}`}>{message}</div>;
 };
-
 
 // --- Main Page Component ---
 export default function DoctorSchedulesPage() {
@@ -115,39 +117,40 @@ export default function DoctorSchedulesPage() {
 
 // --- Timetable Manager Components ---
 function TimetableManager({ doctor, onClose }) {
-    const [weeklySchedules, setWeeklySchedules] = useState({});
+    const [weeklySchedules, setWeeklySchedules] = useState([]);
+    const [recurringRules, setRecurringRules] = useState([]);
     const [specialSchedules, setSpecialSchedules] = useState([]);
     const [isVacationModalOpen, setIsVacationModalOpen] = useState(false);
 
     const fetchSchedules = () => {
         Promise.all([
             authorizedFetch(`/api/doctor-availability/${doctor.id}`),
+            authorizedFetch(`/api/doctor-rules/${doctor.id}`),
             authorizedFetch(`/api/special-schedules/${doctor.id}`)
-        ]).then(async ([availRes, specialRes]) => {
-            if (!availRes.ok || !specialRes.ok) throw new Error('Failed to fetch schedules');
-            const availability = await availRes.json();
-            const special = await specialRes.json();
-
-            const groupedByDay = availability.reduce((acc, curr) => {
-                const day = curr.day_of_week;
-                if (!acc[day]) acc[day] = [];
-                acc[day].push({ ...curr, id: Math.random() });
-                return acc;
-            }, {});
-            setWeeklySchedules(groupedByDay);
-            setSpecialSchedules(special);
+        ]).then(async ([availRes, rulesRes, specialRes]) => {
+            if (!availRes.ok || !rulesRes.ok || !specialRes.ok) throw new Error('Failed to fetch schedules');
+            setWeeklySchedules(await availRes.json());
+            setRecurringRules(await rulesRes.json());
+            setSpecialSchedules(await specialRes.json());
         }).catch(err => console.error("Error fetching schedules:", err));
     };
 
     useEffect(fetchSchedules, [doctor]);
 
-    const handleDeleteSpecial = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this special schedule?")) return;
+    const handleDelete = async (type, id) => {
+        const confirm = window.confirm("Are you sure you want to delete this schedule entry?");
+        if (!confirm) return;
+        
+        let url = '';
+        if (type === 'weekly') url = `/api/doctor-availability/${id}`; // Note: This needs a dedicated DELETE endpoint by availability ID
+        if (type === 'recurring') url = `/api/doctor-rules/${id}`;
+        if (type === 'special') url = `/api/special-schedules/${id}`;
+
         try {
-            const res = await authorizedFetch(`/api/special-schedules/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed to delete schedule');
-            fetchSchedules();
-        } catch (err) {
+            const res = await authorizedFetch(url, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete');
+            fetchSchedules(); // Refresh all data
+        } catch(err) {
             alert(err.message);
         }
     };
@@ -163,29 +166,32 @@ function TimetableManager({ doctor, onClose }) {
                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M6.4 19L5 17.6l5.6-5.6L5 6.4L6.4 5l5.6 5.6L17.6 5L19 6.4L13.4 12l5.6 5.6l-1.4 1.4l-5.6-5.6L6.4 19Z"/></svg>
                         </button>
                     </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-y-auto">
-                        <WeeklyScheduleEditor doctor={doctor} schedules={weeklySchedules} setSchedules={setWeeklySchedules} />
-                        <RecurringScheduleEditor doctor={doctor} onUpdate={fetchSchedules} />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto pr-2">
+                        {/* Column 1: Forms */}
+                        <div className="space-y-6">
+                           <WeeklyScheduleForm doctor={doctor} onUpdate={fetchSchedules} />
+                           <RecurringScheduleForm doctor={doctor} onUpdate={fetchSchedules} />
+                           <div className="bg-slate-50 p-4 rounded-lg border">
+                                <h4 className="font-semibold text-slate-700 mb-3">Vacations / Days Off</h4>
+                                <button onClick={() => setIsVacationModalOpen(true)} className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white font-semibold rounded-md shadow-sm hover:bg-red-600">
+                                    <VenetianMask size={16}/> Set Vacation
+                                </button>
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                     {specialSchedules.map(s => (
+                                        <div key={s.id} className="flex items-center justify-between p-2 rounded-md bg-white border">
+                                            <div className="font-semibold text-sm text-red-600">{format(parseISO(s.schedule_date), 'EEE, d MMM yyyy')}</div>
+                                            <button onClick={() => handleDelete('special', s.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+                                        </div>
+                                    ))}
+                                    {specialSchedules.length === 0 && <p className="text-xs text-center text-slate-400 py-4">No specific days off set.</p>}
+                                </div>
+                           </div>
+                        </div>
+
+                        {/* Column 2: Schedule Overview */}
                         <div className="bg-slate-50 p-4 rounded-lg border">
-                            <h4 className="font-semibold text-slate-700 mb-3">Special Dates (Overrides)</h4>
-                             <button onClick={() => setIsVacationModalOpen(true)} className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white font-semibold rounded-md shadow-sm hover:bg-red-600">
-                                <VenetianMask size={16}/> Set Vacation / Specific Day Off
-                            </button>
-                            <div className="space-y-2">
-                                {specialSchedules.map(s => (
-                                    <div key={s.id} className="flex items-center justify-between p-2 rounded-md bg-white border">
-                                        <div>
-                                            <div className="font-bold text-sm text-slate-800">{format(parseISO(s.schedule_date), 'EEE, d MMM yyyy')}</div>
-                                            <div className="text-xs text-slate-500">{s.clinic_name}</div>
-                                        </div>
-                                        <div className={`text-sm font-semibold ${s.is_available ? 'text-green-600' : 'text-red-600'}`}>
-                                            {s.is_available ? `${s.start_time} - ${s.end_time}` : 'Unavailable'}
-                                        </div>
-                                        <button onClick={() => handleDeleteSpecial(s.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
-                                    </div>
-                                ))}
-                                {specialSchedules.length === 0 && <p className="text-xs text-center text-slate-400 py-4">No special dates set.</p>}
-                            </div>
+                           <h4 className="font-semibold text-slate-700 mb-3">Schedule Overview</h4>
+                           <ScheduleOverviewTable weekly={weeklySchedules} recurring={recurringRules} onDelete={handleDelete} />
                         </div>
                     </div>
                 </div>
@@ -194,144 +200,152 @@ function TimetableManager({ doctor, onClose }) {
     );
 }
 
-function WeeklyScheduleEditor({ doctor, schedules, setSchedules }) {
-    const [status, setStatus] = useState({ message: '', type: '' });
-    const [isLoading, setIsLoading] = useState(false);
+// --- Schedule Form & Table Components ---
 
-    const handleAddRow = (dayId) => {
-        const newRow = { id: Math.random(), day_of_week: dayId, clinic_id: doctor.clinics[0]?.id || '', start_time: '09:00', end_time: '17:00' };
-        setSchedules(prev => ({ ...prev, [dayId]: [...(prev[dayId] || []), newRow] }));
-    };
-
-    const handleRemoveRow = (dayId, rowId) => {
-        setSchedules(prev => ({...prev, [dayId]: prev[dayId].filter(row => row.id !== rowId) }));
-    };
-
-    const handleRowChange = (dayId, rowId, field, value) => {
-        setSchedules(prev => ({
-            ...prev,
-            [dayId]: prev[dayId].map(row => row.id === rowId ? { ...row, [field]: value } : row)
-        }));
-    };
-
-    const handleSave = () => {
-        setIsLoading(true);
-        setStatus({ message: '', type: ''});
-        const availabilityPayload = Object.values(schedules).flat();
-
-        authorizedFetch(`/api/doctor-availability/${doctor.id}`, {
-            method: 'POST', body: JSON.stringify({ availability: availabilityPayload })
-        })
-        .then(res => {
-            if (!res.ok) throw new Error('Failed to save schedule.');
-            setStatus({ message: 'Weekly schedule saved!', type: 'success' });
-        })
-        .catch(err => setStatus({ message: err.message, type: 'error' }))
-        .finally(() => setIsLoading(false));
-    };
-
-    return (
-        <div className="bg-slate-50 p-4 rounded-lg border">
-            <h4 className="font-semibold text-slate-700 mb-3">Working Hours (Every Week)</h4>
-            <div className="space-y-4">
-                {daysOfWeek.map(day => (
-                    <div key={day.id}>
-                        <label className="font-medium text-sm text-slate-600">{day.name}</label>
-                        <div className="space-y-2 mt-1">
-                            {(schedules[day.id] || []).map(row => (
-                                <div key={row.id} className="grid grid-cols-8 gap-2 items-center">
-                                    <select value={row.clinic_id} onChange={e => handleRowChange(day.id, row.id, 'clinic_id', parseInt(e.target.value))} className="col-span-3 p-1.5 border rounded-md text-sm bg-white">
-                                        {doctor.clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                    <input type="time" value={row.start_time} onChange={e => handleRowChange(day.id, row.id, 'start_time', e.target.value)} className="col-span-2 p-1.5 border rounded-md text-sm" />
-                                    <input type="time" value={row.end_time} onChange={e => handleRowChange(day.id, row.id, 'end_time', e.target.value)} className="col-span-2 p-1.5 border rounded-md text-sm" />
-                                    <button onClick={() => handleRemoveRow(day.id, row.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={16} /></button>
-                                </div>
-                            ))}
-                        </div>
-                        <button onClick={() => handleAddRow(day.id)} className="mt-2 text-xs flex items-center gap-1 text-sky-600 hover:text-sky-800">
-                            <PlusCircle size={14} /> Add Schedule
-                        </button>
-                    </div>
-                ))}
-            </div>
-            <StatusMessage message={status.message} type={status.type} />
-            <button onClick={handleSave} disabled={isLoading} className="mt-4 w-full px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 disabled:opacity-50">
-                {isLoading ? 'Saving...' : 'Save Weekly Schedule'}
-            </button>
-        </div>
-    );
-}
-
-function RecurringScheduleEditor({ doctor, onUpdate }) {
-    const [clinicId, setClinicId] = useState(doctor.clinics[0]?.id || '');
-    const [rule, setRule] = useState({ week: '1', day: '0' });
-    const [startTime, setStartTime] = useState('09:00');
-    const [endTime, setEndTime] = useState('17:00');
-    const [status, setStatus] = useState({ message: '', type: '' });
-    const [isLoading, setIsLoading] = useState(false);
-
+function WeeklyScheduleForm({ doctor, onUpdate }) {
+    const [form, setForm] = useState({ day_of_week: 1, clinic_id: doctor.clinics[0]?.id || '', start_time: '09:00', end_time: '17:00' });
+    const [status, setStatus] = useState({ message: '', type: ''});
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
-        setStatus({ message: '', type: ''});
         try {
-            const payload = {
-                doctor_id: doctor.id, clinic_id: parseInt(clinicId, 10),
-                is_available: true, 
-                start_time: startTime, end_time: endTime,
-                rule: { week: parseInt(rule.week), day: parseInt(rule.day) },
-            };
-            const res = await authorizedFetch('/api/special-schedules', { method: 'POST', body: JSON.stringify(payload) });
-            if (!res.ok) throw new Error((await res.json()).message || 'Failed to add rule');
-            setStatus({ message: 'Recurring schedule added!', type: 'success' });
+            const res = await authorizedFetch(`/api/doctor-availability/${doctor.id}`, {
+                method: 'POST', body: JSON.stringify({ availability: [form] })
+            });
+            if (!res.ok) throw new Error('Failed to add schedule.');
+            setStatus({ message: 'Weekly schedule added!', type: 'success'});
             onUpdate();
-        } catch (err) {
+        } catch(err) {
             setStatus({ message: err.message, type: 'error' });
-        } finally {
-            setIsLoading(false);
         }
     };
     
     return (
         <div className="bg-slate-50 p-4 rounded-lg border">
-            <h4 className="font-semibold text-slate-700 mb-3">Recurring Schedule (Monthly)</h4>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-xs text-slate-500">Use this for doctors who only work on specific days of the month (e.g., the 1st Sunday only).</p>
-                <div className="flex gap-2 items-center">
-                    <select value={rule.week} onChange={e => setRule({...rule, week: e.target.value})} className="w-full p-2 border bg-white rounded-md text-sm">
-                        <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
-                    </select>
-                    <select value={rule.day} onChange={e => setRule({...rule, day: e.target.value})} className="w-full p-2 border bg-white rounded-md text-sm">
+            <h4 className="font-semibold text-slate-700 mb-3">Add Weekly Schedule</h4>
+            <form onSubmit={handleSubmit} className="space-y-3">
+                 <div className="grid grid-cols-2 gap-3">
+                    <select value={form.day_of_week} onChange={e => setForm({...form, day_of_week: parseInt(e.target.value)})} className="p-2 border bg-white rounded-md text-sm">
                         {daysOfWeek.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700">At Clinic</label>
-                    <select value={clinicId} onChange={e => setClinicId(e.target.value)} className="w-full p-2 border bg-white rounded-md text-sm">
-                        {doctor.clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <select value={form.clinic_id} onChange={e => setForm({...form, clinic_id: parseInt(e.target.value)})} className="p-2 border bg-white rounded-md text-sm">
+                         {doctor.clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </div>
-                 <div className="flex gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700">Start Time</label>
-                        <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-1.5 border rounded-md text-sm"/>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700">End Time</label>
-                        <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-1.5 border rounded-md text-sm"/>
-                    </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <input type="time" value={form.start_time} onChange={e => setForm({...form, start_time: e.target.value})} className="p-2 border rounded-md text-sm" />
+                    <input type="time" value={form.end_time} onChange={e => setForm({...form, end_time: e.target.value})} className="p-2 border rounded-md text-sm" />
                 </div>
                 <StatusMessage message={status.message} type={status.type} />
-                <button type="submit" disabled={isLoading} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700 disabled:opacity-50">
-                    <PlusCircle size={16}/> {isLoading ? 'Adding Rule...' : 'Add Recurring Schedule'}
+                <button type="submit" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700">
+                    <PlusCircle size={16}/> Add to Weekly Schedule
                 </button>
             </form>
         </div>
     );
 }
 
+function RecurringScheduleForm({ doctor, onUpdate }) {
+    const [form, setForm] = useState({ day_of_week: 1, clinic_id: doctor.clinics[0]?.id || '', start_time: '09:00', end_time: '17:00' });
+    const [selectedWeeks, setSelectedWeeks] = useState([]);
+    const [status, setStatus] = useState({ message: '', type: ''});
+
+    const handleWeekToggle = (weekId) => {
+        setSelectedWeeks(prev => prev.includes(weekId) ? prev.filter(w => w !== weekId) : [...prev, weekId]);
+    };
+
+     const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (selectedWeeks.length === 0) {
+            setStatus({ message: 'Please select at least one week.', type: 'error' });
+            return;
+        }
+        const payload = { ...form, weeks_of_month: selectedWeeks };
+        try {
+            const res = await authorizedFetch(`/api/doctor-rules/${doctor.id}`, {
+                method: 'POST', body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error('Failed to add recurring rule.');
+            setStatus({ message: 'Recurring rule added!', type: 'success'});
+            onUpdate();
+        } catch(err) {
+            setStatus({ message: err.message, type: 'error' });
+        }
+    };
+
+    return (
+        <div className="bg-slate-50 p-4 rounded-lg border">
+            <h4 className="font-semibold text-slate-700 mb-3">Add Recurring Schedule</h4>
+             <form onSubmit={handleSubmit} className="space-y-3">
+                 <div className="grid grid-cols-2 gap-3">
+                    <select value={form.day_of_week} onChange={e => setForm({...form, day_of_week: parseInt(e.target.value)})} className="p-2 border bg-white rounded-md text-sm">
+                        {daysOfWeek.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                    <select value={form.clinic_id} onChange={e => setForm({...form, clinic_id: parseInt(e.target.value)})} className="p-2 border bg-white rounded-md text-sm">
+                         {doctor.clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                </div>
+                 <div className="flex flex-wrap gap-2">
+                    {weeksOfMonth.map(w => (
+                        <button type="button" key={w.id} onClick={() => handleWeekToggle(w.id)}
+                            className={`px-3 py-1 text-xs font-semibold rounded-full ${selectedWeeks.includes(w.id) ? 'bg-green-600 text-white' : 'bg-white border'}`}>
+                            {w.name} Week
+                        </button>
+                    ))}
+                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <input type="time" value={form.start_time} onChange={e => setForm({...form, start_time: e.target.value})} className="p-2 border rounded-md text-sm" />
+                    <input type="time" value={form.end_time} onChange={e => setForm({...form, end_time: e.target.value})} className="p-2 border rounded-md text-sm" />
+                </div>
+                <StatusMessage message={status.message} type={status.type} />
+                <button type="submit" className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-md shadow-sm hover:bg-green-700">
+                    <PlusCircle size={16}/> Add Recurring Rule
+                </button>
+            </form>
+        </div>
+    );
+}
+
+function ScheduleOverviewTable({ weekly, recurring, onDelete }) {
+    const getWeekSuffix = (n) => ({ '1': 'st', '2': 'nd', '3': 'rd' }[n] || 'th');
+    
+    return (
+        <table className="w-full text-sm">
+            <thead className="text-left">
+                <tr>
+                    <th className="p-2 font-medium text-slate-500">Day</th>
+                    <th className="p-2 font-medium text-slate-500">Clinic</th>
+                    <th className="p-2 font-medium text-slate-500">Time</th>
+                    <th className="p-2 font-medium text-slate-500"></th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+                {weekly.map(w => (
+                    <tr key={w.id}>
+                        <td className="p-2">{daysOfWeek.find(d => d.id === w.day_of_week)?.name}</td>
+                        <td className="p-2">{w.clinic_name || 'N/A'}</td>
+                        <td className="p-2 font-mono">{w.start_time} - {w.end_time}</td>
+                        <td className="p-2 text-right"><button onClick={() => onDelete('weekly', w.id)} className="text-red-500"><Trash2 size={14} /></button></td>
+                    </tr>
+                ))}
+                {recurring.map(r => (
+                    <tr key={r.id}>
+                        <td className="p-2">
+                            {daysOfWeek.find(d => d.id === r.day_of_week)?.name}
+                            <span className="text-xs text-slate-500 ml-1">({r.weeks_of_month.map(w => w + getWeekSuffix(w)).join(', ')})</span>
+                        </td>
+                        <td className="p-2">{r.clinic_name}</td>
+                        <td className="p-2 font-mono">{r.start_time} - {r.end_time}</td>
+                        <td className="p-2 text-right"><button onClick={() => onDelete('recurring', r.id)} className="text-red-500"><Trash2 size={14} /></button></td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    );
+}
+
 function VacationPlannerModal({ doctor, onClose, onUpdate }) {
+    // ... (This component remains unchanged)
     const [workingDays, setWorkingDays] = useState([]);
     const [selectedDays, setSelectedDays] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -386,7 +400,6 @@ function VacationPlannerModal({ doctor, onClose, onUpdate }) {
                                 <div className="ml-3">
                                     <div className="font-bold text-slate-800">{format(parseISO(day.date), 'EEE, d MMM yyyy')}</div>
                                     <div className="text-xs text-slate-600 flex items-center gap-1.5"><FaTag size={10}/> {day.clinicName}</div>
-                                    <div className="text-xs text-slate-600 flex items-center gap-1.5"><Clock size={10}/> {day.startTime} - {day.endTime}</div>
                                 </div>
                             </label>
                         ))}
