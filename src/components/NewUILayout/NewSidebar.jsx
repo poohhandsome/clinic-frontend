@@ -55,27 +55,24 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
-            {/* Logo Section - Simplified and fixed for centering */}
-            <div 
-  className={`relative h-16 border-b border-slate-200 transition-all duration-300 flex items-center 
-    ${showSidebar ? 'px-4 justify-start' : 'justify-center px-4'}
-  `}
->
-  <div className="relative flex items-center justify-center w-10 h-10">
-    <img
-      src={clinicLogo}
-      alt="Clinic Logo"
-      className="w-10 h-10 object-contain rounded-md"
-    />
-  </div>
-  <span
-    className={`ml-3 font-bold text-xl whitespace-nowrap text-slate-800 transition-all duration-300
-      ${showSidebar ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
-    `}
-  >
-    Newtrend
-  </span>
-</div>
+           {/* CORRECTED LOGO SECTION */}
+            <div className={`flex items-center h-16 px-4 border-b border-slate-200 ${!showSidebar && 'justify-center'}`}>
+                <div className="flex items-center">
+                    <img
+                        src={clinicLogo}
+                        alt="Clinic Logo"
+                        className="h-10 w-10 rounded-md flex-shrink-0"
+                    />
+                    <span
+                        className={`ml-3 font-bold text-xl whitespace-nowrap text-slate-800
+                            transition-opacity duration-200
+                            ${showSidebar ? 'opacity-100' : 'opacity-0'}`
+                        }
+                    >
+                        Newtrend
+                    </span>
+                </div>
+            </div>
             
             <nav className="flex-1 px-3 py-4">
                 <ul>
