@@ -1,4 +1,3 @@
-// src/components/SettingsPage.jsx (REPLACE)
 
 import React, { useState, useEffect, useRef } from 'react';
 import authorizedFetch from '../api';

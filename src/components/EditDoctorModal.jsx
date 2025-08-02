@@ -1,4 +1,3 @@
-// src/components/EditDoctorModal.jsx (NEW FILE)
 
 import React, { useState, useEffect, useRef } from 'react';
 import authorizedFetch from '../api';
@@ -109,7 +108,7 @@ export default function EditDoctorModal({ doctor, clinics, onClose, onUpdate }) 
             if (editForm.password) {
                 payload.password = editForm.password;
             }
-            const res = await authorizedFetch(`/api/doctors/${doctor.id}/clinics`, { 
+            const res = await authorizedFetch(`/api/doctors/${doctor.id}`, { 
                 method: 'PUT', body: JSON.stringify(payload) 
             });
             if (!res.ok) throw new Error((await res.json()).message || 'Failed to update doctor');
