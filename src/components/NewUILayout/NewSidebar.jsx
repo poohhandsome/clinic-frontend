@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3 } from 'lucide-react';
-import clinicLogo from '../../assets/clinic-logo.png'; // Corrected path if you moved it
+import clinicLogo from '../../assets/clinic-logo.png';
 
 const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
     <li>
@@ -11,7 +11,8 @@ const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
                 ${active 
                     ? 'bg-sky-100 text-sky-800 font-semibold' 
                     : 'text-slate-600 hover:bg-slate-200'
-                }`}
+                }
+                ${!isSidebarOpen && 'justify-center'}`}
         >
             {icon}
             <span 
@@ -31,7 +32,6 @@ const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
 );
 
 export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPath }) {
-    // 1. State to manage hover effect for expansion
     const [isHovering, setIsHovering] = useState(false);
     const showSidebar = isSidebarOpen || isHovering;
 
@@ -50,35 +50,28 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
         <aside 
             className={`h-screen bg-white flex flex-col border-r border-slate-200
                 transition-all duration-300 ease-in-out 
-                ${showSidebar ? 'w-[280px]' : 'w-[64px]'}`
+                ${showSidebar ? 'w-[280px]' : 'w-20'}`
             }
-            // 2. Hover events are now on the main aside element
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
-            {/* Logo Section */}
-            <div className={`flex items-center h-16 border-b border-slate-200 
-                transition-all duration-300 ease-in-out
-                ${showSidebar ? 'px-4 justify-start' : 'px-4 justify-center'}`
-            }>
-                <div className="flex items-center">
-                    <img
-                        src={clinicLogo}
-                        alt="Clinic Logo"
-                        className="h-10 w-10 rounded-md flex-shrink-0"
-                    />
-                    <span
-                        className={`ml-3 font-bold text-xl whitespace-nowrap text-slate-800 
-                            transition-all duration-200 ease-in-out
-                            ${showSidebar ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`
-                        }
-                    >
-                        Newtrend
-                    </span>
-                </div>
+            {/* Logo Section - Simplified and fixed for centering */}
+            <div className="flex items-center h-16 px-4 border-b border-slate-200">
+                <img
+                    src={clinicLogo}
+                    alt="Clinic Logo"
+                    className="h-10 w-10 rounded-md flex-shrink-0"
+                />
+                <span
+                    className={`ml-3 font-bold text-xl whitespace-nowrap text-slate-800 
+                        transition-opacity duration-200
+                        ${showSidebar ? 'opacity-100' : 'opacity-0'}`
+                    }
+                >
+                    Newtrend
+                </span>
             </div>
             
-            {/* Navigation Menu */}
             <nav className="flex-1 px-3 py-4">
                 <ul>
                     {navItems.map(item => (

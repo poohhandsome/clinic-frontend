@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
 import { format } from 'date-fns';
@@ -22,7 +23,6 @@ const useHashNavigation = () => {
     return currentPath;
 };
 
-// Placeholder for new pages
 const PlaceholderPage = ({ title }) => (
     <div className="p-8">
         <h1 className="text-3xl font-bold text-slate-800">{title}</h1>
@@ -42,7 +42,8 @@ export default function App() {
     });
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    // FIX: The sidebar now defaults to closed on page load
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0); 
     const currentPath = useHashNavigation();
 
@@ -104,22 +105,18 @@ export default function App() {
     }
 
     const renderPage = () => {
-        // Props for the dashboard page, which now includes the controls
         const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
-        // Props for other pages
         const otherPageProps = { selectedClinic, user };
 
         switch (currentPath) {
             case '#dashboard': return <DashboardPage {...dashboardProps} />;
             case '#clinic-dashboard': return <PlaceholderPage title="Clinic Dashboard" />;
-            case '#appointments': return <PendingAppointmentsPage {...otherPageProps} />; // Can be expanded later
+            case '#appointments': return <PendingAppointmentsPage {...otherPageProps} />;
             case '#doctors': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#treatments': return <PlaceholderPage title="Treatments Management" />;
             case '#billing': return <PlaceholderPage title="Billing Management" />;
             case '#lab-costs': return <PlaceholderPage title="Lab Costs Management" />;
             case '#summary': return <PlaceholderPage title="Summary" />;
-            
-            // Keep old routes for now, can be removed later
             case '#pending': return <PendingAppointmentsPage {...otherPageProps} />;
             case '#confirmed': return <ConfirmedAppointmentsPage {...otherPageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...otherPageProps} />;
@@ -131,7 +128,7 @@ export default function App() {
     const selectedClinicName = allClinics.find(c => c.id === selectedClinic)?.name || 'Unknown Clinic';
 
     return (
-        <div className="h-screen w-full bg-slate-50 flex flex-row">
+        <div className="flex h-screen bg-slate-50">
             <NewSidebar 
                 isSidebarOpen={isSidebarOpen}
                 setIsSidebarOpen={setIsSidebarOpen}
@@ -139,10 +136,10 @@ export default function App() {
             />
             <div className="flex-1 flex flex-col overflow-hidden">
                 <NewHeader 
-                    currentDate={currentDate} 
-                    setCurrentDate={setCurrentDate} 
                     isSidebarOpen={isSidebarOpen}
                     setIsSidebarOpen={setIsSidebarOpen}
+                    currentDate={currentDate} 
+                    setCurrentDate={setCurrentDate} 
                     pendingCount={pendingCount}
                     selectedClinicName={selectedClinicName}
                     onChangeClinic={handleChangeClinic}
