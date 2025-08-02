@@ -5,7 +5,6 @@ import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInte
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const MiniCalendar = ({ currentDate, setCurrentDate }) => {
-    // ... (This component remains the same)
     const [activeMonth, setActiveMonth] = useState(currentDate);
     const firstDayOfCalendar = startOfWeek(startOfMonth(activeMonth), { weekStartsOn: 0 });
     const lastDayOfCalendar = endOfWeek(endOfMonth(activeMonth), { weekStartsOn: 0 });
@@ -38,12 +37,11 @@ const MiniCalendar = ({ currentDate, setCurrentDate }) => {
     );
 };
 
-export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChange, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
+// Removed selectedClinic and onClinicChange from props
+export default function NewSidebar({ isSidebarOpen, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
     const [isDoctorsOpen, setIsDoctorsOpen] = useState(true);
     const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
     
-    const hardcodedClinics = [ { id: 1, name: 'ตั้งฮั่วเส็ง' }, { id: 2, name: 'สาย 4' }, { id: 3, name: 'ราชพฤกษ์' }];
-
     const handleSelectAll = (e) => setFilteredDoctorIds(e.target.checked ? workingDoctorIds : []);
     
     const areAllWorkingSelected = workingDoctorIds.length > 0 && workingDoctorIds.every(id => filteredDoctorIds.includes(id));
@@ -51,19 +49,15 @@ export default function NewSidebar({ isSidebarOpen, selectedClinic, onClinicChan
     return (
         <aside className={`bg-slate-50 flex flex-col shrink-0 z-20 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0'}`}>
             <div className={`p-4 flex flex-col gap-8 overflow-hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                {/* The "Create" button and MiniCalendar remain */}
                 <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-md border border-slate-200 hover:bg-slate-200">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 12.998h-6v6h-2v-6H5v-2h6v-6h2v6h6z"/></svg>
                     Create
                 </button>
                 <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} />
-                <div>
-                     <div className="flex items-center justify-between">
-                         <label htmlFor="clinic-select-sidebar" className="text-sm font-medium text-gray-700">Clinic</label>
-                         <select id="clinic-select-sidebar" value={selectedClinic} onChange={e => onClinicChange(e.target.value)} className="border-gray-300 text-sm font-semibold text-slate-700 bg-white cursor-pointer p-2 focus:ring-2 focus:ring-sky-500 rounded-md">
-                            {hardcodedClinics.map(clinic => ( <option key={clinic.id} value={clinic.id}>{clinic.name}</option>))}
-                        </select>
-                    </div>
-                </div>
+
+                {/* The Clinic Selector section has been completely removed. */}
+
                 <div>
                     <button onClick={() => setIsDoctorsOpen(!isDoctorsOpen)} className="w-full flex justify-between items-center">
                         <h3 className="text-sm font-semibold text-slate-800 uppercase">Doctors</h3>
