@@ -9,6 +9,7 @@ import AppointmentModal from './AppointmentModal';
 import authorizedFetch from '../api';
 import AppointmentCalendarView from './AppointmentCalendarView';
 import AppointmentActionModal from './AppointmentActionModal';
+import PendingListModal from './PendingListModal'; // <-- IMPORT NEW MODAL
 
 // --- Helper Components ---
 const StatusTag = ({ status }) => {
@@ -38,14 +39,12 @@ export default function PatientsPage({ selectedClinic }) {
     const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
+    const [isPendingModalOpen, setIsPendingModalOpen] = useState(false); // <-- New state for modal
     const [appointmentModalData, setAppointmentModalData] = useState(null);
     const [actionModal, setActionModal] = useState({ isOpen: false, action: null, appointment: null });
 
-    // New state for pending appointments
     const [pendingCount, setPendingCount] = useState(0);
-    const [showOnlyPending, setShowOnlyPending] = useState(false);
 
-    // Filter states
     const [doctorFilter, setDoctorFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
 
@@ -78,17 +77,12 @@ export default function PatientsPage({ selectedClinic }) {
     }, [selectedClinic]);
 
     const filteredAppointments = useMemo(() => {
-        // If the "Show Pending" toggle is active, it overrides other filters
-        if (showOnlyPending) {
-            return allAppointments.filter(app => app.status && app.status.toLowerCase() === 'pending_confirmation');
-        }
-        // Otherwise, apply the regular filters
         return allAppointments.filter(app => {
             const doctorMatch = doctorFilter === 'all' || app.doctor_id === parseInt(doctorFilter);
             const statusMatch = statusFilter === 'all' || (app.status && app.status.toLowerCase() === statusFilter);
             return doctorMatch && statusMatch;
         });
-    }, [allAppointments, doctorFilter, statusFilter, showOnlyPending]);
+    }, [allAppointments, doctorFilter, statusFilter]);
     
     const handleSlotClick = (data) => {
         setAppointmentModalData({ ...data, date: currentDate });
@@ -97,13 +91,6 @@ export default function PatientsPage({ selectedClinic }) {
 
     const handleActionClick = (action, appointment) => {
         setActionModal({ isOpen: true, action, appointment });
-    };
-
-    const toggleShowPending = () => {
-        // When we toggle the pending filter, reset the other filters for a clean slate
-        setShowOnlyPending(prev => !prev);
-        setStatusFilter('all');
-        setDoctorFilter('all');
     };
 
     return (
@@ -122,12 +109,8 @@ export default function PatientsPage({ selectedClinic }) {
                         <Search size={16} /> Search Patient
                     </button>
                     <button 
-                        onClick={toggleShowPending} 
-                        className={`relative flex items-center gap-2 px-3 py-1.5 border font-semibold rounded-lg shadow-sm text-sm transition-colors ${
-                            showOnlyPending 
-                                ? 'bg-yellow-500 text-white border-yellow-600' 
-                                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                        }`}
+                        onClick={() => setIsPendingModalOpen(true)} 
+                        className="relative flex items-center gap-2 px-3 py-1.5 border font-semibold rounded-lg shadow-sm text-sm bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
                     >
                         <Bell size={16} /> Show Pending
                         {pendingCount > 0 && (
@@ -160,11 +143,11 @@ export default function PatientsPage({ selectedClinic }) {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                         <input type="text" placeholder="Search Appointments..." className="w-full pl-10 pr-4 py-2 border rounded-md"/>
                     </div>
-                     <select disabled={showOnlyPending} value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="p-2 border rounded-md text-sm disabled:opacity-50 disabled:bg-slate-100">
+                     <select value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="p-2 border rounded-md text-sm">
                         <option value="all">All Doctors</option>
                         {doctorsOnDay.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
                     </select>
-                     <select disabled={showOnlyPending} value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-md text-sm disabled:opacity-50 disabled:bg-slate-100">
+                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="p-2 border rounded-md text-sm">
                         <option value="all">All Statuses</option>
                         <option value="confirmed">Confirmed</option>
                         <option value="cancelled">Cancelled</option>
@@ -215,6 +198,7 @@ export default function PatientsPage({ selectedClinic }) {
             {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={() => {}} />}
             {isAddAppointmentModalOpen && <AppointmentModal data={appointmentModalData} clinicId={selectedClinic} onClose={(didBook) => { setIsAddAppointmentModalOpen(false); if(didBook) fetchAppointments(); }} />}
             {actionModal.isOpen && <AppointmentActionModal action={actionModal.action} appointment={actionModal.appointment} doctors={doctorsOnDay} clinicId={selectedClinic} onClose={() => setActionModal({ isOpen: false, action: null, appointment: null })} onUpdate={fetchAppointments} />}
+            {isPendingModalOpen && <PendingListModal selectedClinic={selectedClinic} onClose={() => setIsPendingModalOpen(false)} onUpdate={fetchAppointments} />}
         </div>
     );
 }
