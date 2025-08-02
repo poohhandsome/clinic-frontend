@@ -58,12 +58,15 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
             {/* Logo Section - Simplified and fixed for centering */}
             <div 
   className={`flex items-center h-16 border-b border-slate-200 transition-all duration-300
-    ${showSidebar ? 'px-4 justify-start' : 'px-0 justify-center'}`}
+    ${showSidebar ? 'px-4 justify-start' : 'px-0 justify-center'}
+  `}
 >
   <img
     src={clinicLogo}
     alt="Clinic Logo"
-    className="h-10 w-10 rounded-md object-contain"
+    className={`h-10 w-10 rounded-md object-contain transition-all duration-300
+      ${showSidebar ? 'ml-0' : ''}
+    `}
   />
   <span
     className={`ml-3 font-bold text-xl whitespace-nowrap text-slate-800 
