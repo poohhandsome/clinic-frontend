@@ -1,3 +1,4 @@
+// src/App.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
@@ -9,6 +10,7 @@ import DashboardPage from './components/DashboardPage.jsx';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
+import PatientsPage from './components/PatientsPage.jsx'; // <-- IMPORT NEW PAGE
 import authorizedFetch from './api.js';
 import SettingsPage from './components/SettingsPage.jsx';
 import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
@@ -42,7 +44,6 @@ export default function App() {
     });
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
-    // FIX: The sidebar now defaults to closed on page load
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0); 
     const currentPath = useHashNavigation();
@@ -112,6 +113,7 @@ export default function App() {
             case '#dashboard': return <DashboardPage {...dashboardProps} />;
             case '#clinic-dashboard': return <PlaceholderPage title="Clinic Dashboard" />;
             case '#appointments': return <PendingAppointmentsPage {...otherPageProps} />;
+            case '#patients': return <PatientsPage {...otherPageProps} />; // <-- RENDER NEW PAGE
             case '#doctors': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#treatments': return <PlaceholderPage title="Treatments Management" />;
             case '#billing': return <PlaceholderPage title="Billing Management" />;

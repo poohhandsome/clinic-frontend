@@ -1,6 +1,7 @@
+// src/components/NewUILayout/NewSidebar.jsx (REPLACE)
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3, User } from 'lucide-react'; // Added User icon
 import clinicLogo from '../../assets/clinic-logo.png';
 
 const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
@@ -39,6 +40,7 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
         { id: '#dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
         { id: '#clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
         { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={20} /> },
+        { id: '#patients', text: 'Patients', icon: <User size={20} /> }, // <-- NEW PATIENTS LINK
         { id: '#doctors', text: 'Doctors', icon: <UserRound size={20} /> },
         { id: '#treatments', text: 'Treatments', icon: <Syringe size={20} /> },
         { id: '#billing', text: 'Billing', icon: <Receipt size={20} /> },
@@ -55,14 +57,12 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
-           {/* DEFINITIVE FIX: Logo Section */}
             <div className={`flex items-center h-16 px-4 border-b border-slate-200 ${!showSidebar && 'justify-center'}`}>
                 <img
                     src={clinicLogo}
                     alt="Clinic Logo"
                     className="h-10 w-10 rounded-md flex-shrink-0 object-contain"
                 />
-                {/* This text is now conditionally rendered, so it doesn't take up space when hidden */}
                 {showSidebar && (
                     <span className="ml-3 font-bold text-xl whitespace-nowrap text-slate-800">
                         Newtrend
