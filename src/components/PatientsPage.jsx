@@ -1,23 +1,26 @@
 // src/components/PatientsPage.jsx (REPLACE)
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, Search } from 'lucide-react';
-import AddNewPatientModal from './AddNewPatientModal'; // Import Add modal
-import SearchPatientModal from './SearchPatientModal'; // Import Search modal
-
-// Placeholder data for the patient table
-const placeholderPatients = [
-    { dn: 'DN001', dn_old: 'D001', fname: 'สมชาย', lname: 'แข็งแรง', phone: '081-234-5678' },
-    { dn: 'DN002', dn_old: '', fname: 'สมศรี', lname: 'สุขใจ', phone: '082-345-6789' },
-    { dn: 'DN003', dn_old: 'D003', fname: 'John', lname: 'Doe', phone: '099-876-5432' },
-];
+import AddNewPatientModal from './AddNewPatientModal';
+import SearchPatientModal from './SearchPatientModal';
+import authorizedFetch from '../api';
 
 export default function PatientsPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-    const [patients, setPatients] = useState(placeholderPatients);
+    const [patients, setPatients] = useState([]);
 
-    // TODO: Implement API calls for search and add
+    const fetchLatestPatients = () => {
+        authorizedFetch('/api/patients?query=')
+            .then(res => res.json())
+            .then(data => setPatients(data))
+            .catch(err => console.error("Failed to fetch patients", err));
+    };
+
+    useEffect(() => {
+        fetchLatestPatients();
+    }, []);
 
     return (
         <div className="p-6 h-full overflow-y-auto bg-slate-50">
@@ -41,7 +44,6 @@ export default function PatientsPage() {
                 </div>
             </div>
 
-            {/* Patient Table View */}
             <div className="bg-white border border-slate-200 rounded-lg shadow-sm">
                 <table className="w-full">
                     <thead className="bg-slate-50">
@@ -53,12 +55,12 @@ export default function PatientsPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                        {patients.map((patient, index) => (
-                            <tr key={index}>
+                        {patients.map((patient) => (
+                            <tr key={patient.patient_id}>
                                 <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{patient.dn}{patient.dn_old && ` (${patient.dn_old})`}</td>
-                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.fname}</td>
-                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.lname}</td>
-                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.phone}</td>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.first_name_th}</td>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.last_name_th}</td>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.mobile_phone}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -66,8 +68,8 @@ export default function PatientsPage() {
                  {patients.length === 0 && <p className="text-center text-slate-500 py-8">No patients found.</p>}
             </div>
 
-            {isAddModalOpen && <AddNewPatientModal onClose={() => setIsAddModalOpen(false)} />}
-            {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} />}
+            {isAddModalOpen && <AddNewPatientModal onClose={() => setIsAddModalOpen(false)} onUpdate={fetchLatestPatients} />}
+            {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={(p) => setPatients([p])} />}
         </div>
     );
 }

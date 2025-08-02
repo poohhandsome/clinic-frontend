@@ -1,23 +1,24 @@
-// src/components/SearchPatientModal.jsx (NEW FILE)
+// src/components/SearchPatientModal.jsx (REPLACE)
 
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
+import authorizedFetch from '../api';
 
-const placeholderPatients = [
-    { dn: 'DN001', dn_old: 'D001', fname: 'สมชาย', lname: 'แข็งแรง', phone: '081-234-5678' },
-    { dn: 'DN002', dn_old: '', fname: 'สมศรี', lname: 'สุขใจ', phone: '082-345-6789' },
-    { dn: 'DN003', dn_old: 'D003', fname: 'John', lname: 'Doe', phone: '099-876-5432' },
-];
-
-export default function SearchPatientModal({ onClose }) {
+export default function SearchPatientModal({ onClose, onSelectPatient }) {
     const [searchTerm, setSearchTerm] = useState('');
-    const [searchAllBranches, setSearchAllBranches] = useState(true);
-    const [results, setResults] = useState(placeholderPatients);
+    const [results, setResults] = useState([]);
 
-    const handleSearch = (e) => {
+    const handleSearch = async (e) => {
         e.preventDefault();
-        // TODO: Implement API call for search
-        console.log(`Searching for "${searchTerm}" across ${searchAllBranches ? 'all branches' : 'this branch'}`);
+        if (!searchTerm) return;
+        try {
+            const res = await authorizedFetch(`/api/patients?query=${searchTerm}`);
+            if (!res.ok) throw new Error('Search failed');
+            const data = await res.json();
+            setResults(data);
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     return (
@@ -36,18 +37,6 @@ export default function SearchPatientModal({ onClose }) {
                                 autoFocus
                             />
                         </div>
-                        <div className="flex items-center gap-2">
-                             <label htmlFor="all-branches" className="text-sm font-medium text-slate-600">ทุกสาขา</label>
-                             <button
-                                type="button"
-                                role="switch"
-                                aria-checked={searchAllBranches}
-                                onClick={() => setSearchAllBranches(!searchAllBranches)}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${searchAllBranches ? 'bg-sky-600' : 'bg-slate-300'}`}
-                            >
-                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${searchAllBranches ? 'translate-x-6' : 'translate-x-1'}`}/>
-                            </button>
-                        </div>
                     </form>
                 </div>
                 <div className="flex-grow overflow-y-auto">
@@ -61,12 +50,12 @@ export default function SearchPatientModal({ onClose }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                             {results.map((patient, index) => (
-                                <tr key={index} className="hover:bg-slate-50 cursor-pointer">
+                             {results.map((patient) => (
+                                <tr key={patient.patient_id} className="hover:bg-slate-50 cursor-pointer" onClick={() => { onSelectPatient(patient); onClose(); }}>
                                     <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{patient.dn}{patient.dn_old && ` (${patient.dn_old})`}</td>
-                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.fname}</td>
-                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.lname}</td>
-                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.phone}</td>
+                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.first_name_th}</td>
+                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.last_name_th}</td>
+                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.mobile_phone}</td>
                                 </tr>
                             ))}
                         </tbody>
