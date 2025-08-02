@@ -4,25 +4,66 @@ import React, { useState } from 'react';
 import { Upload, User, PlusCircle } from 'lucide-react';
 import authorizedFetch from '../api';
 
+// A reusable input component for this form
 const InputField = ({ label, name, value, onChange, placeholder, type = 'text' }) => (
     <div>
         <label htmlFor={name} className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
-        <input type={type} id={name} name={name} value={value} onChange={onChange} placeholder={placeholder} className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 text-sm" />
-    </div>
-);
-const TextareaField = ({ label, name, value, onChange, placeholder, rows = 3 }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
-        <textarea id={name} name={name} value={value} onChange={onChange} placeholder={placeholder} rows={rows} className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 text-sm" />
+        <input
+            type={type}
+            id={name}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 text-sm"
+        />
     </div>
 );
 
+// A reusable textarea component
+const TextareaField = ({ label, name, value, onChange, placeholder, rows = 3 }) => (
+    <div>
+        <label htmlFor={name} className="block text-sm font-medium text-slate-600 mb-1">{label}</label>
+        <textarea
+            id={name}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            rows={rows}
+            className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-sky-500 focus:border-sky-500 text-sm"
+        />
+    </div>
+);
+
+
 export default function AddNewPatientModal({ onClose, onUpdate }) {
     const [formData, setFormData] = useState({
-        dn: '', dn_old: '', id_verification_type: 'สมุด DC', id_number: '', title_th: '', first_name_th: '', last_name_th: '',
-        title_en: '', first_name_en: '', last_name_en: '', nickname: '', gender: '', date_of_birth: '',
-        chronic_diseases: '', allergies: '', mobile_phone: '', home_phone: '', line_id: '', email: '',
-        address: '', sub_district: '', district: '', province: '', country: 'Thailand', zip_code: ''
+        dn: '',
+        dn_old: '',
+        id_verification_type: 'สมุด DC',
+        id_number: '',
+        title_th: '',
+        first_name_th: '',
+        last_name_th: '',
+        title_en: '',
+        first_name_en: '',
+        last_name_en: '',
+        nickname: '',
+        gender: '',
+        date_of_birth: '',
+        chronic_diseases: '',
+        allergies: '',
+        mobile_phone: '',
+        home_phone: '',
+        line_id: '',
+        email: '',
+        address: '',
+        sub_district: '',
+        district: '',
+        province: '',
+        country: 'Thailand',
+        zip_code: ''
     });
 
     const handleChange = (e) => {
@@ -35,16 +76,21 @@ export default function AddNewPatientModal({ onClose, onUpdate }) {
         try {
             const res = await authorizedFetch('/api/patients', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
             });
-            if (!res.ok) throw new Error('Failed to create patient.');
-            onUpdate();
-            onClose();
+            if (!res.ok) {
+                 const errorData = await res.json();
+                 throw new Error(errorData.message || 'Failed to create patient.');
+            }
+            onUpdate(); // Refresh the patient list on the main page
+            onClose(); // Close the modal
         } catch (err) {
             console.error(err);
-            alert(err.message);
+            alert(err.message); // Or use a more sophisticated notification
         }
     };
+
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -55,9 +101,74 @@ export default function AddNewPatientModal({ onClose, onUpdate }) {
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M6.4 19L5 17.6l5.6-5.6L5 6.4L6.4 5l5.6 5.6L17.6 5L19 6.4L13.4 12l5.6 5.6l-1.4 1.4l-5.6-5.6L6.4 19Z"/></svg>
                     </button>
                 </div>
+
                 <div className="flex-grow overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Column 1, 2, 3... */}
+                    {/* --- Column 1: Photo & ID --- */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <InputField label="Patient ID (DN)" name="dn" value={formData.dn} onChange={handleChange} placeholder="Auto-generated or manual" />
+                            <InputField label="DN(เดิม)" name="dn_old" value={formData.dn_old} onChange={handleChange} placeholder="Optional" />
+                        </div>
+                        <div className="w-full h-48 bg-slate-100 rounded-lg flex flex-col items-center justify-center border-2 border-dashed">
+                             <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center text-slate-400 mb-2">
+                                <User size={32} />
+                            </div>
+                            <button type="button" className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white font-semibold rounded-lg shadow-sm hover:bg-green-600">
+                                <Upload size={16} /> อัปโหลดรูป
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* --- Column 2: Personal Info --- */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-slate-700 border-b pb-2">ประวัติส่วนตัว (Personal Info)</h3>
+                         <div>
+                            <div className="flex gap-2 mb-2">
+                                <button type="button" className={`px-3 py-1 text-sm rounded-full ${formData.id_verification_type === 'สมุด DC' ? 'bg-blue-600 text-white' : 'bg-slate-200'}`} onClick={() => setFormData(p => ({...p, id_verification_type: 'สมุด DC'}))}>สมุด DC</button>
+                                <button type="button" className={`px-3 py-1 text-sm rounded-full ${formData.id_verification_type === 'สมุด MOI' ? 'bg-blue-600 text-white' : 'bg-slate-200'}`} onClick={() => setFormData(p => ({...p, id_verification_type: 'สมุด MOI'}))}>สมุด MOI</button>
+                                <button type="button" className={`px-3 py-1 text-sm rounded-full ${formData.id_verification_type === 'เลขที่บัตร' ? 'bg-blue-600 text-white' : 'bg-slate-200'}`} onClick={() => setFormData(p => ({...p, id_verification_type: 'เลขที่บัตร'}))}>เลขที่บัตร</button>
+                            </div>
+                            <InputField label="" name="id_number" value={formData.id_number} onChange={handleChange} placeholder={`Enter ${formData.id_verification_type}`} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                             <InputField label="คำนำหน้า" name="title_th" value={formData.title_th} onChange={handleChange} placeholder="นาย/นาง" />
+                             <div className="col-span-2"><InputField label="ชื่อ" name="first_name_th" value={formData.first_name_th} onChange={handleChange} /></div>
+                        </div>
+                         <InputField label="สกุล" name="last_name_th" value={formData.last_name_th} onChange={handleChange} />
+                         <div className="grid grid-cols-3 gap-2">
+                             <InputField label="Title" name="title_en" value={formData.title_en} onChange={handleChange} placeholder="Mr./Mrs." />
+                             <div className="col-span-2"><InputField label="First Name" name="first_name_en" value={formData.first_name_en} onChange={handleChange} /></div>
+                        </div>
+                         <InputField label="Last Name" name="last_name_en" value={formData.last_name_en} onChange={handleChange} />
+                         <InputField label="ชื่อเล่น" name="nickname" value={formData.nickname} onChange={handleChange} />
+                         <div className="grid grid-cols-2 gap-4">
+                            <InputField label="เพศ (Gender)" name="gender" value={formData.gender} onChange={handleChange} />
+                            <InputField label="วันเกิด (Date of Birth)" name="date_of_birth" value={formData.date_of_birth} onChange={handleChange} type="date"/>
+                         </div>
+                         <TextareaField label="โรคประจำตัว (Chronic Diseases)" name="chronic_diseases" value={formData.chronic_diseases} onChange={handleChange} />
+                         <TextareaField label="อาการแพ้ (Allergies)" name="allergies" value={formData.allergies} onChange={handleChange} />
+                    </div>
+
+                    {/* --- Column 3: Contact Details --- */}
+                    <div className="space-y-4">
+                         <h3 className="font-semibold text-slate-700 border-b pb-2">รายละเอียดติดต่อ (Contact Details)</h3>
+                         <InputField label="เบอร์โทรศัพท์มือถือ" name="mobile_phone" value={formData.mobile_phone} onChange={handleChange} />
+                         <InputField label="เบอร์โทรบ้าน" name="home_phone" value={formData.home_phone} onChange={handleChange} />
+                         <InputField label="Line ID" name="line_id" value={formData.line_id} onChange={handleChange} />
+                         <InputField label="Email" name="email" value={formData.email} onChange={handleChange} type="email"/>
+                         <TextareaField label="ที่อยู่" name="address" value={formData.address} onChange={handleChange} />
+                         <div className="grid grid-cols-2 gap-4">
+                             <InputField label="ตำบล" name="sub_district" value={formData.sub_district} onChange={handleChange} />
+                             <InputField label="อำเภอ" name="district" value={formData.district} onChange={handleChange} />
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                             <InputField label="จังหวัด" name="province" value={formData.province} onChange={handleChange} />
+                             <InputField label="รหัสไปรษณีย์" name="zip_code" value={formData.zip_code} onChange={handleChange} />
+                         </div>
+                          <InputField label="ประเทศ" name="country" value={formData.country} onChange={handleChange} />
+                    </div>
                 </div>
+
                 <div className="p-4 bg-slate-50 border-t flex justify-end">
                     <button type="submit" className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700">
                         <PlusCircle size={18}/> สร้างคนไข้ใหม่
