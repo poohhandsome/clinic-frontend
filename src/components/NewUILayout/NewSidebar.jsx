@@ -50,13 +50,13 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
         <aside 
             className={`h-screen bg-white flex flex-col border-r border-slate-200
                 transition-all duration-300 ease-in-out 
-                ${showSidebar ? 'w-[280px]' : 'w-20'}`
+                ${showSidebar ? 'w-[280px]' : 'w-[64px]'}`
             }
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
             {/* Logo Section - Simplified and fixed for centering */}
-            <div className="flex items-center h-16 px-2 border-b border-slate-200">
+            <div className="flex items-center h-16 px-4 border-b border-slate-200">
                 <img
                     src={clinicLogo}
                     alt="Clinic Logo"
