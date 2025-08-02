@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import authorizedFetch from '../api';
 import { FaTag } from 'react-icons/fa';
-import { PlusCircle, Trash2, VenetianMask } from 'lucide-react';
+import { PlusCircle, Trash2, VenetianMask, Clock } from 'lucide-react'; // CORRECTED: Added Clock
 import { format, parseISO } from 'date-fns';
 import SettingsPage from './SettingsPage';
 
@@ -278,7 +278,7 @@ function RecurringScheduleEditor({ doctor, onUpdate }) {
         try {
             const payload = {
                 doctor_id: doctor.id, clinic_id: parseInt(clinicId, 10),
-                is_available: true, // This form is for setting days ON
+                is_available: true, 
                 start_time: startTime, end_time: endTime,
                 rule: { week: parseInt(rule.week), day: parseInt(rule.day) },
             };
