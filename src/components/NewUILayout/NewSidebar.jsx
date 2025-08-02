@@ -1,91 +1,50 @@
-// src/components/NewUILayout/NewSidebar.jsx (REPLACE)
+import React from 'react';
+import { LayoutDashboard, Stethoscope, CalendarDays, UserMd, Syringe, FileInvoiceDollar, FlaskConical, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 
-import React, { useState } from 'react';
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameDay, isSameMonth } from 'date-fns';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+const NavItem = ({ icon, text, active, isSidebarOpen }) => (
+    <li className={`relative flex items-center py-3 px-4 my-1 font-medium rounded-md cursor-pointer transition-colors group ${active ? 'bg-gradient-to-tr from-sky-200 to-sky-100 text-sky-800' : 'hover:bg-slate-200 text-slate-600'}`}>
+        {icon}
+        <span className={`overflow-hidden transition-all ${isSidebarOpen ? 'w-40 ml-3' : 'w-0'}`}>{text}</span>
+        {!isSidebarOpen && (
+            <div className="absolute left-full rounded-md px-2 py-1 ml-6 bg-sky-100 text-sky-800 text-sm invisible opacity-20 -translate-x-3 transition-all group-hover:visible group-hover:opacity-100 group-hover:translate-x-0">
+                {text}
+            </div>
+        )}
+    </li>
+);
 
-const MiniCalendar = ({ currentDate, setCurrentDate }) => {
-    const [activeMonth, setActiveMonth] = useState(currentDate);
-    const firstDayOfCalendar = startOfWeek(startOfMonth(activeMonth), { weekStartsOn: 0 });
-    const lastDayOfCalendar = endOfWeek(endOfMonth(activeMonth), { weekStartsOn: 0 });
-    const days = eachDayOfInterval({ start: firstDayOfCalendar, end: lastDayOfCalendar });
-    const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPath }) {
+    const navItems = [
+        { id: '#dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
+        { id: '#clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
+        { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={20} /> },
+        { id: '#doctors', text: 'Doctors Management', icon: <UserMd size={20} /> },
+        { id: '#treatments', text: 'Treatments', icon: <Syringe size={20} /> },
+        { id: '#billing', text: 'Billing', icon: <FileInvoiceDollar size={20} /> },
+        { id: '#lab-costs', text: 'Lab Costs', icon: <FlaskConical size={20} /> },
+        { id: '#summary', text: 'Summary', icon: <BarChart3 size={20} /> },
+    ];
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-2 px-2">
-                <span className="text-sm font-semibold text-slate-800">{format(activeMonth, 'MMMM yyyy')}</span>
-                <div className="flex">
-                    <button onClick={() => setActiveMonth(subMonths(activeMonth, 1))} className="p-1 rounded-full hover:bg-slate-200 text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="m14 18l-6-6l6-6l1.4 1.4l-4.6 4.6l4.6 4.6L14 18Z"/></svg></button>
-                    <button onClick={() => setActiveMonth(addMonths(activeMonth, 1))} className="p-1 rounded-full hover:bg-slate-200 text-slate-500"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M10 18l6-6l-6-6l-1.4 1.4l4.6 4.6l-4.6 4.6L10 18Z"/></svg></button>
-                </div>
-            </div>
-            <div className="grid grid-cols-7 gap-y-1 text-center">
-                {dayNames.map(d => <div key={d} className="text-xs font-medium text-slate-500 w-9 h-9 flex items-center justify-center">{d}</div>)}
-                {days.map((day, i) => {
-                    const isSelected = isSameDay(day, currentDate);
-                    const isToday = isSameDay(day, new Date());
-                    const isOtherMonth = !isSameMonth(day, activeMonth);
-                    return (
-                        <button key={i} onClick={() => setCurrentDate(day)} className={`w-9 h-9 rounded-full text-sm transition-colors duration-150 ${isOtherMonth ? 'text-slate-300' : 'text-slate-700'} ${isSelected ? 'bg-sky-600 text-white hover:bg-sky-700' : 'hover:bg-slate-100'} ${isToday && !isSelected ? 'font-bold text-sky-600' : ''}`}>
-                            {format(day, 'd')}
-                        </button>
-                    );
-                })}
-            </div>
-        </div>
-    );
-};
-
-// Removed selectedClinic and onClinicChange from props
-export default function NewSidebar({ isSidebarOpen, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
-    const [isDoctorsOpen, setIsDoctorsOpen] = useState(true);
-    const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
-    
-    const handleSelectAll = (e) => setFilteredDoctorIds(e.target.checked ? workingDoctorIds : []);
-    
-    const areAllWorkingSelected = workingDoctorIds.length > 0 && workingDoctorIds.every(id => filteredDoctorIds.includes(id));
-
-    return (
-        <aside className={`bg-slate-50 flex flex-col shrink-0 z-20 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0'}`}>
-            <div className={`p-4 flex flex-col gap-8 overflow-hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
-                {/* The "Create" button and MiniCalendar remain */}
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-md border border-slate-200 hover:bg-slate-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 12.998h-6v6h-2v-6H5v-2h6v-6h2v6h6z"/></svg>
-                    Create
+        <nav className={`h-screen flex flex-col bg-slate-100 border-r border-slate-200 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-60' : 'w-20'}`}>
+            <div className="flex items-center justify-between p-4 h-16 border-b border-slate-200">
+                <span className={`overflow-hidden font-bold text-lg ${isSidebarOpen ? 'w-32' : 'w-0'}`}>Newtrend</span>
+                <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-lg hover:bg-slate-200">
+                    {isSidebarOpen ? <ChevronLeft /> : <ChevronRight />}
                 </button>
-                <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} />
-
-                {/* The Clinic Selector section has been completely removed. */}
-
-                <div>
-                    <button onClick={() => setIsDoctorsOpen(!isDoctorsOpen)} className="w-full flex justify-between items-center">
-                        <h3 className="text-sm font-semibold text-slate-800 uppercase">Doctors</h3>
-                        {isDoctorsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                    </button>
-                    {isDoctorsOpen && (
-                        <ul className="mt-2 flex flex-col gap-1">
-                            {doctors.map(doc => {
-                                const isWorking = workingDoctorIds.includes(doc.id);
-                                return (
-                                    <li key={doc.id}>
-                                       <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-200 cursor-pointer">
-                                            <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500" checked={filteredDoctorIds.includes(doc.id)} onChange={() => setFilteredDoctorIds(prev => prev.includes(doc.id) ? prev.filter(id => id !== doc.id) : [...prev, doc.id])} />
-                                            <span className={`text-sm font-medium ${isWorking ? 'text-slate-700' : 'text-slate-400'}`}>{doc.name}</span>
-                                       </label>
-                                    </li>
-                                );
-                            })}
-                             <li className="mt-2">
-                                <label className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-200 cursor-pointer">
-                                    <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500" checked={areAllWorkingSelected} onChange={handleSelectAll} disabled={workingDoctorIds.length === 0} />
-                                    <span className="text-sm font-semibold text-slate-800">Select All Working</span>
-                                </label>
-                            </li>
-                        </ul>
-                    )}
-                </div>
             </div>
-        </aside>
+            <ul className="flex-1 px-3 py-4">
+                {navItems.map(item => (
+                    <a href={item.id} key={item.id}>
+                        <NavItem 
+                            isSidebarOpen={isSidebarOpen}
+                            icon={item.icon}
+                            text={item.text}
+                            active={currentPath === item.id}
+                        />
+                    </a>
+                ))}
+            </ul>
+        </nav>
     );
 }

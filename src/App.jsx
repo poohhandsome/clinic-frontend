@@ -1,5 +1,3 @@
-// src/App.jsx (REPLACE)
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
 import { format } from 'date-fns';
@@ -12,37 +10,42 @@ import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
 import authorizedFetch from './api.js';
 import SettingsPage from './components/SettingsPage.jsx';
-import ClinicSelectionPage from './components/ClinicSelectionPage.jsx'; // 1. Import the new page
+import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
 
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
     useEffect(() => {
-        const handleHashChange = () => setCurrentPath(window.location.hash || '#login');
+        const handleHashChange = () => setCurrentPath(window.location.hash || '#dashboard'); // Default to dashboard
         window.addEventListener('hashchange', handleHashChange);
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
     return currentPath;
 };
 
+// Placeholder for new pages
+const PlaceholderPage = ({ title }) => (
+    <div className="p-8">
+        <h1 className="text-3xl font-bold text-slate-800">{title}</h1>
+        <p className="mt-4 text-slate-600">This page is under construction. Content will be added soon.</p>
+    </div>
+);
+
+
 export default function App() {
     const { isAuthenticated, user } = useAuth();
     const [doctors, setDoctors] = useState([]);
     const [dailySchedule, setDailySchedule] = useState({});
-
-    // 2. State management for clinic selection
     const [allClinics, setAllClinics] = useState([]);
     const [selectedClinic, setSelectedClinic] = useState(() => {
         const savedClinic = localStorage.getItem('selectedClinic');
         return savedClinic ? Number(savedClinic) : null;
     });
-
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [pendingCount, setPendingCount] = useState(0); 
     const currentPath = useHashNavigation();
 
-    // 3. Fetch all clinics on auth
     useEffect(() => {
         if (isAuthenticated) {
             authorizedFetch('/api/clinics')
@@ -83,7 +86,6 @@ export default function App() {
         }
     }, [selectedClinic, isAuthenticated]);
 
-    // 4. Handlers for selecting and changing the clinic
     const handleClinicSelect = (clinicId) => {
         setSelectedClinic(clinicId);
         localStorage.setItem('selectedClinic', clinicId);
@@ -97,47 +99,55 @@ export default function App() {
 
     if (!isAuthenticated) return <LoginPage />;
     
-    // 5. Conditional rendering for clinic selection page
     if (!selectedClinic) {
         return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
     }
 
     const renderPage = () => {
-        const pageProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, dailySchedule, user };
+        // Props for the dashboard page, which now includes the controls
+        const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
+        // Props for other pages
+        const otherPageProps = { selectedClinic, user };
+
         switch (currentPath) {
-            case '#pending': return <PendingAppointmentsPage {...pageProps} />;
-            case '#confirmed': return <ConfirmedAppointmentsPage {...pageProps} />;
-            case '#schedules': return <DoctorSchedulesPage {...pageProps} />;
-            case '#settings': return <SettingsPage {...pageProps} />;
-            default: return <DashboardPage {...pageProps} />;
+            case '#dashboard': return <DashboardPage {...dashboardProps} />;
+            case '#clinic-dashboard': return <PlaceholderPage title="Clinic Dashboard" />;
+            case '#appointments': return <PendingAppointmentsPage {...otherPageProps} />; // Can be expanded later
+            case '#doctors': return <DoctorSchedulesPage {...otherPageProps} />;
+            case '#treatments': return <PlaceholderPage title="Treatments Management" />;
+            case '#billing': return <PlaceholderPage title="Billing Management" />;
+            case '#lab-costs': return <PlaceholderPage title="Lab Costs Management" />;
+            case '#summary': return <PlaceholderPage title="Summary" />;
+            
+            // Keep old routes for now, can be removed later
+            case '#pending': return <PendingAppointmentsPage {...otherPageProps} />;
+            case '#confirmed': return <ConfirmedAppointmentsPage {...otherPageProps} />;
+            case '#schedules': return <DoctorSchedulesPage {...otherPageProps} />;
+            case '#settings': return <SettingsPage {...otherPageProps} />;
+            default: return <DashboardPage {...dashboardProps} />;
         }
     };
 
-    // Find the full name of the selected clinic to pass to the header
     const selectedClinicName = allClinics.find(c => c.id === selectedClinic)?.name || 'Unknown Clinic';
 
     return (
-        <div className="h-screen w-full bg-white flex flex-col">
-            <NewHeader 
-                currentDate={currentDate} 
-                setCurrentDate={setCurrentDate} 
+        <div className="h-screen w-full bg-slate-50 flex flex-row">
+            <NewSidebar 
                 isSidebarOpen={isSidebarOpen}
                 setIsSidebarOpen={setIsSidebarOpen}
-                pendingCount={pendingCount}
-                selectedClinicName={selectedClinicName} // 6. Pass name and handler to header
-                onChangeClinic={handleChangeClinic}
+                currentPath={currentPath}
             />
-            <div className="flex flex-1 overflow-hidden">
-                <NewSidebar
+            <div className="flex-1 flex flex-col overflow-hidden">
+                <NewHeader 
+                    currentDate={currentDate} 
+                    setCurrentDate={setCurrentDate} 
                     isSidebarOpen={isSidebarOpen}
-                    currentDate={currentDate}
-                    setCurrentDate={setCurrentDate}
-                    doctors={doctors}
-                    filteredDoctorIds={filteredDoctorIds}
-                    setFilteredDoctorIds={setFilteredDoctorIds}
-                    dailySchedule={dailySchedule}
+                    setIsSidebarOpen={setIsSidebarOpen}
+                    pendingCount={pendingCount}
+                    selectedClinicName={selectedClinicName}
+                    onChangeClinic={handleChangeClinic}
                 />
-                <main className="flex-1 overflow-y-auto bg-slate-50">
+                <main className="flex-1 overflow-y-auto">
                     {renderPage()}
                 </main>
             </div>

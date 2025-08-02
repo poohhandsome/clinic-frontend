@@ -1,9 +1,9 @@
-// src/components/DashboardPage.jsx (REPLACE)
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { format, getHours, getMinutes, isToday } from 'date-fns';
 import AppointmentModal from './AppointmentModal.jsx';
 import authorizedFetch from '../api.js';
+import DashboardControls from './DashboardControls.jsx'; // 1. Import the new controls
 
 const timeToMinutes = (time) => {
     if (!time) return 0;
@@ -12,19 +12,17 @@ const timeToMinutes = (time) => {
 };
 
 const CurrentTimeIndicator = ({ hourHeight, timelineStartHour, timelineEndHour }) => {
-    const [topPosition, setTopPosition] = useState(null); // Default to null (hidden)
+    const [topPosition, setTopPosition] = useState(null);
 
     useEffect(() => {
         const updatePosition = () => {
             const now = new Date();
             const currentHour = getHours(now);
-            
-            // THE FIX: Only show the indicator if the current time is within the timeline's visible hours.
             if (currentHour >= timelineStartHour && currentHour <= timelineEndHour) {
                 const minutesSinceTimelineStart = (currentHour - timelineStartHour) * 60 + getMinutes(now);
                 setTopPosition(minutesSinceTimelineStart * (hourHeight / 60));
             } else {
-                setTopPosition(null); // Hide the indicator
+                setTopPosition(null);
             }
         };
 
@@ -44,7 +42,8 @@ const CurrentTimeIndicator = ({ hourHeight, timelineStartHour, timelineEndHour }
     );
 };
 
-export default function DashboardPage({ selectedClinic, currentDate, doctors, filteredDoctorIds, dailySchedule }) {
+// 2. Pass down the new props for the controls
+export default function DashboardPage({ selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
     const [dayAppointments, setDayAppointments] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
@@ -87,65 +86,79 @@ export default function DashboardPage({ selectedClinic, currentDate, doctors, fi
     };
 
     return (
-        <div className="h-full w-full bg-white flex flex-col border border-slate-200 rounded-lg shadow-sm">
+        // 3. Main container is now a flex row
+        <div className="h-full w-full bg-white flex flex-row">
             {isModalOpen && <AppointmentModal data={modalData} clinicId={selectedClinic} onClose={handleModalClose} />}
             
-            <div className="grid shrink-0" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
-                <div className="p-2 border-r border-b border-slate-200 flex items-center justify-center">
-                    <div className="text-center">
-                        <p className="text-xs font-bold text-sky-600 uppercase">{format(currentDate, 'EEE')}</p>
-                        <div className="w-9 h-9 flex items-center justify-center bg-sky-600 rounded-full text-white text-lg font-semibold mt-1">
-                            {format(currentDate, 'd')}
+            {/* 4. The controls are now part of the page */}
+            <DashboardControls 
+                currentDate={currentDate}
+                setCurrentDate={setCurrentDate}
+                doctors={doctors}
+                filteredDoctorIds={filteredDoctorIds}
+                setFilteredDoctorIds={setFilteredDoctorIds}
+                dailySchedule={dailySchedule}
+            />
+
+            {/* 5. The schedule grid is now in a flex-1 container */}
+            <div className="flex-1 flex flex-col border-l border-slate-200">
+                <div className="grid shrink-0" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
+                    <div className="p-2 border-r border-b border-slate-200 flex items-center justify-center">
+                        <div className="text-center">
+                            <p className="text-xs font-bold text-sky-600 uppercase">{format(currentDate, 'EEE')}</p>
+                            <div className="w-9 h-9 flex items-center justify-center bg-sky-600 rounded-full text-white text-lg font-semibold mt-1">
+                                {format(currentDate, 'd')}
+                            </div>
                         </div>
                     </div>
-                </div>
-                {displayedDoctors.map(doc => (
-                    <div key={doc.id} className="p-3 border-b border-r border-slate-200 text-center">
-                        <span className="font-semibold text-slate-800">{doc.name}</span>
-                    </div>
-                ))}
-            </div>
-
-            <div className="flex-1 overflow-y-auto relative">
-                <div className="grid relative" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
-                    <div className="col-start-1 col-end-2 row-start-1 row-end-[-1]">
-                        {hours.map(hour => (
-                            <div key={hour} className="h-20 relative border-r border-slate-200">
-                                <span className="absolute -top-2.5 right-2 text-xs font-semibold text-slate-800">
-                                    {format(new Date(0, 0, 0, hour), 'ha')}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    {displayedDoctors.map((doc, index) => (
-                        <div key={doc.id} className="relative border-r border-slate-200" style={{ gridColumnStart: index + 2 }}>
-                            {hours.map(hour => (
-                                <React.Fragment key={hour}>
-                                    <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 0, doc.id) ? 'cursor-pointer' : 'bg-slate-50'}`} 
-                                         onClick={() => isSlotInWorkingHours(hour, 0, doc.id) && handleSlotClick(`${String(hour).padStart(2, '0')}:00`, doc.id)} />
-                                    <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 30, doc.id) ? 'cursor-pointer' : 'bg-slate-50'}`} 
-                                         onClick={() => isSlotInWorkingHours(hour, 30, doc.id) && handleSlotClick(`${String(hour).padStart(2, '0')}:30`, doc.id)} />
-                                </React.Fragment>
-                            ))}
-                            
-                            {dayAppointments.filter(app => app.doctor_id === doc.id).map(app => {
-                                const appointmentStartMinutes = timeToMinutes(app.appointment_time);
-                                const top = (appointmentStartMinutes - (timelineStartHour * 60)) * (hourHeight / 60);
-                                const height = (timeToMinutes(app.end_time) - appointmentStartMinutes) * (hourHeight / 60);
-                                if (top < 0 || appointmentStartMinutes > timelineEndHour * 60) return null;
-
-                                return (
-                                    <div key={app.id} className="absolute w-[calc(100%-0.5rem)] left-1 p-2 rounded-lg bg-sky-500 text-white shadow-md z-10" style={{ top: `${top}px`, height: `${height}px`, minHeight: '20px' }}>
-                                        <p className="font-bold text-xs leading-tight">{app.details || 'Appointment'}</p>
-                                        <p className="text-xs opacity-80">{app.patient_name_at_booking}</p>
-                                    </div>
-                                );
-                            })}
+                    {displayedDoctors.map(doc => (
+                        <div key={doc.id} className="p-3 border-b border-r border-slate-200 text-center">
+                            <span className="font-semibold text-slate-800">{doc.name}</span>
                         </div>
                     ))}
-                    
-                    {isToday(currentDate) && <CurrentTimeIndicator hourHeight={hourHeight} timelineStartHour={timelineStartHour} timelineEndHour={timelineEndHour} />}
+                </div>
+
+                <div className="flex-1 overflow-y-auto relative">
+                    <div className="grid relative" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
+                        <div className="col-start-1 col-end-2 row-start-1 row-end-[-1]">
+                            {hours.map(hour => (
+                                <div key={hour} className="h-20 relative border-r border-slate-200">
+                                    <span className="absolute -top-2.5 right-2 text-xs font-semibold text-slate-800">
+                                        {format(new Date(0, 0, 0, hour), 'ha')}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {displayedDoctors.map((doc, index) => (
+                            <div key={doc.id} className="relative border-r border-slate-200" style={{ gridColumnStart: index + 2 }}>
+                                {hours.map(hour => (
+                                    <React.Fragment key={hour}>
+                                        <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 0, doc.id) ? 'cursor-pointer' : 'bg-slate-50'}`} 
+                                             onClick={() => isSlotInWorkingHours(hour, 0, doc.id) && handleSlotClick(`${String(hour).padStart(2, '0')}:00`, doc.id)} />
+                                        <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 30, doc.id) ? 'cursor-pointer' : 'bg-slate-50'}`} 
+                                             onClick={() => isSlotInWorkingHours(hour, 30, doc.id) && handleSlotClick(`${String(hour).padStart(2, '0')}:30`, doc.id)} />
+                                    </React.Fragment>
+                                ))}
+                                
+                                {dayAppointments.filter(app => app.doctor_id === doc.id).map(app => {
+                                    const appointmentStartMinutes = timeToMinutes(app.appointment_time);
+                                    const top = (appointmentStartMinutes - (timelineStartHour * 60)) * (hourHeight / 60);
+                                    const height = (timeToMinutes(app.end_time) - appointmentStartMinutes) * (hourHeight / 60);
+                                    if (top < 0 || appointmentStartMinutes > timelineEndHour * 60) return null;
+
+                                    return (
+                                        <div key={app.id} className="absolute w-[calc(100%-0.5rem)] left-1 p-2 rounded-lg bg-sky-500 text-white shadow-md z-10" style={{ top: `${top}px`, height: `${height}px`, minHeight: '20px' }}>
+                                            <p className="font-bold text-xs leading-tight">{app.details || 'Appointment'}</p>
+                                            <p className="text-xs opacity-80">{app.patient_name_at_booking}</p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                        
+                        {isToday(currentDate) && <CurrentTimeIndicator hourHeight={hourHeight} timelineStartHour={timelineStartHour} timelineEndHour={timelineEndHour} />}
+                    </div>
                 </div>
             </div>
         </div>
