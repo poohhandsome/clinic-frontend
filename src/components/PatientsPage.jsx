@@ -1,7 +1,9 @@
-// src/components/PatientsPage.jsx (NEW FILE)
+// src/components/PatientsPage.jsx (REPLACE)
 
 import React, { useState } from 'react';
 import { PlusCircle, Search } from 'lucide-react';
+import AddNewPatientModal from './AddNewPatientModal'; // Import Add modal
+import SearchPatientModal from './SearchPatientModal'; // Import Search modal
 
 // Placeholder data for the patient table
 const placeholderPatients = [
@@ -13,7 +15,7 @@ const placeholderPatients = [
 export default function PatientsPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-    const [searchResults, setSearchResults] = useState(placeholderPatients);
+    const [patients, setPatients] = useState(placeholderPatients);
 
     // TODO: Implement API calls for search and add
 
@@ -22,17 +24,15 @@ export default function PatientsPage() {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-slate-800">Manage Patients</h2>
                 <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                        <input
-                            type="text"
-                            placeholder="ค้นหาจาก ชื่อ-สกุล, เบอร์โทร หรือ DN"
-                            className="w-80 pl-10 pr-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500"
-                            onFocus={() => setIsSearchModalOpen(true)} // This will later open the search modal
-                        />
-                    </div>
+                    <button 
+                        onClick={() => setIsSearchModalOpen(true)}
+                        className="flex items-center gap-2 w-80 px-4 py-2 text-left bg-white text-slate-500 border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50"
+                    >
+                        <Search size={20} />
+                        ค้นหาจาก ชื่อ-สกุล, เบอร์โทร หรือ DN
+                    </button>
                     <button
-                        onClick={() => setIsAddModalOpen(true)} // This will later open the add modal
+                        onClick={() => setIsAddModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-sm hover:bg-sky-700"
                     >
                         <PlusCircle size={18} />
@@ -53,7 +53,7 @@ export default function PatientsPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                        {searchResults.map((patient, index) => (
+                        {patients.map((patient, index) => (
                             <tr key={index}>
                                 <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{patient.dn}{patient.dn_old && ` (${patient.dn_old})`}</td>
                                 <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.fname}</td>
@@ -63,12 +63,11 @@ export default function PatientsPage() {
                         ))}
                     </tbody>
                 </table>
-                 {searchResults.length === 0 && <p className="text-center text-slate-500 py-8">No patients found.</p>}
+                 {patients.length === 0 && <p className="text-center text-slate-500 py-8">No patients found.</p>}
             </div>
 
-            {/* Modals will be rendered here later */}
-            {/* {isAddModalOpen && <AddNewPatientModal onClose={() => setIsAddModalOpen(false)} />} */}
-            {/* {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} />} */}
+            {isAddModalOpen && <AddNewPatientModal onClose={() => setIsAddModalOpen(false)} />}
+            {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} />}
         </div>
     );
 }
