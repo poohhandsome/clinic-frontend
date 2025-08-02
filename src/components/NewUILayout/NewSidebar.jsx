@@ -47,22 +47,33 @@ export default function NewSidebar({ isSidebarOpen, currentPath }) {
 
     return (
         // 1. Reverted to light theme, keeping the responsive width
-        <aside 
-            className={`h-screen bg-white flex flex-col transition-all duration-300 ease-in-out border-r border-slate-200
-                ${isSidebarOpen ? 'w-[280px]' : 'w-[64px]'}`}
-        >
-            {/* Logo and Clinic Name Section */}
-            <div className={`flex items-center h-16 ${isSidebarOpen ? 'px-4' : 'px-2'} border-b border-slate-200`}>
-    <div className="flex items-center overflow-hidden">
-        <img src={clinicLogo} alt="Clinic Logo" className="h-10 w-10 flex-shrink-0 rounded-md" />
-        <span 
-            className={`font-bold text-xl ml-3 whitespace-nowrap transition-opacity duration-300 text-slate-800
-                ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
-        >
-            Newtrend
-        </span>
+        <aside
+  className={`group/sidebar h-screen bg-white flex flex-col border-r border-slate-200
+    transition-all duration-300 ease-in-out 
+    ${isSidebarOpen ? 'w-[280px]' : 'w-[64px] group-hover/sidebar:w-[280px]'}
+  `}
+>
+  {/* Logo Section */}
+  <div className={`flex items-center h-16 border-b border-slate-200 
+    transition-all duration-300 ease-in-out
+    ${isSidebarOpen ? 'px-4 justify-start' : 'px-0 justify-center group-hover/sidebar:px-4 group-hover/sidebar:justify-start'}
+  `}>
+    <div className="flex items-center">
+      <img
+        src={clinicLogo}
+        alt="Clinic Logo"
+        className="h-10 w-10 rounded-md transition-all duration-300"
+      />
+      <span
+        className={`ml-3 font-bold text-xl whitespace-nowrap text-slate-800 
+          transition-all duration-300 ease-in-out
+          ${isSidebarOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 group-hover/sidebar:opacity-100 group-hover/sidebar:scale-100'}
+        `}
+      >
+        Newtrend
+      </span>
     </div>
-</div>
+  </div>
             {/* Navigation Menu */}
             <nav className="flex-1 px-3 py-4">
                 <ul>
