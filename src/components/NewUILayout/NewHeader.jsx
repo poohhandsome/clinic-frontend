@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { Search, Settings, Menu, CalendarCheck2, CalendarArrowDown, ChevronsUpDown } from 'lucide-react'; // 1. Import new icon
+import { Search, Settings, Menu, CalendarCheck2, CalendarArrowDown, ChevronsUpDown } from 'lucide-react';
 import { CgMenuGridO } from 'react-icons/cg';
 import { FaUserDoctor } from 'react-icons/fa6';
 import { useAuth } from '../../context/AuthContext';
@@ -54,26 +54,15 @@ const AppMenu = ({ setIsAppMenuOpen, pendingCount }) => {
 };
 
 
-export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, setIsSidebarOpen, pendingCount, selectedClinicName, onChangeClinic }) { // 2. Receive new props
+export default function NewHeader({ currentDate, setCurrentDate, pendingCount, selectedClinicName, onChangeClinic }) {
     const { user } = useAuth();
     const [isAppMenuOpen, setIsAppMenuOpen] = useState(false);
     
     return (
-        <header className="relative bg-slate-50 flex items-center justify-between px-4 sm:px-6 h-16 shrink-0 z-40">
+        <header className="relative bg-slate-50 flex items-center justify-between px-4 sm:px-6 h-16 shrink-0 z-40 border-b border-slate-200">
+            {/* The menu button to toggle the old controls sidebar has been removed */}
             <div className="flex items-center gap-4">
-                <button 
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-                    className="p-2 rounded-full hover:bg-slate-200 text-slate-600"
-                >
-                    <Menu size={22} />
-                </button>
-                <a href="#dashboard" className="hidden sm:block text-xl font-bold text-slate-800 no-underline">
-                    Newtrend <span className="text-sky-600">Dental</span>
-                </a>
-                <div className="hidden md:flex items-center gap-2">
-                    <div className="w-px h-6 bg-slate-300 ml-2"></div>
-                    
-                    {/* 3. This is the new Clinic button */}
+                 <div className="flex items-center gap-2">
                     <button 
                         onClick={onChangeClinic}
                         className="flex items-center gap-2 px-4 py-1.5 border border-slate-300 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-200"
@@ -82,7 +71,6 @@ export default function NewHeader({ currentDate, setCurrentDate, isSidebarOpen, 
                         <ChevronsUpDown size={16} className="text-slate-500" />
                     </button>
                     
-                    {/* 4. The old Today button is now the date display */}
                     <h2 className="text-lg font-medium text-slate-600 ml-2">
                         {format(currentDate, 'MMMM d, yyyy')}
                     </h2>
