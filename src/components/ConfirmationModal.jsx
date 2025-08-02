@@ -1,15 +1,38 @@
-// src/components/ConfirmationModal.jsx (NEW FILE)
+// src/components/ConfirmationModal.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
 import authorizedFetch from '../api';
 import { format, parseISO } from 'date-fns';
+
+// Reusable form field components
+const InputField = ({ label, ...props }) => (
+    <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+        <input {...props} className="w-full p-2 border border-slate-300 rounded-md text-sm shadow-sm focus:ring-sky-500 focus:border-sky-500"/>
+    </div>
+);
+const TextareaField = ({ label, ...props }) => (
+    <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+        <textarea {...props} rows="3" className="w-full p-2 border border-slate-300 rounded-md text-sm shadow-sm focus:ring-sky-500 focus:border-sky-500"/>
+    </div>
+);
+const SelectField = ({ label, options, ...props }) => (
+     <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+        <select {...props} className="w-full p-2 border border-slate-300 rounded-md text-sm bg-white shadow-sm focus:ring-sky-500 focus:border-sky-500">
+            <option value="">-- Select --</option>
+            {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+        </select>
+    </div>
+);
 
 export default function ConfirmationModal({ appointment, doctors, onClose, onUpdate }) {
     const [callResult, setCallResult] = useState('confirmed');
     const [rooms, setRooms] = useState([]);
     const [formData, setFormData] = useState({
         appointment_date: format(parseISO(appointment.appointment_date), 'yyyy-MM-dd'),
-        appointment_time: appointment.booking_time,
+        appointment_time: appointment.appointment_time,
         doctor_id: appointment.doctor_id,
         room_id: appointment.room_id || '',
         purpose: appointment.purpose || '',
@@ -17,10 +40,12 @@ export default function ConfirmationModal({ appointment, doctors, onClose, onUpd
     });
 
     useEffect(() => {
-        authorizedFetch(`/api/rooms?clinic_id=${appointment.clinic_id || 1}`) // Default to clinic 1 if not available
-            .then(res => res.json())
-            .then(setRooms)
-            .catch(err => console.error("Failed to fetch rooms", err));
+        if (appointment.clinic_id) {
+            authorizedFetch(`/api/rooms?clinic_id=${appointment.clinic_id}`)
+                .then(res => res.json())
+                .then(setRooms)
+                .catch(err => console.error("Failed to fetch rooms", err));
+        }
     }, [appointment.clinic_id]);
 
     const handleChange = (e) => {
@@ -29,7 +54,13 @@ export default function ConfirmationModal({ appointment, doctors, onClose, onUpd
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        let payload = { ...formData, status: callResult };
+        let payload = { status: callResult, confirmation_notes: formData.confirmation_notes };
+
+        if (callResult === 'rescheduled') {
+            payload = { ...payload, ...formData };
+        } else {
+             payload = { ...payload, purpose: formData.purpose, room_id: formData.room_id, doctor_id: formData.doctor_id };
+        }
         
         try {
             const res = await authorizedFetch(`/api/appointments/${appointment.id}`, {
@@ -53,10 +84,11 @@ export default function ConfirmationModal({ appointment, doctors, onClose, onUpd
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700">Call Result</label>
-                                <select value={callResult} onChange={e => setCallResult(e.target.value)} className="w-full p-2 border rounded-md">
+                                <select value={callResult} onChange={e => setCallResult(e.target.value)} className="w-full p-2 border rounded-md bg-white">
                                     <option value="confirmed">Confirmed</option>
-                                    <option value="rescheduled">Reschedule</option>
+                                    <option value="rescheduled">Wants to Reschedule</option>
                                     <option value="cancelled">Cancelled / Rejected</option>
+                                    <option value="no-answer">No Answer</option>
                                 </select>
                             </div>
 
@@ -78,33 +110,10 @@ export default function ConfirmationModal({ appointment, doctors, onClose, onUpd
                     </div>
                     <div className="p-4 bg-slate-50 border-t flex justify-end gap-3">
                         <button type="button" onClick={onClose} className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-md hover:bg-slate-200">Cancel</button>
-                        <button type="submit" className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700">Confirm</button>
+                        <button type="submit" className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700">Confirm Update</button>
                     </div>
                 </form>
             </div>
         </div>
     );
 }
-
-// Reusable form field components
-const InputField = ({ label, ...props }) => (
-    <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-        <input {...props} className="w-full p-2 border rounded-md text-sm"/>
-    </div>
-);
-const TextareaField = ({ label, ...props }) => (
-    <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-        <textarea {...props} rows="3" className="w-full p-2 border rounded-md text-sm"/>
-    </div>
-);
-const SelectField = ({ label, options, ...props }) => (
-     <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-        <select {...props} className="w-full p-2 border rounded-md text-sm bg-white">
-            <option value="">-- Select --</option>
-            {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
-    </div>
-);
