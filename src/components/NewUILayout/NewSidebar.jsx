@@ -1,57 +1,81 @@
+
 import React from 'react';
 import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3 } from 'lucide-react';
+import clinicLogo from '../../assets/clinic-logo.png'; // Import the logo
 
 const NavItem = ({ icon, text, active, isSidebarOpen }) => (
-    <li className={`relative flex items-center py-3 px-4 my-1 font-medium rounded-md cursor-pointer transition-colors group ${active ? 'bg-gradient-to-tr from-sky-200 to-sky-100 text-sky-800' : 'hover:bg-slate-200 text-slate-600'}`}>
-        {icon}
-        <span className={`overflow-hidden transition-all whitespace-nowrap ${isSidebarOpen ? 'w-40 ml-3' : 'w-0'}`}>{text}</span>
-        {!isSidebarOpen && (
-            <div className="absolute left-full rounded-md px-2 py-1 ml-6 bg-sky-100 text-sky-800 text-sm invisible opacity-20 -translate-x-3 transition-all group-hover:visible group-hover:opacity-100 group-hover:translate-x-0 whitespace-nowrap">
+    <li>
+        <a 
+            href="#" 
+            className={`flex items-center p-3 my-1 rounded-lg transition-colors
+                ${active 
+                    ? 'bg-sky-800 text-white' 
+                    : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                }`}
+        >
+            {icon}
+            <span 
+                className={`overflow-hidden transition-all whitespace-nowrap 
+                    ${isSidebarOpen ? 'w-40 ml-3' : 'w-0'}`
+                }
+            >
                 {text}
-            </div>
-        )}
+            </span>
+        </a>
     </li>
 );
 
 export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPath }) {
-    // 1. Icons are now size 16 (approx 30% smaller than 20)
-    // 2. "Doctors Management" is now "Doctors"
     const navItems = [
-        { id: '#dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={16} /> },
-        { id: '#clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={16} /> },
-        { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={16} /> },
-        { id: '#doctors', text: 'Doctors', icon: <UserRound size={16} /> },
-        { id: '#treatments', text: 'Treatments', icon: <Syringe size={16} /> },
-        { id: '#billing', text: 'Billing', icon: <Receipt size={16} /> },
-        { id: '#lab-costs', text: 'Lab Costs', icon: <FlaskConical size={16} /> },
-        { id: '#summary', text: 'Summary', icon: <BarChart3 size={16} /> },
+        { id: '#dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
+        { id: '#clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
+        { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={20} /> },
+        { id: '#doctors', text: 'Doctors', icon: <UserRound size={20} /> },
+        { id: '#treatments', text: 'Treatments', icon: <Syringe size={20} /> },
+        { id: '#billing', text: 'Billing', icon: <Receipt size={20} /> },
+        { id: '#lab-costs', text: 'Lab Costs', icon: <FlaskConical size={20} /> },
+        { id: '#summary', text: 'Summary', icon: <BarChart3 size={20} /> },
     ];
 
     return (
-        <nav className={`h-screen flex flex-col bg-slate-100 border-r border-slate-200 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-60' : 'w-20'}`}>
-            {/* 3. Header of sidebar now contains the logo and branding */}
-            <div className="flex items-center p-4 h-16 border-b border-slate-200">
-                <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1 rounded-lg hover:bg-slate-200">
-                    <img src="http://googleusercontent.com/file_content/4" alt="Clinic Logo" className="w-9 h-9 rounded-full" />
-                </button>
-                <div className={`overflow-hidden transition-all ${isSidebarOpen ? 'w-auto ml-2' : 'w-0'}`}>
-                    <a href="#dashboard" className="font-bold text-lg text-slate-800 no-underline whitespace-nowrap">
-                        Newtrend <span className="text-sky-600">Dental</span>
-                    </a>
+        <aside 
+            className={`h-screen bg-gray-900 text-white flex flex-col transition-all duration-300 ease-in-out
+                ${isSidebarOpen ? 'w-[280px]' : 'w-20'}`}
+        >
+            {/* Logo and Clinic Name Section */}
+            <div className="flex items-center justify-between h-16 p-4 border-b border-gray-700">
+                <div className={`flex items-center overflow-hidden ${isSidebarOpen ? 'w-auto' : 'w-full'}`}>
+                    <img src={clinicLogo} alt="Clinic Logo" className="h-10 w-auto rounded-md" />
+                    <span 
+                        className={`font-bold text-xl ml-3 whitespace-nowrap transition-opacity duration-300 
+                            ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
+                    >
+                        Newtrend
+                    </span>
                 </div>
             </div>
-            <ul className="flex-1 px-3 py-4">
-                {navItems.map(item => (
-                    <a href={item.id} key={item.id}>
+
+            {/* Navigation Menu */}
+            <nav className="flex-1 px-3 py-4 overflow-y-auto">
+                <ul>
+                    {navItems.map(item => (
                         <NavItem 
+                            key={item.id}
                             isSidebarOpen={isSidebarOpen}
                             icon={item.icon}
                             text={item.text}
                             active={currentPath === item.id}
                         />
-                    </a>
-                ))}
-            </ul>
-        </nav>
+                    ))}
+                </ul>
+            </nav>
+
+            {/* User Profile / Footer Section */}
+            <div className="p-4 border-t border-gray-700">
+                 <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="w-full p-2 text-gray-400 rounded-lg hover:bg-gray-700">
+                    {isSidebarOpen ? 'Collapse' : 'Expand'}
+                </button>
+            </div>
+        </aside>
     );
 }
