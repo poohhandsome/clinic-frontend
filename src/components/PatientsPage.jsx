@@ -7,6 +7,7 @@ import SearchPatientModal from './SearchPatientModal';
 import AppointmentModal from './AppointmentModal';
 import authorizedFetch from '../api';
 import AppointmentCalendarView from './AppointmentCalendarView';
+import AppointmentActionModal from './AppointmentActionModal'; // <-- IMPORT NEW ACTION MODAL
 
 // --- Helper Components ---
 const StatusTag = ({ status }) => {
@@ -15,6 +16,7 @@ const StatusTag = ({ status }) => {
         'cancelled': { icon: <XCircle size={14} />, color: 'text-red-600 bg-red-100', label: 'Cancelled' },
         'rescheduled': { icon: <RefreshCw size={14} />, color: 'text-blue-600 bg-blue-100', label: 'Reschedule' },
         'pending_confirmation': { icon: <RefreshCw size={14} />, color: 'text-yellow-600 bg-yellow-100', label: 'Pending' },
+        'checked-in': { icon: <CheckCircle size={14} />, color: 'text-purple-600 bg-purple-100', label: 'Checked-in' },
     };
     const statusKey = status ? status.toLowerCase() : 'pending_confirmation';
     const { icon, color, label } = statusMap[statusKey] || statusMap['pending_confirmation'];
@@ -37,22 +39,22 @@ export default function PatientsPage({ selectedClinic }) {
     const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
     const [appointmentModalData, setAppointmentModalData] = useState(null);
 
-    // Filter states
+    // State for the new action modal
+    const [actionModal, setActionModal] = useState({ isOpen: false, action: null, appointment: null });
+
     const [doctorFilter, setDoctorFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
 
     const fetchAppointments = () => {
         const dateString = format(currentDate, 'yyyy-MM-dd');
-        // Fetch ALL appointments for the list view
         authorizedFetch(`/api/all-appointments?clinic_id=${selectedClinic}&startDate=${dateString}&endDate=${dateString}`)
             .then(res => res.json())
             .then(setAllAppointments)
             .catch(err => console.error("Failed to fetch appointments", err));
 
-        // Fetch only working doctors for the filter dropdown and calendar view
         authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
             .then(res => res.json())
-            .then(data => setDoctorsOnDay(data.doctors || []))
+            .then(data => setDoctorsOnDay(data.all_doctors_in_clinic || [])) // Use all doctors for filters
             .catch(err => console.error("Failed to fetch doctors for the day", err));
     };
 
@@ -71,13 +73,13 @@ export default function PatientsPage({ selectedClinic }) {
         setIsAddAppointmentModalOpen(true);
     };
 
+    const handleActionClick = (action, appointment) => {
+        setActionModal({ isOpen: true, action, appointment });
+    };
+
     return (
         <div className="p-6 h-full flex flex-col bg-slate-50">
-            <button
-                onClick={() => handleSlotClick({ time: '09:00', doctorId: null })}
-                className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40"
-                aria-label="Add Appointment"
-            >
+            <button onClick={() => handleSlotClick({ time: '09:00', doctorId: null })} className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40">
                 <Plus size={28} />
             </button>
             
@@ -124,6 +126,7 @@ export default function PatientsPage({ selectedClinic }) {
                         <option value="cancelled">Cancelled</option>
                         <option value="rescheduled">Rescheduled</option>
                         <option value="pending_confirmation">Pending</option>
+                        <option value="checked-in">Checked-in</option>
                     </select>
                  </div>
             </div>
@@ -149,9 +152,9 @@ export default function PatientsPage({ selectedClinic }) {
                                         <td className="p-3 whitespace-nowrap"><DoctorTag name={app.doctor_name} /></td>
                                         <td className="p-3 whitespace-nowrap"><StatusTag status={app.status} /></td>
                                         <td className="p-3 whitespace-nowrap text-sm font-medium space-x-2">
-                                            <button className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200">Check-in</button>
-                                            <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold hover:bg-blue-200">Reschedule</button>
-                                            <button className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold hover:bg-slate-200">Edit</button>
+                                            <button onClick={() => handleActionClick('check-in', app)} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200">Check-in</button>
+                                            <button onClick={() => handleActionClick('reschedule', app)} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold hover:bg-blue-200">Reschedule</button>
+                                            <button onClick={() => handleActionClick('edit', app)} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold hover:bg-slate-200">Edit</button>
                                         </td>
                                     </tr>
                                 ))}
@@ -163,10 +166,11 @@ export default function PatientsPage({ selectedClinic }) {
                     <AppointmentCalendarView currentDate={currentDate} selectedClinic={selectedClinic} onSlotClick={handleSlotClick} />
                  )}
             </div>
-
+            
             {isAddPatientModalOpen && <AddNewPatientModal onClose={() => setIsAddPatientModalOpen(false)} onUpdate={() => {}} />}
             {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={() => {}} />}
             {isAddAppointmentModalOpen && <AppointmentModal data={appointmentModalData} clinicId={selectedClinic} onClose={(didBook) => { setIsAddAppointmentModalOpen(false); if(didBook) fetchAppointments(); }} />}
+            {actionModal.isOpen && <AppointmentActionModal action={actionModal.action} appointment={actionModal.appointment} doctors={doctorsOnDay} clinicId={selectedClinic} onClose={() => setActionModal({ isOpen: false, action: null, appointment: null })} onUpdate={fetchAppointments} />}
         </div>
     );
 }
