@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import authorizedFetch from '../api';
 import { FaTag } from 'react-icons/fa';
-import { Clock, PlusCircle, Trash2 } from 'lucide-react';
+import { Clock, PlusCircle, Trash2, VenetianMask } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import SettingsPage from './SettingsPage';
 
 // --- Helper Components & Constants ---
@@ -116,6 +117,7 @@ export default function DoctorSchedulesPage() {
 function TimetableManager({ doctor, onClose }) {
     const [weeklySchedules, setWeeklySchedules] = useState({});
     const [specialSchedules, setSpecialSchedules] = useState([]);
+    const [isVacationModalOpen, setIsVacationModalOpen] = useState(false);
 
     const fetchSchedules = () => {
         Promise.all([
@@ -129,31 +131,66 @@ function TimetableManager({ doctor, onClose }) {
             const groupedByDay = availability.reduce((acc, curr) => {
                 const day = curr.day_of_week;
                 if (!acc[day]) acc[day] = [];
-                acc[day].push({ ...curr, id: Math.random() }); // Add temp id for mapping
+                acc[day].push({ ...curr, id: Math.random() });
                 return acc;
             }, {});
             setWeeklySchedules(groupedByDay);
-            setSpecialSchedules(special.filter(s => !s.is_available)); // only show vacations/days off
+            setSpecialSchedules(special);
         }).catch(err => console.error("Error fetching schedules:", err));
     };
 
     useEffect(fetchSchedules, [doctor]);
 
+    const handleDeleteSpecial = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this special schedule?")) return;
+        try {
+            const res = await authorizedFetch(`/api/special-schedules/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete schedule');
+            fetchSchedules(); // Re-fetch all schedules
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-5xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center mb-4 shrink-0">
-                    <h3 className="text-xl font-bold text-slate-800">Manage Timetable for {doctor.name}</h3>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M6.4 19L5 17.6l5.6-5.6L5 6.4L6.4 5l5.6 5.6L17.6 5L19 6.4L13.4 12l5.6 5.6l-1.4 1.4l-5.6-5.6L6.4 19Z"/></svg>
-                    </button>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto">
-                    <WeeklyScheduleEditor doctor={doctor} schedules={weeklySchedules} setSchedules={setWeeklySchedules} />
-                    <MonthlyScheduleEditor doctor={doctor} onUpdate={fetchSchedules} />
+        <>
+            {isVacationModalOpen && <VacationPlannerModal doctor={doctor} onClose={() => setIsVacationModalOpen(false)} onUpdate={fetchSchedules} />}
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+                <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-6xl max-h-[90vh] flex flex-col">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
+                        <h3 className="text-xl font-bold text-slate-800">Manage Timetable for {doctor.name}</h3>
+                        <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M6.4 19L5 17.6l5.6-5.6L5 6.4L6.4 5l5.6 5.6L17.6 5L19 6.4L13.4 12l5.6 5.6l-1.4 1.4l-5.6-5.6L6.4 19Z"/></svg>
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-y-auto">
+                        <WeeklyScheduleEditor doctor={doctor} schedules={weeklySchedules} setSchedules={setWeeklySchedules} />
+                        <MonthlyScheduleEditor doctor={doctor} onUpdate={fetchSchedules} />
+                        <div className="bg-slate-50 p-4 rounded-lg border">
+                            <h4 className="font-semibold text-slate-700 mb-3">Special Dates & Vacations</h4>
+                             <button onClick={() => setIsVacationModalOpen(true)} className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white font-semibold rounded-md shadow-sm hover:bg-red-600">
+                                <VenetianMask size={16}/> Set Vacation / Day Off
+                            </button>
+                            <div className="space-y-2">
+                                {specialSchedules.map(s => (
+                                    <div key={s.id} className="flex items-center justify-between p-2 rounded-md bg-white border">
+                                        <div>
+                                            <div className="font-bold text-sm text-slate-800">{format(parseISO(s.schedule_date), 'EEE, d MMM yyyy')}</div>
+                                            <div className="text-xs text-slate-500">{s.clinic_name}</div>
+                                        </div>
+                                        <div className={`text-sm font-semibold ${s.is_available ? 'text-green-600' : 'text-red-600'}`}>
+                                            {s.is_available ? `${s.start_time} - ${s.end_time}` : 'Unavailable'}
+                                        </div>
+                                        <button onClick={() => handleDeleteSpecial(s.id)} className="p-2 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+                                    </div>
+                                ))}
+                                {specialSchedules.length === 0 && <p className="text-xs text-center text-slate-400 py-4">No special dates set.</p>}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
 
@@ -183,12 +220,11 @@ function WeeklyScheduleEditor({ doctor, schedules, setSchedules }) {
         const availabilityPayload = Object.values(schedules).flat();
 
         authorizedFetch(`/api/doctor-availability/${doctor.id}`, {
-            method: 'POST',
-            body: JSON.stringify({ availability: availabilityPayload })
+            method: 'POST', body: JSON.stringify({ availability: availabilityPayload })
         })
         .then(res => {
             if (!res.ok) throw new Error('Failed to save schedule.');
-            setStatus({ message: 'Weekly schedule saved successfully!', type: 'success' });
+            setStatus({ message: 'Weekly schedule saved!', type: 'success' });
         })
         .catch(err => setStatus({ message: err.message, type: 'error' }))
         .finally(() => setIsLoading(false));
@@ -204,7 +240,7 @@ function WeeklyScheduleEditor({ doctor, schedules, setSchedules }) {
                         <div className="space-y-2 mt-1">
                             {(schedules[day.id] || []).map(row => (
                                 <div key={row.id} className="grid grid-cols-8 gap-2 items-center">
-                                    <select value={row.clinic_id} onChange={e => handleRowChange(day.id, row.id, 'clinic_id', parseInt(e.target.value))} className="col-span-3 p-1.5 border rounded-md text-sm">
+                                    <select value={row.clinic_id} onChange={e => handleRowChange(day.id, row.id, 'clinic_id', parseInt(e.target.value))} className="col-span-3 p-1.5 border rounded-md text-sm bg-white">
                                         {doctor.clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
                                     <input type="time" value={row.start_time} onChange={e => handleRowChange(day.id, row.id, 'start_time', e.target.value)} className="col-span-2 p-1.5 border rounded-md text-sm" />
@@ -240,13 +276,12 @@ function MonthlyScheduleEditor({ doctor, onUpdate }) {
         try {
             const payload = {
                 doctor_id: doctor.id, clinic_id: parseInt(clinicId, 10),
-                is_available: false, // This form is for setting days OFF
-                rule: { week: parseInt(rule.week), day: parseInt(rule.day) },
+                is_available: false, rule: { week: parseInt(rule.week), day: parseInt(rule.day) },
             };
             const res = await authorizedFetch('/api/special-schedules', { method: 'POST', body: JSON.stringify(payload) });
             if (!res.ok) throw new Error((await res.json()).message || 'Failed to add rule');
-            setStatus({ message: 'Recurring day off added for the next 12 months!', type: 'success' });
-            onUpdate(); // Refresh the list in the parent
+            setStatus({ message: 'Recurring day off added!', type: 'success' });
+            onUpdate();
         } catch (err) {
             setStatus({ message: err.message, type: 'error' });
         } finally {
@@ -258,18 +293,18 @@ function MonthlyScheduleEditor({ doctor, onUpdate }) {
         <div className="bg-slate-50 p-4 rounded-lg border">
             <h4 className="font-semibold text-slate-700 mb-3">Recurring Days Off (Monthly)</h4>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <p className="text-xs text-slate-500">Use this to set a specific day of the month as unavailable (e.g., every 1st Sunday).</p>
+                <p className="text-xs text-slate-500">Set a specific day of the month as unavailable (e.g., every 1st Sunday).</p>
                 <div className="flex gap-2 items-center">
-                    <select value={rule.week} onChange={e => setRule({...rule, week: e.target.value})} className="w-full p-2 border rounded-md text-sm">
+                    <select value={rule.week} onChange={e => setRule({...rule, week: e.target.value})} className="w-full p-2 border bg-white rounded-md text-sm">
                         <option value="1">1st</option><option value="2">2nd</option><option value="3">3rd</option><option value="4">4th</option>
                     </select>
-                    <select value={rule.day} onChange={e => setRule({...rule, day: e.target.value})} className="w-full p-2 border rounded-md text-sm">
+                    <select value={rule.day} onChange={e => setRule({...rule, day: e.target.value})} className="w-full p-2 border bg-white rounded-md text-sm">
                         {daysOfWeek.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700">For Clinic</label>
-                    <select value={clinicId} onChange={e => setClinicId(e.target.value)} className="w-full p-2 border rounded-md text-sm">
+                    <select value={clinicId} onChange={e => setClinicId(e.target.value)} className="w-full p-2 border bg-white rounded-md text-sm">
                         {doctor.clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </div>
@@ -278,6 +313,79 @@ function MonthlyScheduleEditor({ doctor, onUpdate }) {
                     <PlusCircle size={16}/> {isLoading ? 'Adding Rule...' : 'Add Recurring Day Off'}
                 </button>
             </form>
+        </div>
+    );
+}
+
+function VacationPlannerModal({ doctor, onClose, onUpdate }) {
+    const [workingDays, setWorkingDays] = useState([]);
+    const [selectedDays, setSelectedDays] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [status, setStatus] = useState({ message: '', type: '' });
+
+    useEffect(() => {
+        authorizedFetch(`/api/doctor-work-schedule/${doctor.id}`)
+            .then(res => res.json())
+            .then(data => setWorkingDays(data))
+            .catch(err => setStatus({ message: 'Could not load working days.', type: 'error' }))
+            .finally(() => setIsLoading(false));
+    }, [doctor.id]);
+
+    const handleSelectDay = (day) => {
+        setSelectedDays(prev => prev.some(d => d.date === day.date) ? prev.filter(d => d.date !== day.date) : [...prev, day]);
+    };
+
+    const handleConfirmVacation = async () => {
+        if (selectedDays.length === 0) return;
+        setIsLoading(true);
+        setStatus({ message: '', type: '' });
+        try {
+            const vacationPromises = selectedDays.map(day => {
+                const payload = {
+                    doctor_id: doctor.id, clinic_id: day.clinicId,
+                    schedule_date: day.date, is_available: false,
+                };
+                return authorizedFetch('/api/special-schedules', { method: 'POST', body: JSON.stringify(payload) });
+            });
+            const results = await Promise.all(vacationPromises);
+            if (results.some(res => !res.ok)) throw new Error('One or more vacation days failed to save.');
+            onUpdate();
+            onClose();
+        } catch(err) {
+            setStatus({ message: err.message, type: 'error' });
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl">
+                <h3 className="text-lg font-semibold mb-2 text-slate-800">Vacation Planner for {doctor.name}</h3>
+                <p className="text-sm text-slate-500 mb-4">Select one or more upcoming work days to mark as unavailable.</p>
+                <div className="border rounded-md max-h-96 overflow-y-auto bg-slate-50 p-3">
+                    {isLoading && <div className="text-center p-4 text-sm">Loading working days...</div>}
+                    {!isLoading && workingDays.length === 0 && <div className="text-center p-4 text-sm">No upcoming working days found.</div>}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {workingDays.map(day => (
+                            <label key={day.date} className={`flex items-start p-3 rounded-md cursor-pointer border-2 ${selectedDays.some(d => d.date === day.date) ? 'border-red-500 bg-red-50' : 'border-transparent bg-white hover:bg-slate-100'}`}>
+                                <input type="checkbox" checked={selectedDays.some(d => d.date === day.date)} onChange={() => handleSelectDay(day)} className="h-4 w-4 mt-1 text-red-600 border-gray-300 focus:ring-red-500 shrink-0" />
+                                <div className="ml-3">
+                                    <div className="font-bold text-slate-800">{format(parseISO(day.date), 'EEE, d MMM yyyy')}</div>
+                                    <div className="text-xs text-slate-600 flex items-center gap-1.5"><FaTag size={10}/> {day.clinicName}</div>
+                                    <div className="text-xs text-slate-600 flex items-center gap-1.5"><Clock size={10}/> {day.startTime} - {day.endTime}</div>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+                <StatusMessage message={status.message} type={status.type} />
+                <div className="flex justify-end gap-3 mt-6">
+                    <button className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-md hover:bg-slate-200" onClick={onClose}>Cancel</button>
+                    <button className="px-4 py-2 bg-red-600 text-white font-semibold rounded-md shadow-sm hover:bg-red-700 disabled:opacity-50" onClick={handleConfirmVacation} disabled={isLoading || selectedDays.length === 0}>
+                        {isLoading ? 'Saving...' : `Confirm ${selectedDays.length} Day(s) Off`}
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
