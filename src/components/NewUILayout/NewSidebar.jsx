@@ -55,25 +55,20 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
-           {/* CORRECTED LOGO SECTION */}
+           {/* DEFINITIVE FIX: Logo Section */}
             <div className={`flex items-center h-16 px-4 border-b border-slate-200 ${!showSidebar && 'justify-center'}`}>
-                <div className="flex items-center">
-                    <img
-                        src={clinicLogo}
-                        alt="Clinic Logo"
-                        className="h-10 w-10 rounded-md flex-shrink-0"
-                    />
-                    <span
-                        className={`ml-3 font-bold text-xl whitespace-nowrap text-slate-800
-                            transition-opacity duration-200
-                            ${showSidebar ? 'opacity-100' : 'opacity-0'}`
-                        }
-                    >
+                <img
+                    src={clinicLogo}
+                    alt="Clinic Logo"
+                    className="h-10 w-10 rounded-md flex-shrink-0"
+                />
+                {/* This text is now conditionally rendered, so it doesn't take up space when hidden */}
+                {showSidebar && (
+                    <span className="ml-3 font-bold text-xl whitespace-nowrap text-slate-800">
                         Newtrend
                     </span>
-                </div>
+                )}
             </div>
-            
             <nav className="flex-1 px-3 py-4">
                 <ul>
                     {navItems.map(item => (
