@@ -1,10 +1,11 @@
 // src/components/PatientsPage.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, XCircle, RefreshCw, UserPlus } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
 import AddNewPatientModal from './AddNewPatientModal';
 import SearchPatientModal from './SearchPatientModal';
+import AppointmentModal from './AppointmentModal'; // Using this for "Add Appointment"
 import authorizedFetch from '../api';
 
 // --- Helper Components ---
@@ -24,27 +25,29 @@ const DoctorTag = ({ name }) => (
 );
 
 // --- Main Component ---
-export default function PatientsPage() {
+export default function PatientsPage({ selectedClinic }) {
     const [view, setView] = useState('list'); // 'list' or 'calendar'
     const [currentDate, setCurrentDate] = useState(new Date());
     const [appointments, setAppointments] = useState([]);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
 
-    useEffect(() => {
+    const fetchAppointments = () => {
         const dateString = format(currentDate, 'yyyy-MM-dd');
-        // TODO: This should fetch from a dedicated appointments endpoint, using confirmed for now
-        authorizedFetch(`/api/confirmed-appointments?clinic_id=1&startDate=${dateString}&endDate=${dateString}`)
+        authorizedFetch(`/api/confirmed-appointments?clinic_id=${selectedClinic}&startDate=${dateString}&endDate=${dateString}`)
             .then(res => res.json())
             .then(setAppointments)
             .catch(err => console.error("Failed to fetch appointments", err));
-    }, [currentDate]);
+    };
+
+    useEffect(fetchAppointments, [currentDate, selectedClinic]);
 
     return (
         <div className="p-6 h-full flex flex-col bg-slate-50">
-            {/* --- Floating Add Button --- */}
+            {/* --- Floating Add Appointment Button --- */}
             <button
-                onClick={() => setIsAddModalOpen(true)}
+                onClick={() => setIsAddAppointmentModalOpen(true)}
                 className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40"
                 aria-label="Add Appointment"
             >
@@ -53,7 +56,15 @@ export default function PatientsPage() {
             
             {/* --- Header & View Toggles --- */}
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-slate-800">Appointments</h2>
+                 <div className="flex items-center gap-4">
+                    <h2 className="text-2xl font-bold text-slate-800">Appointments</h2>
+                    <button onClick={() => setIsAddPatientModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 border border-slate-300 font-semibold rounded-lg shadow-sm hover:bg-slate-50 text-sm">
+                        <UserPlus size={16} /> Add Patient
+                    </button>
+                    <button onClick={() => setIsSearchModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-white text-slate-700 border border-slate-300 font-semibold rounded-lg shadow-sm hover:bg-slate-50 text-sm">
+                        <Search size={16} /> Search Patient
+                    </button>
+                </div>
                 <div className="flex items-center gap-2 p-1 bg-slate-200 rounded-lg">
                     <button onClick={() => setView('list')} className={`px-3 py-1 text-sm font-semibold rounded-md ${view === 'list' ? 'bg-white text-slate-800 shadow' : 'text-slate-500'}`}>
                         <List size={16} className="inline mr-1" /> List View
@@ -66,7 +77,6 @@ export default function PatientsPage() {
 
             {/* --- Filter Panel --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {/* A. Date/Navigation Panel */}
                 <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm">
                     <button onClick={() => setCurrentDate(subDays(currentDate, 1))} className="p-2 rounded hover:bg-slate-100"><ChevronLeft size={20}/></button>
                     <input type="date" value={format(currentDate, 'yyyy-MM-dd')} onChange={e => setCurrentDate(new Date(e.target.value))} className="p-2 border rounded-md"/>
@@ -74,11 +84,10 @@ export default function PatientsPage() {
                     <button onClick={() => setCurrentDate(new Date())} className="px-3 py-2 text-sm font-semibold border rounded-md hover:bg-slate-50">Today</button>
                     <button onClick={() => setCurrentDate(addDays(new Date(), 1))} className="px-3 py-2 text-sm font-semibold border rounded-md hover:bg-slate-50">Tomorrow</button>
                 </div>
-                 {/* B. Filter by Field Panel */}
                  <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm">
                     <div className="relative flex-grow">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                        <input type="text" placeholder="Search Patient..." className="w-full pl-10 pr-4 py-2 border rounded-md"/>
+                        <input type="text" placeholder="Search Appointments..." className="w-full pl-10 pr-4 py-2 border rounded-md"/>
                     </div>
                      <select className="p-2 border rounded-md text-sm"><option>All Doctors</option></select>
                      <select className="p-2 border rounded-md text-sm"><option>All Statuses</option></select>
@@ -126,8 +135,9 @@ export default function PatientsPage() {
                  )}
             </div>
 
-            {isAddModalOpen && <AddNewPatientModal onClose={() => setIsAddModalOpen(false)} onUpdate={() => {}} />}
+            {isAddPatientModalOpen && <AddNewPatientModal onClose={() => setIsAddPatientModalOpen(false)} onUpdate={() => {}} />}
             {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={() => {}} />}
+            {isAddAppointmentModalOpen && <AppointmentModal data={{date: currentDate, time: '09:00', doctorId: null}} clinicId={selectedClinic} onClose={(didBook) => { setIsAddAppointmentModalOpen(false); if(didBook) fetchAppointments(); }} />}
         </div>
     );
 }
