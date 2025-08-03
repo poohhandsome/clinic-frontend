@@ -5,11 +5,11 @@ import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, X
 import { format, addDays, subDays, parseISO } from 'date-fns';
 import AddNewPatientModal from './AddNewPatientModal';
 import SearchPatientModal from './SearchPatientModal';
-import AppointmentModal from './AppointmentModal';
+import AddNewAppointmentModal from './AddNewAppointmentModal'; // <-- IMPORT THE NEW MODAL
 import authorizedFetch from '../api';
 import AppointmentCalendarView from './AppointmentCalendarView';
 import AppointmentActionModal from './AppointmentActionModal';
-import PendingListModal from './PendingListModal'; // <-- IMPORT NEW MODAL
+import PendingListModal from './PendingListModal';
 
 // --- Helper Components ---
 const StatusTag = ({ status }) => {
@@ -39,7 +39,7 @@ export default function PatientsPage({ selectedClinic }) {
     const [isAddPatientModalOpen, setIsAddPatientModalOpen] = useState(false);
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
     const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
-    const [isPendingModalOpen, setIsPendingModalOpen] = useState(false); // <-- New state for modal
+    const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
     const [appointmentModalData, setAppointmentModalData] = useState(null);
     const [actionModal, setActionModal] = useState({ isOpen: false, action: null, appointment: null });
 
@@ -72,7 +72,7 @@ export default function PatientsPage({ selectedClinic }) {
 
     useEffect(() => {
         fetchPendingCount();
-        const interval = setInterval(fetchPendingCount, 30000); // Refresh every 30 seconds
+        const interval = setInterval(fetchPendingCount, 30000);
         return () => clearInterval(interval);
     }, [selectedClinic]);
 
@@ -196,7 +196,7 @@ export default function PatientsPage({ selectedClinic }) {
             
             {isAddPatientModalOpen && <AddNewPatientModal onClose={() => setIsAddPatientModalOpen(false)} onUpdate={() => {}} />}
             {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={() => {}} />}
-            {isAddAppointmentModalOpen && <AppointmentModal data={appointmentModalData} clinicId={selectedClinic} onClose={(didBook) => { setIsAddAppointmentModalOpen(false); if(didBook) fetchAppointments(); }} />}
+            {isAddAppointmentModalOpen && <AddNewAppointmentModal initialData={appointmentModalData} clinicId={selectedClinic} onClose={() => setIsAddAppointmentModalOpen(false)} onUpdate={fetchAppointments} />}
             {actionModal.isOpen && <AppointmentActionModal action={actionModal.action} appointment={actionModal.appointment} doctors={doctorsOnDay} clinicId={selectedClinic} onClose={() => setActionModal({ isOpen: false, action: null, appointment: null })} onUpdate={fetchAppointments} />}
             {isPendingModalOpen && <PendingListModal selectedClinic={selectedClinic} onClose={() => setIsPendingModalOpen(false)} onUpdate={fetchAppointments} />}
         </div>
