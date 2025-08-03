@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import authorizedFetch from '../api';
 import { format } from 'date-fns';
-import { Search, PlusCircle } from 'lucide-react';
+import { Search, PlusCircle, Plus } from 'lucide-react';
 
-// Reusable form field components from other modals
+// Reusable form field components
 const InputField = ({ label, ...props }) => (
     <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
@@ -16,14 +16,14 @@ const SelectField = ({ label, options, ...props }) => (
      <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
         <select {...props} className="w-full p-2 border border-slate-300 rounded-md text-sm bg-white shadow-sm focus:ring-sky-500 focus:border-sky-500">
-            <option value="">-- Select --</option>
+            <option value="">-- No Room --</option>
             {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
     </div>
 );
 
 export default function AddNewAppointmentModal({ initialData, clinicId, onClose, onUpdate }) {
-    const [step, setStep] = useState(1); // Step 1: Search, Step 2: Details
+    const [step, setStep] = useState(1);
     const [patientSearch, setPatientSearch] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [selectedPatient, setSelectedPatient] = useState(null);
@@ -31,25 +31,31 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
     const [doctors, setDoctors] = useState([]);
     const [rooms, setRooms] = useState([]);
     
+    const [isAddingRoom, setIsAddingRoom] = useState(false);
+    const [newRoomName, setNewRoomName] = useState('');
+
     const [formData, setFormData] = useState({
         appointment_date: format(initialData.date, 'yyyy-MM-dd'),
         appointment_time: initialData.time,
         doctor_id: initialData.doctorId || '',
         room_id: '',
         purpose: '',
-        status: 'pending_confirmation' // Default to pending
+        status: 'pending_confirmation'
     });
 
+    const fetchRooms = () => {
+        authorizedFetch(`/api/rooms?clinic_id=${clinicId}`)
+            .then(res => res.json())
+            .then(setRooms);
+    };
+
     useEffect(() => {
-        // Fetch doctors and rooms for the selected clinic
         const dateString = format(initialData.date, 'yyyy-MM-dd');
         authorizedFetch(`/api/clinic-day-schedule?clinic_id=${clinicId}&date=${dateString}`)
             .then(res => res.json())
             .then(data => setDoctors(data.doctors || []));
             
-        authorizedFetch(`/api/rooms?clinic_id=${clinicId}`)
-            .then(res => res.json())
-            .then(setRooms);
+        fetchRooms();
     }, [clinicId, initialData.date]);
 
 
@@ -63,11 +69,26 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
 
     const handleSelectPatient = (patient) => {
         setSelectedPatient(patient);
-        setStep(2); // Move to the details step
+        setStep(2);
     };
     
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    const handleSaveRoom = async () => {
+        if (!newRoomName.trim()) return;
+        try {
+            await authorizedFetch('/api/rooms', {
+                method: 'POST',
+                body: JSON.stringify({ clinic_id: clinicId, room_name: newRoomName.trim() })
+            });
+            setNewRoomName('');
+            setIsAddingRoom(false);
+            fetchRooms(); // Refresh the room list
+        } catch (err) {
+            alert('Failed to add room.');
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -75,7 +96,7 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
         const payload = {
             ...formData,
             clinic_id: clinicId,
-            customer_id: selectedPatient.customer_id || null, // Assuming patient object has this
+            customer_id: selectedPatient.customer_id || null,
             patient_name_at_booking: `${selectedPatient.first_name_th} ${selectedPatient.last_name_th}`,
             patient_phone_at_booking: selectedPatient.mobile_phone
         };
@@ -131,10 +152,24 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
                                 <InputField label="Date" name="appointment_date" type="date" value={formData.appointment_date} onChange={handleChange} />
                                 <InputField label="Time" name="appointment_time" type="time" value={formData.appointment_time} onChange={handleChange} />
                             </div>
-                             <div className="grid grid-cols-2 gap-4">
+                             <div className="grid grid-cols-2 gap-4 items-end">
                                 <SelectField label="Doctor" name="doctor_id" value={formData.doctor_id} onChange={handleChange} options={doctors.map(d => ({ value: d.id, label: d.name }))} />
-                                <SelectField label="Room" name="room_id" value={formData.room_id} onChange={handleChange} options={rooms.map(r => ({ value: r.room_id, label: r.room_name }))} />
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-sm font-medium text-slate-700">Room</label>
+                                        <button type="button" onClick={() => setIsAddingRoom(p => !p)} className="text-xs font-semibold text-sky-600 hover:text-sky-800 flex items-center gap-1">
+                                            <Plus size={14}/> Add Room
+                                        </button>
+                                    </div>
+                                    <SelectField label="" name="room_id" value={formData.room_id} onChange={handleChange} options={rooms.map(r => ({ value: r.room_id, label: r.room_name }))} />
+                                </div>
                             </div>
+                            {isAddingRoom && (
+                                <div className="flex items-end gap-2 p-3 bg-slate-50 rounded-md border">
+                                    <InputField label="New Room Name" value={newRoomName} onChange={e => setNewRoomName(e.target.value)} />
+                                    <button type="button" onClick={handleSaveRoom} className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-semibold">Save</button>
+                                </div>
+                            )}
                             <InputField label="Purpose" name="purpose" value={formData.purpose} onChange={handleChange} placeholder="e.g., Scaling, Consultation"/>
                             <SelectField label="Status" name="status" value={formData.status} onChange={handleChange} options={[
                                 {value: 'pending_confirmation', label: 'Pending Confirmation'},
