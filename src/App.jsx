@@ -10,7 +10,7 @@ import DashboardPage from './components/DashboardPage.jsx';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
-import PatientsPage from './components/PatientsPage.jsx'; // <-- IMPORT NEW PAGE
+import PatientsPage from './components/PatientsPage.jsx'; // This is our new appointments dashboard
 import authorizedFetch from './api.js';
 import SettingsPage from './components/SettingsPage.jsx';
 import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
@@ -18,7 +18,7 @@ import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
     useEffect(() => {
-        const handleHashChange = () => setCurrentPath(window.location.hash || '#dashboard'); // Default to dashboard
+        const handleHashChange = () => setCurrentPath(window.location.hash || '#dashboard');
         window.addEventListener('hashchange', handleHashChange);
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
@@ -112,8 +112,7 @@ export default function App() {
         switch (currentPath) {
             case '#dashboard': return <DashboardPage {...dashboardProps} />;
             case '#clinic-dashboard': return <PlaceholderPage title="Clinic Dashboard" />;
-            case '#appointments': return <PendingAppointmentsPage {...otherPageProps} />;
-            case '#patients': return <PatientsPage {...otherPageProps} />; // <-- RENDER NEW PAGE
+            case '#appointments': return <PatientsPage {...otherPageProps} />; // <-- CORRECTED: #appointments now points to the new dashboard
             case '#doctors': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#treatments': return <PlaceholderPage title="Treatments Management" />;
             case '#billing': return <PlaceholderPage title="Billing Management" />;

@@ -1,7 +1,7 @@
 // src/components/NewUILayout/NewSidebar.jsx (REPLACE)
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3, User } from 'lucide-react'; // Added User icon
+import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3 } from 'lucide-react';
 import clinicLogo from '../../assets/clinic-logo.png';
 
 const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
@@ -39,8 +39,7 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
     const navItems = [
         { id: '#dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
         { id: '#clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
-        { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={20} /> },
-        { id: '#patients', text: 'Patients', icon: <User size={20} /> }, // <-- NEW PATIENTS LINK
+        { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={20} /> }, // <-- CORRECTED: This is now the main link
         { id: '#doctors', text: 'Doctors', icon: <UserRound size={20} /> },
         { id: '#treatments', text: 'Treatments', icon: <Syringe size={20} /> },
         { id: '#billing', text: 'Billing', icon: <Receipt size={20} /> },
