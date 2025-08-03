@@ -34,7 +34,7 @@ export default function PendingListModal({ selectedClinic, onClose, onUpdate }) 
 
     const calculateAge = (dob) => {
         if (!dob) return '';
-        return differenceInYears(new Date(), parseISO(dob));
+        return `${differenceInYears(new Date(), parseISO(dob))}y`;
     };
 
     return (
@@ -64,11 +64,11 @@ export default function PendingListModal({ selectedClinic, onClose, onUpdate }) 
                                     {pending.map(app => (
                                         <tr key={app.id}>
                                             <td className="p-3 align-top">
-                                                <div className="font-bold">{format(parseISO(`${app.appointment_date}T${app.appointment_time}`), 'd MMM yyyy')}</div>
-                                                <div className="text-slate-600">เวลา {format(parseISO(`${app.appointment_date}T${app.appointment_time}`), 'HH:mm')}</div>
+                                                <div className="font-bold">{format(parseISO(app.appointment_date), 'd MMM yyyy')}</div>
+                                                <div className="text-slate-600">เวลา {app.appointment_time}</div>
                                             </td>
                                             <td className="p-3 align-top">
-                                                <div className="font-bold text-slate-800">{app.patient_name}</div>
+                                                <div className="font-bold text-slate-800">{app.patient_name} <span className="font-normal text-slate-500">{calculateAge(app.date_of_birth)}</span></div>
                                                 <div className="text-slate-500">DN: {app.dn || 'N/A'}</div>
                                                 <div className="flex items-center gap-2 text-slate-500"><Phone size={12}/>{app.mobile_phone || 'N/A'}</div>
                                                 <div className="flex items-center gap-2 text-slate-500"><MessageSquare size={12}/>{app.line_id || 'N/A'}</div>

@@ -96,7 +96,7 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
         const payload = {
             ...formData,
             clinic_id: clinicId,
-            customer_id: selectedPatient.customer_id || null,
+            patient_id: selectedPatient.patient_id, // <-- THE CRUCIAL FIX
             patient_name_at_booking: `${selectedPatient.first_name_th} ${selectedPatient.last_name_th}`,
             patient_phone_at_booking: selectedPatient.mobile_phone
         };
