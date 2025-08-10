@@ -91,12 +91,8 @@ export default function PatientsPage({ selectedClinic }) {
     
     // **MODIFIED**: This now handles the check-in action
     const handleActionClick = (action, appointment) => {
-        if (action === 'check-in' && appointment.patient_id) {
-            const checkInTime = new Date().toISOString();
-            handlePatientClick(appointment.patient_id, checkInTime);
-        } else {
-            setActionModal({ isOpen: true, action, appointment });
-        }
+        // This now correctly opens the modal for all actions
+        setActionModal({ isOpen: true, action, appointment });
     };
     
     // **MODIFIED**: This now accepts a checkInTime and passes it in the URL
