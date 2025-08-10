@@ -1,89 +1,41 @@
-// src/App.jsx (REPLACE)
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
-import { format } from 'date-fns';
 import LoginPage from './components/LoginPage.jsx';
-import NewHeader from './components/NewUILayout/NewHeader.jsx';
-import NewSidebar from './components/NewUILayout/NewSidebar.jsx';
-import DashboardPage from './components/DashboardPage.jsx';
-import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
-import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
-import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
-import PatientsPage from './components/PatientsPage.jsx';
-import TreatmentPlanPage from './components/TreatmentPlanPage.jsx';
-import authorizedFetch from './api.js';
-import SettingsPage from './components/SettingsPage.jsx';
 import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
 
+// Import Pages
+import LandingPage from './pages/LandingPage.jsx';
+import NursePage from './pages/NursePage.jsx';
+import DoctorPage from './pages/DoctorPage.jsx';
+import SettingsPage from './components/SettingsPage.jsx'; // Assuming this remains a component
+
+// Import Layout Components
+import NewHeader from './components/NewUILayout/NewHeader.jsx';
+import NewSidebar from './components/NewUILayout/NewSidebar.jsx';
+
+import authorizedFetch from './api.js';
+import { format } from 'date-fns';
+
+
 const useHashNavigation = () => {
-    const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
+    const [currentPath, setCurrentPath] = useState(window.location.hash || '#/');
     useEffect(() => {
-        const handleHashChange = () => setCurrentPath(window.location.hash || '#dashboard');
+        const handleHashChange = () => setCurrentPath(window.location.hash || '#/');
         window.addEventListener('hashchange', handleHashChange);
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
     return currentPath;
 };
 
-const PlaceholderPage = ({ title }) => (
-    <div className="p-8">
-        <h1 className="text-3xl font-bold text-slate-800">{title}</h1>
-        <p className="mt-4 text-slate-600">This page is under construction. Content will be added soon.</p>
-    </div>
-);
-const parseHash = (hash) => {
-  const raw = hash || '#/dashboard';
-  // remove leading "#", optional leading "/"
-  const cleaned = raw.replace(/^#\/?/, '');
-  const parts = cleaned.split('/');        // e.g. ["treatment-plan","123"]
-  return { route: parts[0] || 'dashboard', params: parts.slice(1) };
-};
 
-export default function App() {
-    const { isAuthenticated, user } = useAuth();
-    const [doctors, setDoctors] = useState([]);
-    const [dailySchedule, setDailySchedule] = useState({});
-    const [allClinics, setAllClinics] = useState([]);
-    const [selectedClinic, setSelectedClinic] = useState(() => {
-        const savedClinic = localStorage.getItem('selectedClinic');
-        return savedClinic ? Number(savedClinic) : null;
-    });
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
+// Main Application Layout Component
+const MainLayout = ({ children, user, selectedClinic, allClinics, currentDate, setCurrentDate }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
     const currentPath = useHashNavigation();
-    const { route, params } = parseHash(currentPath);
-
+    
     useEffect(() => {
-        if (isAuthenticated) {
-            authorizedFetch('/api/clinics')
-                .then(res => res.json())
-                .then(setAllClinics)
-                .catch(err => console.error("Failed to fetch clinics", err));
-        }
-    }, [isAuthenticated]);
-
-    useEffect(() => {
-        if (selectedClinic && isAuthenticated) {
-            const dateString = format(currentDate, 'yyyy-MM-dd');
-            authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
-                .then(res => res.json()).then(data => {
-                    const allDocs = data.all_doctors_in_clinic || data.doctors || [];
-                    const scheduleMap = (data.doctors || []).reduce((acc, doc) => {
-                        if (doc.start_time && doc.end_time) acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
-                        return acc;
-                    }, {});
-                    setDoctors(allDocs);
-                    setDailySchedule(scheduleMap);
-                    setFilteredDoctorIds(Object.keys(scheduleMap).map(id => parseInt(id, 10)));
-                });
-        }
-    }, [selectedClinic, currentDate, isAuthenticated]);
-
-    useEffect(() => {
-        if (selectedClinic && isAuthenticated) {
+        if (selectedClinic) {
             const fetchPending = () => {
                 authorizedFetch(`/api/pending-appointments?clinic_id=${selectedClinic}`)
                     .then(res => res.json())
@@ -94,82 +46,107 @@ export default function App() {
             const interval = setInterval(fetchPending, 30000);
             return () => clearInterval(interval);
         }
-    }, [selectedClinic, isAuthenticated]);
-
-    const handleClinicSelect = (clinicId) => {
-        setSelectedClinic(clinicId);
-        localStorage.setItem('selectedClinic', clinicId);
-        window.location.hash = '#dashboard';
-    };
+    }, [selectedClinic]);
 
     const handleChangeClinic = () => {
-        setSelectedClinic(null);
         localStorage.removeItem('selectedClinic');
+        window.location.reload(); // Easiest way to force re-selection
     };
 
-    if (!isAuthenticated) return <LoginPage />;
-
-    if (!selectedClinic) {
-        return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
-    }
-
-    const renderPage = () => {
-    const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
-    const otherPageProps = { selectedClinic, user };
-
-    // Handle treatment plan from both sidebar and patient page
-    if (route === 'treatment-plan') {
-      const patientId = params[0] ?? null;
-
-      // FIX: Correctly parse the check-in time from the full URL hash
-      const queryString = currentPath.split('?')[1] || '';
-      const queryParams = new URLSearchParams(queryString);
-      const checkInTime = queryParams.get('checkin');
-
-      return <TreatmentPlanPage {...otherPageProps} patientId={patientId} checkInTime={checkInTime} />;
-    }
-
-    switch (route) {
-      case 'dashboard':          return <DashboardPage {...dashboardProps} />;
-      case 'clinic-dashboard':   return <PlaceholderPage title="Clinic Dashboard" />;
-      case 'appointments':       return <PatientsPage {...otherPageProps} />;
-      case 'doctors':            return <DoctorSchedulesPage {...otherPageProps} />;
-      case 'treatments':         return <PlaceholderPage title="Treatments Management" />;
-      case 'billing':            return <PlaceholderPage title="Billing Management" />;
-      case 'lab-costs':          return <PlaceholderPage title="Lab Costs Management" />;
-      case 'summary':            return <PlaceholderPage title="Summary" />;
-      case 'pending':            return <PendingAppointmentsPage {...otherPageProps} />;
-      case 'confirmed':          return <ConfirmedAppointmentsPage {...otherPageProps} />;
-      case 'schedules':          return <DoctorSchedulesPage {...otherPageProps} />;
-      case 'settings':           return <SettingsPage {...otherPageProps} />;
-      default:                   return <DashboardPage {...dashboardProps} />;
-    }
-  };
-
-      
     const selectedClinicName = allClinics.find(c => c.id === selectedClinic)?.name || 'Unknown Clinic';
 
     return (
         <div className="flex h-screen bg-slate-50">
-            <NewSidebar
+            <NewSidebar 
                 isSidebarOpen={isSidebarOpen}
                 setIsSidebarOpen={setIsSidebarOpen}
                 currentPath={currentPath}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
-                <NewHeader
+                <NewHeader 
                     isSidebarOpen={isSidebarOpen}
                     setIsSidebarOpen={setIsSidebarOpen}
-                    currentDate={currentDate}
-                    setCurrentDate={setCurrentDate}
+                    currentDate={currentDate} 
+                    setCurrentDate={setCurrentDate} 
                     pendingCount={pendingCount}
                     selectedClinicName={selectedClinicName}
                     onChangeClinic={handleChangeClinic}
                 />
                 <main className="flex-1 overflow-y-auto">
-                    {renderPage()}
+                    {children}
                 </main>
             </div>
         </div>
+    );
+};
+
+
+export default function App() {
+    const { isAuthenticated, user } = useAuth();
+    const [allClinics, setAllClinics] = useState([]);
+    const [selectedClinic, setSelectedClinic] = useState(() => {
+        const savedClinic = localStorage.getItem('selectedClinic');
+        return savedClinic ? Number(savedClinic) : null;
+    });
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const currentPath = useHashNavigation();
+    
+    useEffect(() => {
+        if (isAuthenticated) {
+            authorizedFetch('/api/clinics')
+                .then(res => res.json())
+                .then(setAllClinics)
+                .catch(err => console.error("Failed to fetch clinics", err));
+        }
+    }, [isAuthenticated]);
+
+    const handleClinicSelect = (clinicId) => {
+        setSelectedClinic(clinicId);
+        localStorage.setItem('selectedClinic', clinicId);
+    };
+
+    if (!isAuthenticated) return <LoginPage />;
+    
+    // Step 1: Handle Landing Page
+    if (currentPath === '#/' || currentPath === '') {
+        return <LandingPage />;
+    }
+    
+    // Step 2: Handle Clinic Selection if a role is chosen but clinic is not set
+    if (!selectedClinic) {
+        return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
+    }
+
+    // Step 3: Render the main application with the correct page
+    const renderPage = () => {
+        const route = currentPath.split('/')[1]; // e.g., 'nurse', 'doctor'
+        
+        switch (route) {
+            case 'nurse':
+                // NursePage will contain the logic from the old DashboardPage
+                return <NursePage user={user} selectedClinic={selectedClinic} currentDate={currentDate} setCurrentDate={setCurrentDate} allClinics={allClinics} />;
+            case 'doctor':
+                const patientId = currentPath.split('/')[2] || null;
+                 const checkInTime = new URLSearchParams(currentPath.split('?')[1] || '').get('checkin');
+                // DoctorPage will be the TreatmentPlanPage
+                return <DoctorPage user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />;
+            case 'settings':
+                 return <SettingsPage onDataChange={() => {}} />; // Assuming settings is a general page
+            default:
+                // Fallback to landing page if route is unknown
+                return <LandingPage />;
+        }
+    };
+
+    return (
+        <MainLayout 
+            user={user} 
+            selectedClinic={selectedClinic} 
+            allClinics={allClinics}
+            currentDate={currentDate}
+            setCurrentDate={setCurrentDate}
+        >
+            {renderPage()}
+        </MainLayout>
     );
 }
