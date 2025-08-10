@@ -10,11 +10,11 @@ import DashboardPage from './components/DashboardPage.jsx';
 import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
-import PatientsPage from './components/PatientsPage.jsx'; // This is our new appointments dashboard
+import PatientsPage from './components/PatientsPage.jsx';
+import TreatmentPlanPage from './components/TreatmentPlanPage.jsx'; // Make sure this is imported
 import authorizedFetch from './api.js';
 import SettingsPage from './components/SettingsPage.jsx';
 import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
-import TreatmentPlanPage from './components/TreatmentPlanPage.jsx';
 
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
@@ -110,10 +110,16 @@ export default function App() {
         const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
         const otherPageProps = { selectedClinic, user };
 
+        // **THE FIX IS HERE**: Handle dynamic routes for treatment plans
+        if (currentPath.startsWith('#/treatment-plan/')) {
+            const patientId = currentPath.split('/')[2];
+            return <TreatmentPlanPage {...otherPageProps} patientId={patientId} />;
+        }
+
         switch (currentPath) {
             case '#dashboard': return <DashboardPage {...dashboardProps} />;
             case '#clinic-dashboard': return <PlaceholderPage title="Clinic Dashboard" />;
-            case '#appointments': return <PatientsPage {...otherPageProps} />; // <-- CORRECTED: #appointments now points to the new dashboard
+            case '#appointments': return <PatientsPage {...otherPageProps} />;
             case '#doctors': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#treatments': return <PlaceholderPage title="Treatments Management" />;
             case '#billing': return <PlaceholderPage title="Billing Management" />;
@@ -123,7 +129,6 @@ export default function App() {
             case '#confirmed': return <ConfirmedAppointmentsPage {...otherPageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#settings': return <SettingsPage {...otherPageProps} />;
-            case '#treatment-plan': return <TreatmentPlanPage {...otherPageProps} />; 
             default: return <DashboardPage {...dashboardProps} />;
         }
     };

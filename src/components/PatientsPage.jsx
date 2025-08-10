@@ -5,7 +5,7 @@ import { Plus, Search, Calendar, List, ChevronLeft, ChevronRight, CheckCircle, X
 import { format, addDays, subDays, parseISO } from 'date-fns';
 import AddNewPatientModal from './AddNewPatientModal';
 import SearchPatientModal from './SearchPatientModal';
-import AddNewAppointmentModal from './AddNewAppointmentModal'; // <-- IMPORT THE NEW MODAL
+import AddNewAppointmentModal from './AddNewAppointmentModal'; 
 import authorizedFetch from '../api';
 import AppointmentCalendarView from './AppointmentCalendarView';
 import AppointmentActionModal from './AppointmentActionModal';
@@ -93,6 +93,13 @@ export default function PatientsPage({ selectedClinic }) {
         setActionModal({ isOpen: true, action, appointment });
     };
 
+    // **THE FIX IS HERE**: Function to handle navigation
+    const handlePatientClick = (patientId) => {
+        if (patientId) {
+            window.location.hash = `#/treatment-plan/${patientId}`;
+        }
+    };
+
     return (
         <div className="p-6 h-full flex flex-col bg-slate-50">
             <button onClick={() => handleSlotClick({ time: '09:00', doctorId: null })} className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40">
@@ -173,15 +180,16 @@ export default function PatientsPage({ selectedClinic }) {
                             </thead>
                             <tbody className="divide-y divide-slate-200">
                                 {filteredAppointments.map(app => (
-                                    <tr key={app.id}>
+                                    // **THE FIX IS HERE**: Added onClick to the table row
+                                    <tr key={app.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => handlePatientClick(app.patient_id)}>
                                         <td className="p-3 whitespace-nowrap text-sm font-mono text-slate-700">{app.booking_time}</td>
                                         <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{app.patient_name}</td>
                                         <td className="p-3 whitespace-nowrap"><DoctorTag name={app.doctor_name} /></td>
                                         <td className="p-3 whitespace-nowrap"><StatusTag status={app.status} /></td>
                                         <td className="p-3 whitespace-nowrap text-sm font-medium space-x-2">
-                                            <button onClick={() => handleActionClick('check-in', app)} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200">Check-in</button>
-                                            <button onClick={() => handleActionClick('reschedule', app)} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold hover:bg-blue-200">Reschedule</button>
-                                            <button onClick={() => handleActionClick('edit', app)} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold hover:bg-slate-200">Edit</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleActionClick('check-in', app); }} className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200">Check-in</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleActionClick('reschedule', app); }} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold hover:bg-blue-200">Reschedule</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleActionClick('edit', app); }} className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold hover:bg-slate-200">Edit</button>
                                         </td>
                                     </tr>
                                 ))}
