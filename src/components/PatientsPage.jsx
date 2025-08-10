@@ -88,22 +88,33 @@ export default function PatientsPage({ selectedClinic }) {
         setAppointmentModalData({ ...data, date: currentDate });
         setIsAddAppointmentModalOpen(true);
     };
-
+    
+    // **MODIFIED**: This now handles the check-in action
     const handleActionClick = (action, appointment) => {
-        setActionModal({ isOpen: true, action, appointment });
+        if (action === 'check-in' && appointment.patient_id) {
+            const checkInTime = new Date().toISOString();
+            handlePatientClick(appointment.patient_id, checkInTime);
+        } else {
+            setActionModal({ isOpen: true, action, appointment });
+        }
     };
-
-    // Navigates to the treatment plan page for a specific patient
-    const handlePatientClick = (patientId) => {
+    
+    // **MODIFIED**: This now accepts a checkInTime and passes it in the URL
+    const handlePatientClick = (patientId, checkInTime = null) => {
         if (patientId) {
-            window.location.hash = `#/treatment-plan/${patientId}`;
+            let hash = `#/treatment-plan/${patientId}`;
+            if (checkInTime) {
+                // Encode the timestamp to make it URL-safe
+                hash += `?checkin=${encodeURIComponent(checkInTime)}`;
+            }
+            window.location.hash = hash;
         }
     };
 
     return (
         <div className="p-6 h-full flex flex-col bg-slate-50">
-            {/* THIS IS THE RESTORED BUTTON */}
-            <button onClick={() => handleSlotClick({ time: '09:00', doctorId: null })} className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40">
+            {/* ... Your buttons and filters ... */}
+             <button onClick={() => handleSlotClick({ time: '09:00', doctorId: null })} className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40">
                 <Plus size={28} />
             </button>
             

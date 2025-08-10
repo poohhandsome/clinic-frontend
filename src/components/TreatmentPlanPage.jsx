@@ -7,7 +7,7 @@ import authorizedFetch from '../api';
 import PatientInfoColumn from './PatientInfoColumn'; // <-- IMPORT THE NEW COMPONENT
 
 // --- Main Component ---
-export default function TreatmentPlanPage({ user, patientId: initialPatientId }) {
+export default function TreatmentPlanPage({ user, patientId: initialPatientId, checkInTime }) {
     const [activeTab, setActiveTab] = useState('history');
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [history, setHistory] = useState(null);

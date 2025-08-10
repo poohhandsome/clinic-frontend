@@ -1,7 +1,7 @@
 // src/components/PatientInfoColumn.jsx (REPLACE)
 
 import React, { useState } from 'react';
-import { User, Search, AlertTriangle, Baby, Stethoscope, ChevronDown } from 'lucide-react';
+import { User, Search, AlertTriangle, Baby, Stethoscope, ChevronDown, Edit } from 'lucide-react';
 import { format, differenceInYears, differenceInMonths, differenceInDays } from 'date-fns';
 import SearchPatientModal from './SearchPatientModal';
 
@@ -16,16 +16,9 @@ const calculateAge = (dob) => {
     return { years, months, days: Math.abs(days) };
 };
 
-// --- NEW Alerts Dropdown Component ---
+// --- Alerts Dropdown Component ---
 const AlertsDropdown = ({ patient }) => {
     const [isOpen, setIsOpen] = useState(false);
-
-    // Database schema assumption:
-    // Your 'patients' table should have these columns:
-    // - extreme_care_drugs (TEXT)
-    // - allergies (TEXT)
-    // - is_pregnant (BOOLEAN)
-
     const hasExtremeCare = !!patient?.extreme_care_drugs;
     const hasAllergies = !!patient?.allergies;
     const isPregnant = !!patient?.is_pregnant;
@@ -37,14 +30,11 @@ const AlertsDropdown = ({ patient }) => {
             onMouseEnter={() => setIsOpen(true)}
             onMouseLeave={() => setIsOpen(false)}
         >
-            {/* Dropdown Trigger Button */}
             <button className="w-full flex justify-between items-center p-2 bg-slate-100 rounded-lg text-sm font-semibold text-slate-700 border hover:border-slate-400 transition-colors">
                 <span>Patient Alerts</span>
                 {showAlertIcon && <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>}
                 <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
-
-            {/* Dropdown Content */}
             {isOpen && (
                 <div className="absolute top-full mt-1 w-full bg-white border border-slate-300 rounded-lg shadow-lg z-20 p-2 space-y-2">
                     <div className={`p-2 rounded-md text-sm flex items-start gap-2 ${hasExtremeCare ? 'bg-red-100 text-red-800' : 'bg-slate-50 text-slate-500'}`}>
@@ -65,8 +55,8 @@ const AlertsDropdown = ({ patient }) => {
     );
 };
 
-
-export default function PatientInfoColumn({ patient, onPatientSelect }) {
+// **MODIFIED**: Now accepts 'checkInTime' as a prop
+export default function PatientInfoColumn({ patient, onPatientSelect, checkInTime }) {
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
     const age = patient ? calculateAge(patient.date_of_birth) : null;
@@ -80,17 +70,14 @@ export default function PatientInfoColumn({ patient, onPatientSelect }) {
         <>
             {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={handleSelectAndClose} />}
             <aside className="w-80 bg-white p-4 border-r border-slate-200 flex flex-col gap-4">
-                {/* Photo Section */}
                 <div className="flex justify-center">
                     <div className="w-32 h-32 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
                         {patient ? <span className="text-4xl font-bold">{patient.first_name_th?.charAt(0)}</span> : <User size={64} />}
                     </div>
                 </div>
-
-                {/* NEW Alerts Dropdown */}
+                
                 <AlertsDropdown patient={patient} />
 
-                {/* Patient Details Section */}
                 <div className="bg-slate-50 p-3 rounded-lg border space-y-2 text-sm">
                     <div className="flex items-center">
                         <strong className="w-24">DN:</strong>
@@ -119,9 +106,17 @@ export default function PatientInfoColumn({ patient, onPatientSelect }) {
                     </div>
                      <div className="flex">
                         <strong className="w-24">Check-in:</strong>
-                        <span>{format(new Date(), 'dd MMM yyyy, HH:mm')}</span>
+                        {/* **MODIFIED**: This now displays the check-in time from the URL */}
+                        <span>{checkInTime ? format(new Date(checkInTime), 'dd MMM yyyy, HH:mm') : 'Not checked in'}</span>
                     </div>
                 </div>
+
+                {/* --- NEW EDIT BUTTON --- */}
+                {patient && (
+                    <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-sm border border-slate-200 hover:bg-slate-100">
+                        <Edit size={16} /> Edit Patient Info
+                    </button>
+                )}
             </aside>
         </>
     );
