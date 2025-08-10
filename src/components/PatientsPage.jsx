@@ -93,18 +93,20 @@ export default function PatientsPage({ selectedClinic }) {
         setActionModal({ isOpen: true, action, appointment });
     };
 
-    // **THIS IS THE WORKFLOW ACTION**: Navigates to the treatment plan page
+    // Navigates to the treatment plan page for a specific patient
     const handlePatientClick = (patientId) => {
         if (patientId) {
             window.location.hash = `#/treatment-plan/${patientId}`;
-        } else {
-            alert("This appointment is not linked to a registered patient and has no treatment plan.");
         }
     };
 
     return (
         <div className="p-6 h-full flex flex-col bg-slate-50">
-            {/* ... Modal and Header Buttons ... */}
+            {/* THIS IS THE RESTORED BUTTON */}
+            <button onClick={() => handleSlotClick({ time: '09:00', doctorId: null })} className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40">
+                <Plus size={28} />
+            </button>
+            
             <div className="flex justify-between items-center mb-4">
                  <div className="flex items-center gap-4">
                     <h2 className="text-2xl font-bold text-slate-800">Appointments</h2>
@@ -135,7 +137,7 @@ export default function PatientsPage({ selectedClinic }) {
                     </button>
                 </div>
             </div>
-            {/* ... Filters ... */}
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm">
                     <button onClick={() => setCurrentDate(subDays(currentDate, 1))} className="p-2 rounded hover:bg-slate-100"><ChevronLeft size={20}/></button>
@@ -199,7 +201,7 @@ export default function PatientsPage({ selectedClinic }) {
                     <AppointmentCalendarView currentDate={currentDate} selectedClinic={selectedClinic} onSlotClick={handleSlotClick} />
                  )}
             </div>
-
+            
             {isAddPatientModalOpen && <AddNewPatientModal onClose={() => setIsAddPatientModalOpen(false)} onUpdate={fetchAppointments} />}
             {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={(patient) => handlePatientClick(patient.patient_id)} />}
             {isAddAppointmentModalOpen && <AddNewAppointmentModal initialData={appointmentModalData} clinicId={selectedClinic} onClose={() => setIsAddAppointmentModalOpen(false)} onUpdate={fetchAppointments} />}
