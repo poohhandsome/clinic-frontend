@@ -26,38 +26,36 @@ export default function AppointmentActionModal({ action, appointment, doctors, c
     const handleSubmit = async (e) => {
         e.preventDefault();
         let payload = {};
-        let method = 'PATCH'; // Use PATCH for partial updates
-
-        // **THE CORE LOGIC FIX IS HERE**
+        
         if (action === 'check-in') {
             payload = { status: 'Checked-in' };
         } else if (action === 'reschedule' || action === 'edit') {
             payload = formData;
         } else {
-            return; // No action specified
+            return;
         }
         
         try {
             const res = await authorizedFetch(`/api/appointments/${appointment.id}`, {
-                method: method,
+                method: 'PATCH',
                 body: JSON.stringify(payload)
             });
 
             if (!res.ok) throw new Error(`Failed to ${action} appointment.`);
+            
+            // Get the updated appointment details (including the server-generated check_in_time)
+            const updatedAppointment = await res.json();
 
             setStatus({ message: `Appointment ${action} successful!`, type: 'success' });
-            
-            onUpdate(); // Refresh the list on the previous page
+            onUpdate();
 
-            // **NEW**: Redirect ONLY on successful check-in
             if (action === 'check-in') {
-                const checkInTime = new Date().toISOString();
-                // Use a short delay to allow the user to see the success message
+                // Use the persisted check-in time from the database response for navigation
+                const persistedCheckInTime = updatedAppointment.check_in_time;
                 setTimeout(() => {
-                    window.location.hash = `#/treatment-plan/${appointment.patient_id}?checkin=${encodeURIComponent(checkInTime)}`;
-                }, 1000); // 1-second delay
+                    window.location.hash = `#/treatment-plan/${appointment.patient_id}?checkin=${encodeURIComponent(persistedCheckInTime)}`;
+                }, 1000);
             } else {
-                // For other actions, just close the modal after a delay
                 setTimeout(onClose, 1500);
             }
 
