@@ -4,22 +4,28 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import clinicLogo from '../assets/clinic-logo.png';
 
-const EyeIcon = ({ isVisible }) => (
-    <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-        {isVisible ? (
-            <>
-                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                <circle cx="12" cy="12" r="3" />
-            </>
-        ) : (
-            <>
-                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                <line x1="2" x2="22" y1="2" y2="22" />
-            </>
-        )}
-    </svg>
+const EyeIcon = ({ isVisible, className = "" }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"  // fixed namespace
+    width="20" height="20" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round"
+    className={`h-5 w-5 ${className}`} aria-hidden="true"
+  >
+    {isVisible ? (
+      <>
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ) : (
+      <>
+        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+        <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+        <line x1="2" y1="2" x2="22" y2="22" />
+      </>
+    )}
+  </svg>
 );
 
 export default function LoginPage() {
@@ -62,11 +68,11 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen w-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center p-4">
+        <div className="min-h-screen w-full bg-gradient-to-br from-sky-300 to-indigo-500 flex items-center justify-center p-4">
             <div className="hidden md:flex flex-1 h-full items-center justify-center">
                  <div className="text-white text-center">
                     <h1 className="text-5xl font-bold">Newtrend Dental Clinic</h1>
-                    <p className="mt-4 text-xl opacity-80">Streamlining Dental Care with Technology.</p>
+                    <p className="mt-4 text-xl opacity-80">Dental Care with Technology.</p>
                 </div>
             </div>
             <div className="flex-1 flex items-center justify-center">
@@ -104,7 +110,7 @@ export default function LoginPage() {
                             />
                             <button
                                 type="button"
-                                className="absolute inset-y-0 right-0 top-8 px-4 flex items-center"
+                                className="absolute inset-y-0 right-0 top-8 px-4 flex items-center text-white hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
                                 onClick={() => setShowPassword(!showPassword)}
                                 aria-label="Toggle password visibility"
                             >
