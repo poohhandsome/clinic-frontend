@@ -1,3 +1,4 @@
+// src/components/AppointmentActionModal.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
 import authorizedFetch from '../api';
@@ -25,13 +26,13 @@ export default function AppointmentActionModal({ action, appointment, doctors, c
     const handleSubmit = async (e) => {
         e.preventDefault();
         let payload = {};
-        let method = 'PATCH';
+        let method = 'PATCH'; // Use PATCH for partial updates
 
+        // **THE CORE LOGIC FIX IS HERE**
         if (action === 'check-in') {
-            payload = { status: 'Checked-in' }; // Or whatever your checked-in status is
+            payload = { status: 'Checked-in' };
         } else if (action === 'reschedule' || action === 'edit') {
             payload = formData;
-            method = 'PUT';
         } else {
             return; // No action specified
         }
@@ -41,10 +42,25 @@ export default function AppointmentActionModal({ action, appointment, doctors, c
                 method: method,
                 body: JSON.stringify(payload)
             });
+
             if (!res.ok) throw new Error(`Failed to ${action} appointment.`);
+
             setStatus({ message: `Appointment ${action} successful!`, type: 'success' });
-            onUpdate();
-            setTimeout(onClose, 1500);
+            
+            onUpdate(); // Refresh the list on the previous page
+
+            // **NEW**: Redirect ONLY on successful check-in
+            if (action === 'check-in') {
+                const checkInTime = new Date().toISOString();
+                // Use a short delay to allow the user to see the success message
+                setTimeout(() => {
+                    window.location.hash = `#/treatment-plan/${appointment.patient_id}?checkin=${encodeURIComponent(checkInTime)}`;
+                }, 1000); // 1-second delay
+            } else {
+                // For other actions, just close the modal after a delay
+                setTimeout(onClose, 1500);
+            }
+
         } catch (err) {
             setStatus({ message: err.message, type: 'error' });
         }
@@ -79,7 +95,7 @@ export default function AppointmentActionModal({ action, appointment, doctors, c
                                     {doctors.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
                                 </select>
                             </div>
-                            <div>
+                             <div>
                                 <label className="block text-sm font-medium text-slate-700">Status</label>
                                 <select name="status" value={formData.status || ''} onChange={handleChange} className="w-full p-2 border rounded-md">
                                     <option value="confirmed">Confirmed</option>
