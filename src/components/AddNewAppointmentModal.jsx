@@ -37,6 +37,7 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
     const [formData, setFormData] = useState({
         appointment_date: format(initialData.date, 'yyyy-MM-dd'),
         appointment_time: initialData.time,
+        duration_minutes: '30', // <-- NEW: Default duration
         doctor_id: initialData.doctorId || '',
         room_id: '',
         purpose: '',
@@ -96,7 +97,7 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
         const payload = {
             ...formData,
             clinic_id: clinicId,
-            patient_id: selectedPatient.patient_id, // <-- THE CRUCIAL FIX
+            patient_id: selectedPatient.patient_id,
             patient_name_at_booking: `${selectedPatient.first_name_th} ${selectedPatient.last_name_th}`,
             patient_phone_at_booking: selectedPatient.mobile_phone
         };
@@ -113,19 +114,22 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
             alert(err.message);
         }
     };
+    
+    // Duration options
+    const durationOptions = [15, 30, 45, 60, 75, 90, 120];
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-bold text-slate-800">New Appointment</h2>
-                     <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-slate-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M6.4 19L5 17.6l5.6-5.6L5 6.4L6.4 5l5.6 5.6L17.6 5L19 6.4L13.4 12l5.6 5.6l-1.4 1.4l-5.6-5.6L6.4 19Z"/></svg>
-                    </button>
-                </div>
-                
+                {/* ... Step 1 remains the same ... */}
                 {step === 1 && (
                     <div className="p-6">
+                         <div className="flex justify-between items-center p-4 border-b">
+                            <h2 className="text-xl font-bold text-slate-800">New Appointment</h2>
+                             <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-slate-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M6.4 19L5 17.6l5.6-5.6L5 6.4L6.4 5l5.6 5.6L17.6 5L19 6.4L13.4 12l5.6 5.6l-1.4 1.4l-5.6-5.6L6.4 19Z"/></svg>
+                            </button>
+                        </div>
                         <form onSubmit={handleSearch} className="flex gap-2">
                             <InputField label="Search for Patient (Name, DN, Phone)" name="search" value={patientSearch} onChange={e => setPatientSearch(e.target.value)} autoFocus />
                             <button type="submit" className="px-4 py-2 mt-7 bg-sky-600 text-white rounded-md hover:bg-sky-700"><Search size={20}/></button>
@@ -148,9 +152,16 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
                                 <h4 className="font-bold text-green-800">{selectedPatient.first_name_th} {selectedPatient.last_name_th}</h4>
                                 <p className="text-sm text-green-700">DN: {selectedPatient.dn} | Phone: {selectedPatient.mobile_phone}</p>
                             </div>
-                             <div className="grid grid-cols-2 gap-4">
+                             <div className="grid grid-cols-3 gap-4">
                                 <InputField label="Date" name="appointment_date" type="date" value={formData.appointment_date} onChange={handleChange} />
                                 <InputField label="Time" name="appointment_time" type="time" value={formData.appointment_time} onChange={handleChange} />
+                                {/* --- NEW DURATION DROPDOWN --- */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Duration</label>
+                                    <select name="duration_minutes" value={formData.duration_minutes} onChange={handleChange} className="w-full p-2 border border-slate-300 rounded-md text-sm bg-white shadow-sm">
+                                        {durationOptions.map(min => <option key={min} value={min}>{min} mins</option>)}
+                                    </select>
+                                </div>
                             </div>
                              <div className="grid grid-cols-2 gap-4 items-end">
                                 <SelectField label="Doctor" name="doctor_id" value={formData.doctor_id} onChange={handleChange} options={doctors.map(d => ({ value: d.id, label: d.name }))} />
