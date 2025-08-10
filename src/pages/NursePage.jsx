@@ -54,8 +54,13 @@ export default function NursePage({ selectedClinic, currentDate, setCurrentDate,
     const timelineEndHour = 20;
     const hours = Array.from({ length: timelineEndHour - timelineStartHour + 1 }, (_, i) => i + timelineStartHour);
 
-    const displayedDoctors = useMemo(() => doctors.filter(doc => filteredDoctorIds.includes(doc.id)), [doctors, filteredDoctorIds]);
-
+     const displayedDoctors = useMemo(() => {
+        // THE FIX: Only filter if doctors is an actual array
+        if (!Array.isArray(doctors)) {
+            return [];
+        }
+        return doctors.filter(doc => filteredDoctorIds.includes(doc.id));
+    }, [doctors, filteredDoctorIds]);
     const fetchAppointments = () => {
         if (selectedClinic) {
             const dateString = format(currentDate, 'yyyy-MM-dd');
