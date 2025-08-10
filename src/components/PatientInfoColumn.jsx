@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { User, Search, AlertTriangle, Baby, Stethoscope, ChevronDown, Edit } from 'lucide-react';
 import { format, differenceInYears, differenceInMonths, differenceInDays } from 'date-fns';
 import SearchPatientModal from './SearchPatientModal';
+import EditPatientModal from './EditPatientModal'; // <-- IMPORT THE NEW MODAL
 
-// Helper to calculate detailed age
+// ... (calculateAge and AlertsDropdown helpers remain the same)
 const calculateAge = (dob) => {
     if (!dob) return { years: 0, months: 0, days: 0 };
     const now = new Date();
@@ -16,7 +17,6 @@ const calculateAge = (dob) => {
     return { years, months, days: Math.abs(days) };
 };
 
-// --- Alerts Dropdown Component ---
 const AlertsDropdown = ({ patient }) => {
     const [isOpen, setIsOpen] = useState(false);
     const hasExtremeCare = !!patient?.extreme_care_drugs;
@@ -55,9 +55,10 @@ const AlertsDropdown = ({ patient }) => {
     );
 };
 
-// **MODIFIED**: Now accepts 'checkInTime' as a prop
+
 export default function PatientInfoColumn({ patient, onPatientSelect, checkInTime }) {
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // <-- NEW STATE FOR EDIT MODAL
 
     const age = patient ? calculateAge(patient.date_of_birth) : null;
 
@@ -65,10 +66,18 @@ export default function PatientInfoColumn({ patient, onPatientSelect, checkInTim
         onPatientSelect(selectedPatient);
         setIsSearchModalOpen(false);
     };
+    
+    // NEW: Function to handle the update from the modal
+    const handlePatientUpdate = (updatedPatient) => {
+        onPatientSelect(updatedPatient); // Re-select the patient to refresh data everywhere
+    };
 
     return (
         <>
             {isSearchModalOpen && <SearchPatientModal onClose={() => setIsSearchModalOpen(false)} onSelectPatient={handleSelectAndClose} />}
+            {/* NEW: Render the EditPatientModal when its state is true */}
+            {isEditModalOpen && <EditPatientModal patient={patient} onClose={() => setIsEditModalOpen(false)} onUpdate={handlePatientUpdate} />}
+            
             <aside className="w-80 bg-white p-4 border-r border-slate-200 flex flex-col gap-4">
                 <div className="flex justify-center">
                     <div className="w-32 h-32 bg-slate-200 rounded-full flex items-center justify-center text-slate-400">
@@ -106,14 +115,13 @@ export default function PatientInfoColumn({ patient, onPatientSelect, checkInTim
                     </div>
                      <div className="flex">
                         <strong className="w-24">Check-in:</strong>
-                        {/* **MODIFIED**: This now displays the check-in time from the URL */}
                         <span>{checkInTime ? format(new Date(checkInTime), 'dd MMM yyyy, HH:mm') : 'Not checked in'}</span>
                     </div>
                 </div>
 
-                {/* --- NEW EDIT BUTTON --- */}
                 {patient && (
-                    <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-sm border border-slate-200 hover:bg-slate-100">
+                    // NEW: This button now opens the edit modal
+                    <button onClick={() => setIsEditModalOpen(true)} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-sm border border-slate-200 hover:bg-slate-100">
                         <Edit size={16} /> Edit Patient Info
                     </button>
                 )}
