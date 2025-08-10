@@ -1,27 +1,26 @@
-
 // src/pages/DoctorPage.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, Download, Save, Send, Printer } from 'lucide-react';
+// **THE FIX IS HERE**: Corrected paths to go up one directory
 import authorizedFetch from '../api';
 import PatientInfoColumn from '../components/PatientInfoColumn';
 
+// ... (The rest of the file remains exactly the same)
 export default function DoctorPage({ user, patientId, checkInTime }) {
     const [activeTab, setActiveTab] = useState('history');
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [history, setHistory] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // This single, powerful useEffect handles ALL patient data loading.
-    // It runs whenever the patientId from the URL changes.
-     useEffect(() => {
+    useEffect(() => {
         if (patientId) {
             setIsLoading(true);
             authorizedFetch(`/api/patients/${patientId}`)
                 .then(res => res.json())
                 .then(setSelectedPatient)
-                .catch(() => setSelectedPatient(null)) // Clear on error
+                .catch(() => setSelectedPatient(null)) 
                 .finally(() => setIsLoading(false));
         } else {
             setSelectedPatient(null);
@@ -43,7 +42,7 @@ export default function DoctorPage({ user, patientId, checkInTime }) {
     const handlePatientSelect = (patient) => {
         window.location.hash = `#/doctor/${patient.patient_id}`;
     };
-
+    
     const tabs = [
         { id: 'history', label: 'History Review', icon: <Clock size={16} /> },
         { id: 'create', label: 'Ex & Tx Created', icon: <Stethoscope size={16} /> },
@@ -53,14 +52,11 @@ export default function DoctorPage({ user, patientId, checkInTime }) {
 
     return (
         <div className="h-full flex flex-row bg-slate-50">
-            {/* Column 1: Patient Information */}
             <PatientInfoColumn 
                 patient={selectedPatient} 
                 onPatientSelect={handlePatientSelect}
                 checkInTime={checkInTime}
             />
-
-            {/* Column 2: Treatment Plan Tabs */}
             <main className="flex-1 p-6 overflow-y-auto">
                 {!selectedPatient ? (
                     <div className="h-full flex items-center justify-center">
@@ -75,12 +71,7 @@ export default function DoctorPage({ user, patientId, checkInTime }) {
                         <div className="border-b border-slate-200">
                             <nav className="-mb-px flex space-x-6">
                                 {tabs.map(tab => (
-                                    <TabButton
-                                        key={tab.id}
-                                        active={activeTab === tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        icon={tab.icon}
-                                    >
+                                    <TabButton key={tab.id} active={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} icon={tab.icon}>
                                         {tab.label}
                                     </TabButton>
                                 ))}
@@ -103,10 +94,6 @@ export default function DoctorPage({ user, patientId, checkInTime }) {
         </div>
     );
 }
-
-
-// --- Child and Helper Components (No changes needed below this line) ---
-// ... The rest of the page components (HistoryReview, PatientInfoColumn, etc.) remain the same ...
 
 const HistoryReview = ({ history }) => {
     const timeline = [
