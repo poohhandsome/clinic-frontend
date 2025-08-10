@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import authorizedFetch from '../api';
+import clinicLogo from '../assets/clinic-logo.png'; // Assuming your logo is here
 
+// Re-usable icon for the password visibility toggle
 const EyeIcon = ({ isVisible }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
         {isVisible ? (
@@ -22,31 +23,53 @@ const EyeIcon = ({ isVisible }) => (
     </svg>
 );
 
-
 export default function LoginPage() {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { login } = useAuth();
 
+    // Mock API call function to simulate network delay and response
+    const mockApiLogin = (email, password) => {
+        // Security: In a real application, NEVER send raw passwords.
+        // This data would be sent over a secure HTTPS connection to the server.
+        console.log(`Attempting login for email: ${email}`);
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                // Mock success/failure based on a simple check
+                if (password === "correct-password") {
+                    resolve({
+                        user: { id: 1, username: email, role: 'nurse' },
+                        token: 'mock_jwt_token_string'
+                    });
+                } else {
+                    // Security: Implement rate-limiting on the server to prevent brute-force attacks.
+                    reject(new Error('Invalid email or password. Please try again.'));
+                }
+            }, 1500); // Simulate 1.5 second network delay
+        });
+    };
+
     const handleLogin = async (e) => {
+        // 1. Prevent the browser's default form submission behavior
         e.preventDefault();
-        setError('');
+        
         setIsLoading(true);
+        setError('');
+
         try {
-            // **THE FIX IS HERE**: The path is now correctly set to '/api/login'
-            const response = await authorizedFetch('/api/login', {
-                method: 'POST',
-                body: JSON.stringify({ username, password }),
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.msg || 'Login failed');
-            }
-            login(data.user, data.token);
+            // 2. Call the mock async login function
+            const { user, token } = await mockApiLogin(email, password);
+            
+            // 3. On success, show a success message (toast stub) and redirect
+            alert('Login Successful!'); // Stub for a success toast notification
+            login(user, token); // This function will handle the redirect
+
         } catch (err) {
+            // On failure, display the error message from the API
             setError(err.message);
         } finally {
             setIsLoading(false);
@@ -54,78 +77,96 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center items-center p-4">
-            <div className="w-full max-w-sm mx-auto">
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Welcome Back!</h1>
-                    <p className="text-gray-500 mt-2">Please enter your credentials to access the admin dashboard.</p>
+        <div className="min-h-screen w-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center p-4">
+            {/* Left side hero/background (visible on larger screens) */}
+            <div className="hidden md:flex flex-1 h-full items-center justify-center">
+                 <div className="text-white text-center">
+                    <h1 className="text-5xl font-bold">Newtrend Dental Clinic</h1>
+                    <p className="mt-4 text-xl opacity-80">Streamlining Dental Care with Technology.</p>
                 </div>
+            </div>
 
-                {error && <p className="bg-red-100 text-red-700 text-center p-3 rounded-md mb-4 border border-red-200">{error}</p>}
+            {/* Right side authentication card */}
+            <div className="flex-1 flex items-center justify-center">
+                <div className="w-full max-w-md bg-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-8">
+                    <img src={clinicLogo} alt="Newtrend Dental Clinic Logo" className="w-20 h-20 mx-auto mb-6 rounded-full" />
+                    
+                    <h2 className="text-3xl font-bold text-center text-white mb-2">Welcome Back</h2>
+                    <p className="text-center text-white/80 mb-8">Sign in to continue</p>
 
-                <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                        <label htmlFor="username" className="text-sm font-medium text-gray-700 sr-only">Username</label>
-                        <input
-                            type="text"
-                            id="username"
-                            placeholder="Username"
-                            className="w-full px-4 py-3 rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="relative">
-                        <label htmlFor="password" className="text-sm font-medium text-gray-700 sr-only">Password</label>
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            id="password"
-                            placeholder="Password"
-                            className="w-full px-4 py-3 rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500 transition"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            required
-                        />
-                        <button
-                            type="button"
-                            className="absolute inset-y-0 right-0 px-4 flex items-center"
-                            onClick={() => setShowPassword(!showPassword)}
-                            aria-label="Toggle password visibility"
-                        >
-                            <EyeIcon isVisible={showPassword} />
-                        </button>
-                    </div>
-                    <button
-                        type="submit"
-                        className="w-full py-3 px-4 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 disabled:opacity-50"
-                        disabled={isLoading}
-                    >
-                        {isLoading ? 'Signing In...' : 'Sign In'}
-                    </button>
-                </form>
+                    {error && <p className="bg-red-500/50 text-white text-center p-3 rounded-lg mb-6 border border-red-400">{error}</p>}
+                    
+                    <form onSubmit={handleLogin} className="space-y-6">
+                        {/* Email Input */}
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium text-white/90 mb-2">Email Address</label>
+                            <input
+                                type="email"
+                                id="email"
+                                placeholder="you@example.com"
+                                className="w-full px-4 py-3 bg-white/30 text-white placeholder-white/70 rounded-lg border border-white/40 focus:ring-2 focus:ring-white focus:border-transparent transition"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                required
+                            />
+                        </div>
 
-                <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-300" />
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                        <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
-                    </div>
+                        {/* Password Input */}
+                        <div className="relative">
+                            <label htmlFor="password" className="block text-sm font-medium text-white/90 mb-2">Password</label>
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                id="password"
+                                placeholder="••••••••"
+                                className="w-full px-4 py-3 bg-white/30 text-white placeholder-white/70 rounded-lg border border-white/40 focus:ring-2 focus:ring-white focus:border-transparent transition"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                required
+                            />
+                            <button
+                                type="button"
+                                className="absolute inset-y-0 right-0 top-8 px-4 flex items-center"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label="Toggle password visibility"
+                            >
+                                <EyeIcon isVisible={showPassword} />
+                            </button>
+                        </div>
+
+                        {/* Remember Me & Forgot Password */}
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <input
+                                    id="remember-me"
+                                    name="remember-me"
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={(e) => setRememberMe(e.target.checked)}
+                                    className="h-4 w-4 text-sky-400 bg-white/30 border-white/40 rounded focus:ring-sky-500"
+                                />
+                                <label htmlFor="remember-me" className="ml-2 block text-sm text-white/90">
+                                    Remember me
+                                </label>
+                            </div>
+                            <div className="text-sm">
+                                <a href="#" className="font-medium text-white/90 hover:text-white">
+                                    Forgot password?
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Sign In Button */}
+                        <div>
+                            <button
+                                type="submit"
+                                className="w-full py-3 px-4 bg-white text-sky-600 font-semibold rounded-lg shadow-lg hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-sky-800 focus:ring-white transition-all duration-300 disabled:opacity-70"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? 'Signing In...' : 'Sign In'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                     {/* Note: These are for display purposes. Backend integration is needed for them to work. */}
-                    <button type="button" className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fillRule="evenodd" d="M16.403 5.584A8.02 8.02 0 0012.02 4C7.59 4 4 7.59 4 12c0 1.96.713 3.75 1.88 5.118a7.994 7.994 0 01-1.35-3.668c0-1.838.648-3.535 1.72-4.87C7.29 7.132 8.944 6.22 10.887 6.012a8.03 8.03 0 005.516-.428z" clipRule="evenodd" /><path d="M12.02 4a8.002 8.002 0 017.98 7.5h.002c0 .285-.015.568-.043.847l-1.803-1.803A6.014 6.014 0 0012.02 6c-2.3 0-4.28 1.29-5.32 3.195l-1.84-1.84A7.962 7.962 0 0112.02 4z" /><path fillRule="evenodd" d="M10.12 17.118a7.993 7.993 0 01-4.79-1.35c-1.332-1.332-2-3.08-2-4.912 0-1.07.25-2.08.7-2.96L2.22 6.104A7.96 7.96 0 004.02 12c0 4.41 3.59 8 8 8 .92 0 1.802-.16 2.625-.453l-2.05-2.05a5.98 5.98 0 01-2.475.621z" clipRule="evenodd" /></svg>
-                        <span className="ml-2">Google</span>
-                    </button>
-                    <button type="button" className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fillRule="evenodd" d="M10 0C4.477 0 0 4.477 0 10c0 4.418 2.865 8.165 6.737 9.535.49.09.667-.213.667-.472 0-.233-.008-.85-.013-1.667-2.782.605-3.369-1.343-3.369-1.343-.446-1.133-1.09-1.435-1.09-1.435-.89-.608.067-.595.067-.595.984.069 1.503 1.01 1.503 1.01.874 1.498 2.295 1.065 2.855.815.089-.633.342-1.065.62-1.31-2.18-.248-4.467-1.09-4.467-4.853 0-1.07.383-1.947 1.01-2.633-.101-.25-.438-1.246.096-2.6 0 0 .824-.264 2.7 1.007a9.42 9.42 0 014.912 0c1.876-1.271 2.7-1.007 2.7-1.007.535 1.354.2 2.35.096 2.6.627.686 1.01 1.563 1.01 2.633 0 3.773-2.29 4.605-4.475 4.845.352.305.665.91.665 1.832 0 1.31-.012 2.37-.012 2.693 0 .26.175.565.67.47C17.135 18.165 20 14.418 20 10c0-5.523-4.477-10-10-10z" clipRule="evenodd" /></svg>
-                        <span className="ml-2">GitHub</span>
-                    </button>
-                </div>
-
             </div>
         </div>
     );
