@@ -37,15 +37,15 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
     const showSidebar = isSidebarOpen || isHovering;
 
     const navItems = [
-        { id: '#dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
-        { id: '#clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
-        { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={20} /> }, // <-- CORRECTED: This is now the main link
-        { id: '#treatment-plan', text: 'Treatment Plan', icon: <ClipboardList size={20} /> },
-        { id: '#doctors', text: 'Doctors', icon: <UserRound size={20} /> },
-        { id: '#treatments', text: 'Treatments', icon: <Syringe size={20} /> },
-        { id: '#billing', text: 'Billing', icon: <Receipt size={20} /> },
-        { id: '#lab-costs', text: 'Lab Costs', icon: <FlaskConical size={20} /> },
-        { id: '#summary', text: 'Summary', icon: <BarChart3 size={20} /> },
+        { id: '#/nurse/dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
+        { id: '#/nurse/clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
+        { id: '#/nurse/appointments', text: 'Appointments', icon: <CalendarDays size={20} /> }, // <-- CORRECTED: This is now the main link
+        { id: '#/nurse/treatment-plan', text: 'Treatment Plan', icon: <ClipboardList size={20} /> },
+        { id: '#/nurse/doctors', text: 'Doctors', icon: <UserRound size={20} /> },
+        { id: '#/nurse/treatments', text: 'Treatments', icon: <Syringe size={20} /> },
+        { id: '#/nurse/billing', text: 'Billing', icon: <Receipt size={20} /> },
+        { id: '#/nurse/lab-costs', text: 'Lab Costs', icon: <FlaskConical size={20} /> },
+        { id: '#/nurse/summary', text: 'Summary', icon: <BarChart3 size={20} /> },
     ];
 
     return (

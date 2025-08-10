@@ -8,9 +8,11 @@ import LandingPage from './pages/LandingPage.jsx';
 import NursePage from './pages/NursePage.jsx';
 import DoctorPage from './pages/DoctorPage.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
+import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
+import PatientsPage from './components/PatientsPage.jsx';
 import NewHeader from './components/NewUILayout/NewHeader.jsx';
 import NewSidebar from './components/NewUILayout/NewSidebar.jsx';
-import DoctorLayout from './layouts/DoctorLayout.jsx'; // Import the new layout
+import DoctorLayout from './layouts/DoctorLayout.jsx';
 import authorizedFetch from './api.js';
 import { format } from 'date-fns';
 
@@ -24,7 +26,7 @@ const useHashNavigation = () => {
     return currentPath;
 };
 
-// This is the layout for the NURSE/DASHBOARD page
+// This is the layout for the NURSE/DASHBOARD pages
 const MainLayout = ({ children, user, selectedClinic, allClinics }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
@@ -52,10 +54,13 @@ const MainLayout = ({ children, user, selectedClinic, allClinics }) => {
 
     const selectedClinicName = allClinics.find(c => c.id === selectedClinic)?.name || 'Unknown Clinic';
 
-    // Pass currentDate and setCurrentDate down to the Header
+    // Pass currentDate and setCurrentDate down to child pages if they need it
     const childrenWithProps = React.Children.map(children, child => {
         if (React.isValidElement(child)) {
-            return React.cloneElement(child, { currentDate, setCurrentDate });
+            // Check if the child component is the one that needs the date props
+            if (child.type === NursePage) {
+                 return React.cloneElement(child, { currentDate, setCurrentDate });
+            }
         }
         return child;
     });
@@ -100,12 +105,14 @@ export default function App() {
 
     if (!isAuthenticated) return <LoginPage />;
 
-    const route = currentPath.split('/')[1]; // 'nurse', 'doctor', or empty
-    const patientId = currentPath.split('/')[2] || null;
+    const pathParts = currentPath.replace(/^#\/?/, '').split('/');
+    const mainRoute = pathParts[0]; // 'nurse', 'doctor', or empty for landing
+    const subRoute = pathParts[1]; // 'dashboard', 'doctors', etc.
+    const patientId = mainRoute === 'doctor' ? subRoute : null; // Patient ID is the sub-route for doctors
     const checkInTime = new URLSearchParams(currentPath.split('?')[1] || '').get('checkin');
 
-    // ROUTE 1: Landing Page (if hash is '#' or '#/')
-    if (!route) {
+    // ROUTE 1: Landing Page
+    if (!mainRoute) {
         return <LandingPage />;
     }
 
@@ -114,17 +121,8 @@ export default function App() {
         return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
     }
 
-    // ROUTE 2: Nurse Dashboard
-    if (route === 'nurse') {
-        return (
-            <MainLayout user={user} selectedClinic={selectedClinic} allClinics={allClinics}>
-                <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />
-            </MainLayout>
-        );
-    }
-    
-    // ROUTE 3: Doctor's Treatment Plan Page
-    if (route === 'doctor') {
+    // ROUTE 2: Doctor's Treatment Plan Page (uses its own layout)
+    if (mainRoute === 'doctor') {
         return (
             <DoctorLayout>
                 <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />
@@ -132,15 +130,32 @@ export default function App() {
         );
     }
 
-    // ROUTE 4: Settings Page (uses the Main Layout)
-    if (route === 'settings') {
-         return (
+    // ROUTE 3: Nurse Dashboard and its sub-pages (all use the MainLayout)
+    if (mainRoute === 'nurse') {
+        const renderNursePage = () => {
+            switch (subRoute) {
+                case 'dashboard':
+                    return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
+                case 'appointments':
+                    return <PatientsPage selectedClinic={selectedClinic} user={user} />;
+                case 'doctors':
+                    return <DoctorSchedulesPage selectedClinic={selectedClinic} user={user} />;
+                case 'settings':
+                     return <SettingsPage onDataChange={() => {}} />;
+                // Add other nurse sub-pages here
+                default:
+                    // If no sub-route, default to the nurse's dashboard
+                    return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
+            }
+        };
+
+        return (
             <MainLayout user={user} selectedClinic={selectedClinic} allClinics={allClinics}>
-                <SettingsPage onDataChange={() => {}} />
+                {renderNursePage()}
             </MainLayout>
         );
     }
     
-    // Fallback: If no route matches, go to the landing page
+    // Fallback if no route matches
     return <LandingPage />;
 }
