@@ -133,18 +133,25 @@ export default function App() {
     // ROUTE 3: Nurse Dashboard and its sub-pages (all use the MainLayout)
     if (mainRoute === 'nurse') {
         const renderNursePage = () => {
+            // Extract patientId and checkInTime for the treatment plan page
+            const patientIdForTxPlan = pathParts[2] || null;
+            const checkInTimeForTxPlan = new URLSearchParams(currentPath.split('?')[1] || '').get('checkin');
+
             switch (subRoute) {
                 case 'dashboard':
                     return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
                 case 'appointments':
                     return <PatientsPage selectedClinic={selectedClinic} user={user} />;
+                
+                // **THE FIX IS HERE**: Add a case for the new treatment plan route
+                case 'treatment-plan':
+                    return <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientIdForTxPlan} checkInTime={checkInTimeForTxPlan} />;
+
                 case 'doctors':
                     return <DoctorSchedulesPage selectedClinic={selectedClinic} user={user} />;
                 case 'settings':
                      return <SettingsPage onDataChange={() => {}} />;
-                // Add other nurse sub-pages here
                 default:
-                    // If no sub-route, default to the nurse's dashboard
                     return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
             }
         };
@@ -154,8 +161,7 @@ export default function App() {
                 {renderNursePage()}
             </MainLayout>
         );
-    }
     
     // Fallback if no route matches
     return <LandingPage />;
-}
+}}
