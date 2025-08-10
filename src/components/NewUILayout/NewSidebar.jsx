@@ -40,6 +40,7 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
         { id: '#dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
         { id: '#clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
         { id: '#appointments', text: 'Appointments', icon: <CalendarDays size={20} /> }, // <-- CORRECTED: This is now the main link
+        { id: '#treatment-plan', text: 'Treatment Plan', icon: <ClipboardList size={20} /> },
         { id: '#doctors', text: 'Doctors', icon: <UserRound size={20} /> },
         { id: '#treatments', text: 'Treatments', icon: <Syringe size={20} /> },
         { id: '#billing', text: 'Billing', icon: <Receipt size={20} /> },

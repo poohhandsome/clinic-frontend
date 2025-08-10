@@ -14,6 +14,7 @@ import PatientsPage from './components/PatientsPage.jsx'; // This is our new app
 import authorizedFetch from './api.js';
 import SettingsPage from './components/SettingsPage.jsx';
 import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
+import TreatmentPlanPage from './components/TreatmentPlanPage.jsx';
 
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#login');
@@ -122,6 +123,7 @@ export default function App() {
             case '#confirmed': return <ConfirmedAppointmentsPage {...otherPageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#settings': return <SettingsPage {...otherPageProps} />;
+            case '#treatment-plan': return <TreatmentPlanPage {...otherPageProps} />; 
             default: return <DashboardPage {...dashboardProps} />;
         }
     };
