@@ -17,81 +17,84 @@ export default function DoctorPage({ user, patientId, checkInTime }) {
     useEffect(() => {
         if (patientId) {
             setIsLoading(true);
-            authorizedFetch(`/api/patients/${patientId}`)
-                .then(res => res.json())
-                .then(setSelectedPatient)
-                .catch(() => setSelectedPatient(null)) 
-                .finally(() => setIsLoading(false));
+            Promise.all([
+                authorizedFetch(`/api/patients/${patientId}`),
+                authorizedFetch(`/api/patients/${patientId}/treatment-history`)
+            ])
+            .then(async ([patientRes, historyRes]) => {
+                if (!patientRes.ok || !historyRes.ok) throw new Error('Failed to fetch data.');
+                setSelectedPatient(await patientRes.json());
+                setHistory(await historyRes.json());
+            })
+            .catch(err => {
+                console.error(err);
+                setSelectedPatient(null);
+                setHistory(null);
+            })
+            .finally(() => setIsLoading(false));
         } else {
             setSelectedPatient(null);
+            setHistory(null);
             setIsLoading(false);
         }
     }, [patientId]);
 
-    useEffect(() => {
-        if (selectedPatient) {
-            authorizedFetch(`/api/patients/${selectedPatient.patient_id}/treatment-history`)
-                .then(res => res.json())
-                .then(setHistory)
-                .catch(() => setHistory(null));
-        } else {
-            setHistory(null);
-        }
-    }, [selectedPatient]);
-
     const handlePatientSelect = (patient) => {
         window.location.hash = `#/doctor/${patient.patient_id}`;
     };
-    
+
     const tabs = [
         { id: 'history', label: 'History Review', icon: <Clock size={16} /> },
-        { id: 'create', label: 'Ex & Tx Created', icon: <Stethoscope size={16} /> },
+        { id: 'create', label: 'Ex & Tx Creation', icon: <Stethoscope size={16} /> },
         { id: 'processing', label: 'Treatment Processing', icon: <ClipboardList size={16} /> },
         { id: 'scans', label: 'Scan Documents', icon: <Microscope size={16} /> },
     ];
 
     return (
-        <div className="h-full flex flex-row bg-slate-50">
+        <div className="h-full flex flex-row bg-slate-100">
             <PatientInfoColumn 
                 patient={selectedPatient} 
                 onPatientSelect={handlePatientSelect}
                 checkInTime={checkInTime}
             />
             <main className="flex-1 p-6 overflow-y-auto">
-                {!selectedPatient ? (
-                    <div className="h-full flex items-center justify-center">
-                        <div className="text-center">
-                            <Stethoscope size={48} className="mx-auto text-slate-400" />
-                            <h2 className="mt-4 text-xl font-semibold text-slate-600">No Patient Selected</h2>
-                            <p className="text-slate-500">Please search for a patient to view or create a treatment plan.</p>
+                <div className="bg-white p-6 rounded-2xl shadow-sm">
+                    {!selectedPatient ? (
+                        <div className="h-full flex items-center justify-center min-h-[50vh]">
+                            <div className="text-center">
+                                <Stethoscope size={48} className="mx-auto text-slate-300" />
+                                <h2 className="mt-4 text-xl font-semibold text-slate-600">No Patient Selected</h2>
+                                <p className="text-slate-500">Please search for a patient to begin.</p>
+                            </div>
                         </div>
+                    ) : (
+                        <>
+                            <div className="border-b border-slate-200">
+                                <nav className="-mb-px flex space-x-6">
+                                    {tabs.map(tab => (
+                                        <TabButton key={tab.id} active={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} icon={tab.icon}>
+                                            {tab.label}
+                                        </TabButton>
+                                    ))}
+                                </nav>
+                            </div>
+                            <div className="mt-6">
+                                {isLoading && <p>Loading history...</p>}
+                                {!isLoading && history && (
+                                    <>
+                                        {activeTab === 'history' && <HistoryReview history={history} />}
+                                        {activeTab === 'create' && <ExTxCreated patientId={selectedPatient.patient_id} doctorId={user.id} />}
+                                        {activeTab === 'processing' && <TreatmentProcessing plans={history.plans} items={history.items} />}
+                                        {activeTab === 'scans' && <ScanDocuments patientId={selectedPatient.patient_id} documents={history.documents} />}
+                                    </>
+                                )}
+                            </div>
+                        </>
+                    )}
                     </div>
-                ) : (
-                    <>
-                        <div className="border-b border-slate-200">
-                            <nav className="-mb-px flex space-x-6">
-                                {tabs.map(tab => (
-                                    <TabButton key={tab.id} active={activeTab === tab.id} onClick={() => setActiveTab(tab.id)} icon={tab.icon}>
-                                        {tab.label}
-                                    </TabButton>
-                                ))}
-                            </nav>
-                        </div>
-                        <div className="mt-6">
-                            {isLoading && <p>Loading history...</p>}
-                            {!isLoading && history && (
-                                <>
-                                    {activeTab === 'history' && <HistoryReview history={history} />}
-                                    {activeTab === 'create' && <ExTxCreated patientId={selectedPatient.patient_id} doctorId={user.id} />}
-                                    {activeTab === 'processing' && <TreatmentProcessing plans={history.plans} items={history.items} />}
-                                    {activeTab === 'scans' && <ScanDocuments patientId={selectedPatient.patient_id} documents={history.documents} />}
-                                </>
-                            )}
-                        </div>
-                    </>
-                )}
-            </main>
-        </div>
+                </main>
+            </div>
+        
     );
 }
 

@@ -1,38 +1,31 @@
-// src/pages/NursePage.jsx (REPLACE)
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { format, getHours, getMinutes, isToday } from 'date-fns';
-// **THE FIX IS HERE**: Corrected paths to go up one directory
-import AddNewAppointmentModal from '../components/AddNewAppointmentModal.jsx'; 
+import AddNewAppointmentModal from '../components/AddNewAppointmentModal.jsx';
 import authorizedFetch from '../api.js';
 import DashboardControls from '../components/DashboardControls.jsx';
 
-// ... (The rest of the file remains exactly the same)
+// --- Helper Components ---
 const timeToMinutes = (time) => {
     if (!time) return 0;
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
 };
 
-const CurrentTimeIndicator = ({ hourHeight, timelineStartHour, timelineEndHour }) => {
-    const [topPosition, setTopPosition] = useState(null);
+const CurrentTimeIndicator = ({ hourHeight, timelineStartHour }) => {
+    const [topPosition, setTopPosition] = useState(0);
     useEffect(() => {
         const updatePosition = () => {
             const now = new Date();
             const currentHour = getHours(now);
-            if (currentHour >= timelineStartHour && currentHour <= timelineEndHour) {
-                const minutesSinceTimelineStart = (currentHour - timelineStartHour) * 60 + getMinutes(now);
-                setTopPosition(minutesSinceTimelineStart * (hourHeight / 60));
-            } else {
-                setTopPosition(null);
-            }
+            const minutesSinceTimelineStart = (currentHour - timelineStartHour) * 60 + getMinutes(now);
+            setTopPosition(minutesSinceTimelineStart * (hourHeight / 60));
         };
         updatePosition();
         const interval = setInterval(updatePosition, 60000);
         return () => clearInterval(interval);
-    }, [hourHeight, timelineStartHour, timelineEndHour]);
+    }, [hourHeight, timelineStartHour]);
 
-    if (topPosition === null) return null;
+    if (topPosition < 0) return null;
     return (
         <div className="absolute left-16 right-0 z-20" style={{ top: `${topPosition}px` }}>
             <div className="relative h-px bg-red-500">
@@ -42,14 +35,26 @@ const CurrentTimeIndicator = ({ hourHeight, timelineStartHour, timelineEndHour }
     );
 };
 
-export default function NursePage({ selectedClinic }) {
-    const [currentDate, setCurrentDate] = useState(new Date());
+const AppointmentCard = ({ app, top, height, doctorColor }) => (
+    <div 
+        className="absolute w-[calc(100%-0.5rem)] left-1 p-2 rounded-lg text-white shadow-md z-10 overflow-hidden" 
+        style={{ top: `${top}px`, height: `${height}px`, minHeight: '30px', backgroundColor: doctorColor || '#0ea5e9' }}
+    >
+        <p className="font-bold text-xs leading-tight truncate">{app.patient_name_at_booking || 'Appointment'}</p>
+        <p className="text-xs opacity-80">{app.purpose || ''}</p>
+    </div>
+);
+
+
+// --- Main Component ---
+export default function NursePage({ selectedClinic, currentDate, setCurrentDate }) {
     const [doctors, setDoctors] = useState([]);
     const [dailySchedule, setDailySchedule] = useState({});
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const [dayAppointments, setDayAppointments] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
+
     const hourHeight = 80;
     const timelineStartHour = 8;
     const timelineEndHour = 20;
@@ -62,14 +67,13 @@ export default function NursePage({ selectedClinic }) {
             .then(data => {
                 setDoctors(data.all_doctors_in_clinic || []);
                 const scheduleMap = (data.doctors || []).reduce((acc, doc) => {
-                    if (doc.start_time && doc.end_time) acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time };
+                    if (doc.start_time && doc.end_time) acc[doc.id] = { startTime: doc.start_time, endTime: doc.end_time, color: doc.color };
                     return acc;
                 }, {});
                 setDailySchedule(scheduleMap);
                 setFilteredDoctorIds(Object.keys(scheduleMap).map(id => parseInt(id, 10)));
                 setDayAppointments(data.appointments || []);
-            })
-            .catch(error => console.error("Failed to fetch schedule data:", error));
+            });
     };
 
     useEffect(fetchScheduleData, [selectedClinic, currentDate]);
@@ -99,9 +103,7 @@ export default function NursePage({ selectedClinic }) {
         const schedule = dailySchedule[doctorId];
         if (!schedule || !schedule.startTime || !schedule.endTime) return false;
         const slotTotalMinutes = slotHour * 60 + slotMinute;
-        const startTotalMinutes = timeToMinutes(schedule.startTime);
-        const endTotalMinutes = timeToMinutes(schedule.endTime);
-        return slotTotalMinutes >= startTotalMinutes && slotTotalMinutes < endTotalMinutes;
+        return slotTotalMinutes >= timeToMinutes(schedule.startTime) && slotTotalMinutes < timeToMinutes(schedule.endTime);
     };
 
     return (
@@ -120,12 +122,14 @@ export default function NursePage({ selectedClinic }) {
                 <div className="grid shrink-0" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
                     <div className="p-2 border-r border-b border-slate-200 flex items-center justify-center">
                         <div className="text-center">
-                            <p className="text-xs font-bold text-sky-600 uppercase">{format(currentDate, 'EEE')}</p>
-                            <div className="w-9 h-9 flex items-center justify-center bg-sky-600 rounded-full text-white text-lg font-semibold mt-1">{format(currentDate, 'd')}</div>
+                            <p className="text-sm font-bold text-sky-600 uppercase">{format(currentDate, 'EEE')}</p>
+                            <div className="w-10 h-10 flex items-center justify-center bg-sky-600 rounded-full text-white text-xl font-semibold mt-1">{format(currentDate, 'd')}</div>
                         </div>
                     </div>
                     {displayedDoctors.map(doc => (
-                        <div key={doc.id} className="p-3 border-b border-r border-slate-200 text-center"><span className="font-semibold text-slate-800">{doc.name}</span></div>
+                        <div key={doc.id} className="p-3 border-b border-r border-slate-200 text-center">
+                            <span className="font-semibold text-slate-800">{doc.name}</span>
+                        </div>
                     ))}
                 </div>
                 <div className="flex-1 overflow-y-auto relative">
@@ -133,7 +137,7 @@ export default function NursePage({ selectedClinic }) {
                         <div className="col-start-1 col-end-2 row-start-1 row-end-[-1]">
                             {hours.map(hour => (
                                 <div key={hour} className="h-20 relative border-r border-slate-200">
-                                    <span className="absolute -top-2.5 right-2 text-xs font-semibold text-slate-800">{format(new Date(0, 0, 0, hour), 'ha')}</span>
+                                    <span className="absolute -top-2.5 right-2 text-sm font-semibold text-slate-500">{format(new Date(0, 0, 0, hour), 'h a')}</span>
                                 </div>
                             ))}
                         </div>
@@ -141,27 +145,21 @@ export default function NursePage({ selectedClinic }) {
                             <div key={doc.id} className="relative border-r border-slate-200" style={{ gridColumnStart: index + 2 }}>
                                 {hours.map(hour => (
                                     <React.Fragment key={hour}>
-                                        <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 0, doc.id) ? 'cursor-pointer' : 'bg-slate-50'}`} 
+                                        <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 0, doc.id) ? 'hover:bg-sky-50 cursor-pointer' : 'bg-slate-50'}`} 
                                              onClick={() => isSlotInWorkingHours(hour, 0, doc.id) && handleSlotClick(`${String(hour).padStart(2, '0')}:00`, doc.id)} />
-                                        <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 30, doc.id) ? 'cursor-pointer' : 'bg-slate-50'}`} 
+                                        <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 30, doc.id) ? 'hover:bg-sky-50 cursor-pointer' : 'bg-slate-50'}`} 
                                              onClick={() => isSlotInWorkingHours(hour, 30, doc.id) && handleSlotClick(`${String(hour).padStart(2, '0')}:30`, doc.id)} />
                                     </React.Fragment>
                                 ))}
                                 {(dayAppointments || []).filter(app => app.doctor_id === doc.id).map(app => {
-                                    const appointmentStartMinutes = timeToMinutes(app.appointment_time);
-                                    const top = (appointmentStartMinutes - (timelineStartHour * 60)) * (hourHeight / 60);
-                                    const height = (timeToMinutes(app.end_time) - appointmentStartMinutes) * (hourHeight / 60);
-                                    if (top < 0 || appointmentStartMinutes > timelineEndHour * 60) return null;
-                                    return (
-                                        <div key={app.id} className="absolute w-[calc(100%-0.5rem)] left-1 p-2 rounded-lg bg-sky-500 text-white shadow-md z-10" style={{ top: `${top}px`, height: `${height}px`, minHeight: '20px' }}>
-                                            <p className="font-bold text-xs leading-tight">{app.details || 'Appointment'}</p>
-                                            <p className="text-xs opacity-80">{app.patient_name_at_booking}</p>
-                                        </div>
-                                    );
+                                    const top = (timeToMinutes(app.appointment_time) - (timelineStartHour * 60)) * (hourHeight / 60);
+                                    const height = (timeToMinutes(app.end_time) - timeToMinutes(app.appointment_time)) * (hourHeight / 60);
+                                    const doctorColor = dailySchedule[app.doctor_id]?.color;
+                                    return <AppointmentCard key={app.id} app={app} top={top} height={height} doctorColor={doctorColor} />;
                                 })}
                             </div>
                         ))}
-                        {isToday(currentDate) && <CurrentTimeIndicator hourHeight={hourHeight} timelineStartHour={timelineStartHour} timelineEndHour={timelineEndHour} />}
+                        {isToday(currentDate) && <CurrentTimeIndicator hourHeight={hourHeight} timelineStartHour={timelineStartHour} />}
                     </div>
                 </div>
             </div>
