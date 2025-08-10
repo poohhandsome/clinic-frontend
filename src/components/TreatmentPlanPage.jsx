@@ -4,47 +4,53 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, Download, Save, Send, Printer } from 'lucide-react';
 import authorizedFetch from '../api';
-import PatientInfoColumn from './PatientInfoColumn'; // <-- IMPORT THE NEW COMPONENT
+import PatientInfoColumn from './PatientInfoColumn';
 
 // --- Main Component ---
-export default function TreatmentPlanPage({ user, patientId: initialPatientId, checkInTime }) {
+export default function TreatmentPlanPage({ user, patientId, checkInTime }) {
     const [activeTab, setActiveTab] = useState('history');
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [history, setHistory] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Effect to handle the initial patient ID from the URL
+    // This single, powerful useEffect handles ALL patient data loading.
+    // It runs whenever the patientId from the URL changes.
     useEffect(() => {
-        if (initialPatientId && !selectedPatient) {
+        if (patientId) {
             setIsLoading(true);
-            authorizedFetch(`/api/patients/${initialPatientId}`)
-                .then(res => res.json())
-                .then(setSelectedPatient)
-                .catch(err => console.error("Failed to fetch initial patient:", err))
-                .finally(() => setIsLoading(false));
-        }
-    }, [initialPatientId, selectedPatient]);
-
-    // Effect to fetch history when a patient is selected
-    useEffect(() => {
-        if (selectedPatient) {
-            setIsLoading(true);
-            authorizedFetch(`/api/patients/${selectedPatient.patient_id}/treatment-history`)
-                .then(res => res.json())
-                .then(setHistory)
-                .catch(err => setHistory(null))
-                .finally(() => setIsLoading(false));
+            // Fetch both the patient's main details and their history at the same time.
+            Promise.all([
+                authorizedFetch(`/api/patients/${patientId}`),
+                authorizedFetch(`/api/patients/${patientId}/treatment-history`)
+            ])
+            .then(async ([patientRes, historyRes]) => {
+                if (!patientRes.ok) throw new Error('Failed to fetch patient details.');
+                if (!historyRes.ok) throw new Error('Failed to fetch patient history.');
+                
+                const patientData = await patientRes.json();
+                const historyData = await historyRes.json();
+                
+                setSelectedPatient(patientData);
+                setHistory(historyData);
+            })
+            .catch(err => {
+                console.error("Error fetching patient data:", err);
+                setSelectedPatient(null);
+                setHistory(null);
+            })
+            .finally(() => setIsLoading(false));
         } else {
+            // If there's no patientId in the URL, clear everything.
+            setSelectedPatient(null);
             setHistory(null);
+            setIsLoading(false);
         }
-    }, [selectedPatient]);
+    }, [patientId]); // The key: This effect only depends on the ID from the URL.
 
+    // This function's ONLY job is to change the URL.
+    // The useEffect above will handle the rest.
     const handlePatientSelect = (patient) => {
-        // If a new patient is selected from the search, update the URL
-        if (window.location.hash !== `#/treatment-plan/${patient.patient_id}`) {
-            window.location.hash = `#/treatment-plan/${patient.patient_id}`;
-        }
-        setSelectedPatient(patient);
+        window.location.hash = `#/treatment-plan/${patient.patient_id}`;
     };
 
     const tabs = [
@@ -57,7 +63,11 @@ export default function TreatmentPlanPage({ user, patientId: initialPatientId, c
     return (
         <div className="h-full flex flex-row bg-slate-50">
             {/* Column 1: Patient Information */}
-            <PatientInfoColumn patient={selectedPatient} onPatientSelect={handlePatientSelect} />
+            <PatientInfoColumn 
+                patient={selectedPatient} 
+                onPatientSelect={handlePatientSelect}
+                checkInTime={checkInTime}
+            />
 
             {/* Column 2: Treatment Plan Tabs */}
             <main className="flex-1 p-6 overflow-y-auto">
@@ -104,7 +114,9 @@ export default function TreatmentPlanPage({ user, patientId: initialPatientId, c
 }
 
 
-// ... The rest of the page components (HistoryReview, etc.) remain the same as the previous correct version ...
+// --- Child and Helper Components (No changes needed below this line) ---
+// ... The rest of the page components (HistoryReview, PatientInfoColumn, etc.) remain the same ...
+
 const HistoryReview = ({ history }) => {
     const timeline = [
         ...(history.findings || []).map(f => ({ ...f, type: 'Exam Finding', date: f.finding_date, details: `Complaint: ${f.chief_complaint || 'N/A'}. Findings: ${f.clinical_findings || 'N/A'}` })),
