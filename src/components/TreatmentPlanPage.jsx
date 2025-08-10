@@ -2,42 +2,37 @@
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, Download, Save, Send, Printer, Search, X } from 'lucide-react';
+import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, Download, Save, Send, Printer } from 'lucide-react';
 import authorizedFetch from '../api';
+import PatientInfoColumn from './PatientInfoColumn'; // <-- IMPORT THE NEW COMPONENT
+
 // --- Main Component ---
-export default function TreatmentPlanPage({ selectedClinic, user, patientId: initialPatientId }) {
+export default function TreatmentPlanPage({ user, patientId: initialPatientId }) {
     const [activeTab, setActiveTab] = useState('history');
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [history, setHistory] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
+    // Effect to handle the initial patient ID from the URL
     useEffect(() => {
-        if (initialPatientId) {
+        if (initialPatientId && !selectedPatient) {
+            setIsLoading(true);
             authorizedFetch(`/api/patients/${initialPatientId}`)
                 .then(res => res.json())
-                .then(patientData => {
-                    setSelectedPatient(patientData); // This triggers the second useEffect
-                })
-                .catch(err => {
-                    console.error("Failed to fetch initial patient:", err);
-                    setIsLoading(false);
-                });
-        } else {
-            setIsLoading(false);
+                .then(setSelectedPatient)
+                .catch(err => console.error("Failed to fetch initial patient:", err))
+                .finally(() => setIsLoading(false));
         }
-    }, [initialPatientId]);
+    }, [initialPatientId, selectedPatient]);
 
-    // Fetch history whenever a new patient is selected
+    // Effect to fetch history when a patient is selected
     useEffect(() => {
         if (selectedPatient) {
             setIsLoading(true);
             authorizedFetch(`/api/patients/${selectedPatient.patient_id}/treatment-history`)
                 .then(res => res.json())
-                .then(historyData => setHistory(historyData))
-                .catch(err => {
-                    console.error("Error fetching patient history:", err);
-                    setHistory(null);
-                })
+                .then(setHistory)
+                .catch(err => setHistory(null))
                 .finally(() => setIsLoading(false));
         } else {
             setHistory(null);
@@ -45,12 +40,11 @@ export default function TreatmentPlanPage({ selectedClinic, user, patientId: ini
     }, [selectedPatient]);
 
     const handlePatientSelect = (patient) => {
+        // If a new patient is selected from the search, update the URL
+        if (window.location.hash !== `#/treatment-plan/${patient.patient_id}`) {
+            window.location.hash = `#/treatment-plan/${patient.patient_id}`;
+        }
         setSelectedPatient(patient);
-    };
-    const handleClearPatient = () => {
-        setSelectedPatient(null);
-        // Also clear the URL hash to go back to the search state
-        window.location.hash = '#/treatment-plan';
     };
 
     const tabs = [
@@ -60,133 +54,57 @@ export default function TreatmentPlanPage({ selectedClinic, user, patientId: ini
         { id: 'scans', label: 'Scan Documents', icon: <Microscope size={16} /> },
     ];
 
-    const renderContent = () => {
-        if (isLoading) return <div className="text-center p-8">Loading patient data...</div>;
-        if (!history) return <div className="text-center p-8 text-slate-500">No history to display.</div>;
-
-        switch (activeTab) {
-            case 'history': return <HistoryReview history={history} />;
-            case 'create': return <ExTxCreated patientId={selectedPatient.patient_id} doctorId={user.id} />;
-            case 'processing': return <TreatmentProcessing plans={history.plans} items={history.items} />;
-            case 'scans': return <ScanDocuments patientId={selectedPatient.patient_id} documents={history.documents} />;
-            default: return null;
-        }
-    };
-    if (isLoading && !selectedPatient) {
-        return <div className="p-6 text-center">Loading...</div>;
-    }
-
-
     return (
-        <div className="p-6 h-full overflow-y-auto bg-slate-50">
-            {!selectedPatient ? (
-                <PatientSearch onPatientSelect={setSelectedPatient} />
-            ) : (
-                <>
-                    <PatientHeader patient={selectedPatient} onClearPatient={handleClearPatient} />
-                    <div className="border-b border-slate-200">
-                        <nav className="-mb-px flex space-x-6">
-                            {tabs.map(tab => (
-                                <TabButton
-                                    key={tab.id}
-                                    active={activeTab === tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    icon={tab.icon}
-                                >
-                                    {tab.label}
-                                </TabButton>
-                            ))}
-                        </nav>
+        <div className="h-full flex flex-row bg-slate-50">
+            {/* Column 1: Patient Information */}
+            <PatientInfoColumn patient={selectedPatient} onPatientSelect={handlePatientSelect} />
+
+            {/* Column 2: Treatment Plan Tabs */}
+            <main className="flex-1 p-6 overflow-y-auto">
+                {!selectedPatient ? (
+                    <div className="h-full flex items-center justify-center">
+                        <div className="text-center">
+                            <Stethoscope size={48} className="mx-auto text-slate-400" />
+                            <h2 className="mt-4 text-xl font-semibold text-slate-600">No Patient Selected</h2>
+                            <p className="text-slate-500">Please search for a patient to view or create a treatment plan.</p>
+                        </div>
                     </div>
-                    <div className="mt-6">
-                        {renderContent()}
-                    </div>
-                </>
-            )}
+                ) : (
+                    <>
+                        <div className="border-b border-slate-200">
+                            <nav className="-mb-px flex space-x-6">
+                                {tabs.map(tab => (
+                                    <TabButton
+                                        key={tab.id}
+                                        active={activeTab === tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        icon={tab.icon}
+                                    >
+                                        {tab.label}
+                                    </TabButton>
+                                ))}
+                            </nav>
+                        </div>
+                        <div className="mt-6">
+                            {isLoading && <p>Loading history...</p>}
+                            {!isLoading && history && (
+                                <>
+                                    {activeTab === 'history' && <HistoryReview history={history} />}
+                                    {activeTab === 'create' && <ExTxCreated patientId={selectedPatient.patient_id} doctorId={user.id} />}
+                                    {activeTab === 'processing' && <TreatmentProcessing plans={history.plans} items={history.items} />}
+                                    {activeTab === 'scans' && <ScanDocuments patientId={selectedPatient.patient_id} documents={history.documents} />}
+                                </>
+                            )}
+                        </div>
+                    </>
+                )}
+            </main>
         </div>
     );
 }
 
-// --- New Search Component ---
-const PatientSearch = ({ onPatientSelect }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [results, setResults] = useState([]);
-    const [isSearching, setIsSearching] = useState(false);
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!searchTerm.trim()) return;
-        setIsSearching(true);
-        try {
-            const res = await authorizedFetch(`/api/patients?query=${searchTerm}`);
-            const data = await res.json();
-            setResults(data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsSearching(false);
-        }
-    };
-
-    return (
-        <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold text-center text-slate-700 mb-4">Find a Patient</h2>
-            <p className="text-center text-slate-500 mb-6">Search by name, DN, or phone number to begin managing a treatment plan.</p>
-            <form onSubmit={handleSearch} className="flex gap-2">
-                <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search for patient..."
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500"
-                    autoFocus
-                />
-                <button type="submit" disabled={isSearching} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-sm hover:bg-sky-700 disabled:opacity-50">
-                    <Search size={20} />
-                </button>
-            </form>
-            <div className="mt-4 bg-white rounded-lg border max-h-96 overflow-y-auto">
-                {results.map(patient => (
-                    <div
-                        key={patient.patient_id}
-                        onClick={() => onPatientSelect(patient)}
-                        className="p-4 hover:bg-slate-100 cursor-pointer border-b last:border-b-0"
-                    >
-                        <p className="font-semibold text-slate-800">{patient.first_name_th} {patient.last_name_th}</p>
-                        <p className="text-sm text-slate-500">DN: {patient.dn} | Phone: {patient.mobile_phone}</p>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-
-// --- Child & Helper Components ---
-
-const PatientHeader = ({ patient, onClearPatient }) => (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-6 flex justify-between items-start">
-        <div>
-            <h2 className="text-2xl font-bold text-slate-800">{patient.first_name_th} {patient.last_name_th}</h2>
-            <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
-                <span>ID: {patient.dn}</span>
-                <span>Age: {patient.date_of_birth ? `${new Date().getFullYear() - new Date(patient.date_of_birth).getFullYear()}` : 'N/A'}</span>
-                <span>Gender: {patient.gender}</span>
-            </div>
-        </div>
-        <div className="text-right">
-             <button onClick={onClearPatient} className="text-sm font-semibold text-slate-600 hover:text-red-600 flex items-center gap-1 mb-2">
-                <X size={14} /> Change Patient
-            </button>
-            <div className="text-sm font-semibold text-red-600 bg-red-100 px-2 py-1 rounded">
-                Allergies: {patient.allergies || 'None recorded'}
-            </div>
-        </div>
-    </div>
-);
-
-// ... The rest of the components (HistoryReview, TreatmentProcessing, etc.) remain the same as the previous correct version ...
-
+// ... The rest of the page components (HistoryReview, etc.) remain the same as the previous correct version ...
 const HistoryReview = ({ history }) => {
     const timeline = [
         ...(history.findings || []).map(f => ({ ...f, type: 'Exam Finding', date: f.finding_date, details: `Complaint: ${f.chief_complaint || 'N/A'}. Findings: ${f.clinical_findings || 'N/A'}` })),
