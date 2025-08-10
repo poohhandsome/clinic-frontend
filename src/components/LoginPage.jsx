@@ -2,11 +2,10 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import clinicLogo from '../assets/clinic-logo.png'; // Assuming your logo is here
+import clinicLogo from '../assets/clinic-logo.png';
 
-// Re-usable icon for the password visibility toggle
 const EyeIcon = ({ isVisible }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+    <svg xmlns="http://www.w.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
         {isVisible ? (
             <>
                 <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
@@ -24,7 +23,8 @@ const EyeIcon = ({ isVisible }) => (
 );
 
 export default function LoginPage() {
-    const [email, setEmail] = useState('');
+    // **THE FIX**: Changed state name from 'email' to 'username' to match backend
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -32,44 +32,29 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const { login } = useAuth();
 
-    // Mock API call function to simulate network delay and response
-    const mockApiLogin = (email, password) => {
-        // Security: In a real application, NEVER send raw passwords.
-        // This data would be sent over a secure HTTPS connection to the server.
-        console.log(`Attempting login for email: ${email}`);
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                // Mock success/failure based on a simple check
-                if (password === "correct-password") {
-                    resolve({
-                        user: { id: 1, username: email, role: 'nurse' },
-                        token: 'mock_jwt_token_string'
-                    });
-                } else {
-                    // Security: Implement rate-limiting on the server to prevent brute-force attacks.
-                    reject(new Error('Invalid email or password. Please try again.'));
-                }
-            }, 1500); // Simulate 1.5 second network delay
-        });
-    };
-
+    // This uses the real backend now
     const handleLogin = async (e) => {
-        // 1. Prevent the browser's default form submission behavior
         e.preventDefault();
-        
         setIsLoading(true);
         setError('');
 
         try {
-            // 2. Call the mock async login function
-            const { user, token } = await mockApiLogin(email, password);
+            // Security: This data is sent over a secure HTTPS connection.
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // **THE FIX**: Ensure 'username' field is sent
+                body: JSON.stringify({ username, password }),
+            });
             
-            // 3. On success, show a success message (toast stub) and redirect
-            alert('Login Successful!'); // Stub for a success toast notification
-            login(user, token); // This function will handle the redirect
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.msg || 'Login failed');
+            }
+            
+            login(data.user, data.token);
 
         } catch (err) {
-            // On failure, display the error message from the API
             setError(err.message);
         } finally {
             setIsLoading(false);
@@ -78,15 +63,12 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center p-4">
-            {/* Left side hero/background (visible on larger screens) */}
             <div className="hidden md:flex flex-1 h-full items-center justify-center">
                  <div className="text-white text-center">
                     <h1 className="text-5xl font-bold">Newtrend Dental Clinic</h1>
                     <p className="mt-4 text-xl opacity-80">Streamlining Dental Care with Technology.</p>
                 </div>
             </div>
-
-            {/* Right side authentication card */}
             <div className="flex-1 flex items-center justify-center">
                 <div className="w-full max-w-md bg-white/20 backdrop-blur-xl rounded-2xl shadow-2xl p-8">
                     <img src={clinicLogo} alt="Newtrend Dental Clinic Logo" className="w-20 h-20 mx-auto mb-6 rounded-full" />
@@ -97,21 +79,18 @@ export default function LoginPage() {
                     {error && <p className="bg-red-500/50 text-white text-center p-3 rounded-lg mb-6 border border-red-400">{error}</p>}
                     
                     <form onSubmit={handleLogin} className="space-y-6">
-                        {/* Email Input */}
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-white/90 mb-2">Email Address</label>
+                            <label htmlFor="username" className="block text-sm font-medium text-white/90 mb-2">Username or Email</label>
                             <input
-                                type="email"
-                                id="email"
-                                placeholder="you@example.com"
+                                type="text"
+                                id="username"
+                                placeholder="admin or doctor@example.com"
                                 className="w-full px-4 py-3 bg-white/30 text-white placeholder-white/70 rounded-lg border border-white/40 focus:ring-2 focus:ring-white focus:border-transparent transition"
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
+                                value={username}
+                                onChange={e => setUsername(e.target.value)}
                                 required
                             />
                         </div>
-
-                        {/* Password Input */}
                         <div className="relative">
                             <label htmlFor="password" className="block text-sm font-medium text-white/90 mb-2">Password</label>
                             <input
@@ -132,8 +111,6 @@ export default function LoginPage() {
                                 <EyeIcon isVisible={showPassword} />
                             </button>
                         </div>
-
-                        {/* Remember Me & Forgot Password */}
                         <div className="flex items-center justify-between">
                             <div className="flex items-center">
                                 <input
@@ -154,8 +131,6 @@ export default function LoginPage() {
                                 </a>
                             </div>
                         </div>
-
-                        {/* Sign In Button */}
                         <div>
                             <button
                                 type="submit"
