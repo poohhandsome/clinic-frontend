@@ -11,7 +11,7 @@ import PendingAppointmentsPage from './components/PendingAppointmentsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import ConfirmedAppointmentsPage from './components/ConfirmedAppointmentsPage.jsx';
 import PatientsPage from './components/PatientsPage.jsx';
-import TreatmentPlanPage from './components/TreatmentPlanPage.jsx'; // Make sure this is imported
+import TreatmentPlanPage from './components/TreatmentPlanPage.jsx';
 import authorizedFetch from './api.js';
 import SettingsPage from './components/SettingsPage.jsx';
 import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
@@ -46,7 +46,7 @@ export default function App() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filteredDoctorIds, setFilteredDoctorIds] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [pendingCount, setPendingCount] = useState(0); 
+    const [pendingCount, setPendingCount] = useState(0);
     const currentPath = useHashNavigation();
 
     useEffect(() => {
@@ -101,7 +101,7 @@ export default function App() {
     };
 
     if (!isAuthenticated) return <LoginPage />;
-    
+
     if (!selectedClinic) {
         return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
     }
@@ -110,7 +110,7 @@ export default function App() {
         const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
         const otherPageProps = { selectedClinic, user };
 
-        // **THE FIX IS HERE**: Handle dynamic routes for treatment plans
+        // **THIS IS THE CRITICAL FIX**: Handle dynamic routes for treatment plans
         if (currentPath.startsWith('#/treatment-plan/')) {
             const patientId = currentPath.split('/')[2];
             return <TreatmentPlanPage {...otherPageProps} patientId={patientId} />;
@@ -129,7 +129,6 @@ export default function App() {
             case '#confirmed': return <ConfirmedAppointmentsPage {...otherPageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#settings': return <SettingsPage {...otherPageProps} />;
-            case '#treatment-plan': return <TreatmentPlanPage {...otherPageProps} />;
             default: return <DashboardPage {...dashboardProps} />;
         }
     };
@@ -138,17 +137,17 @@ export default function App() {
 
     return (
         <div className="flex h-screen bg-slate-50">
-            <NewSidebar 
+            <NewSidebar
                 isSidebarOpen={isSidebarOpen}
                 setIsSidebarOpen={setIsSidebarOpen}
                 currentPath={currentPath}
             />
             <div className="flex-1 flex flex-col overflow-hidden">
-                <NewHeader 
+                <NewHeader
                     isSidebarOpen={isSidebarOpen}
                     setIsSidebarOpen={setIsSidebarOpen}
-                    currentDate={currentDate} 
-                    setCurrentDate={setCurrentDate} 
+                    currentDate={currentDate}
+                    setCurrentDate={setCurrentDate}
                     pendingCount={pendingCount}
                     selectedClinicName={selectedClinicName}
                     onChangeClinic={handleChangeClinic}

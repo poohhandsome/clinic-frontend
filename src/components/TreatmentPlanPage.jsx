@@ -1,4 +1,4 @@
-// src/components/TreatmentPlanPage.jsx (CORRECT AND FINAL)
+// src/components/TreatmentPlanPage.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
@@ -20,14 +20,23 @@ export default function TreatmentPlanPage({ selectedClinic, user, patientId }) {
                 authorizedFetch(`/api/patients/${patientId}/treatment-history`)
             ])
             .then(async ([patientRes, historyRes]) => {
-                if (!patientRes.ok || !historyRes.ok) throw new Error('Failed to fetch patient data.');
+                if (!patientRes.ok) throw new Error(`Patient fetch failed with status: ${patientRes.status}`);
+                if (!historyRes.ok) throw new Error(`History fetch failed with status: ${historyRes.status}`);
+
                 const patientData = await patientRes.json();
                 const historyData = await historyRes.json();
+
                 setPatient(patientData);
                 setHistory(historyData);
             })
-            .catch(err => console.error(err))
+            .catch(err => {
+                console.error("Error fetching patient data:", err);
+                setPatient(null); // Clear patient data on error
+            })
             .finally(() => setIsLoading(false));
+        } else {
+            setIsLoading(false);
+            setPatient(null);
         }
     }, [patientId]);
 
@@ -40,7 +49,7 @@ export default function TreatmentPlanPage({ selectedClinic, user, patientId }) {
 
     const renderContent = () => {
         if (isLoading) return <div className="text-center p-8">Loading patient data...</div>;
-        if (!patient) return <div className="text-center p-8">No patient selected or found.</div>;
+        if (!patient) return <div className="text-center p-8 text-red-600">No patient selected or found. Please go back and select a patient.</div>;
 
         switch (activeTab) {
             case 'history': return <HistoryReview history={history} />;
@@ -57,9 +66,7 @@ export default function TreatmentPlanPage({ selectedClinic, user, patientId }) {
                 <div className="text-center p-8">Loading...</div>
             ) : patient ? (
                 <PatientHeader patient={patient} />
-            ) : (
-                <div className="text-center p-8 text-red-500">Could not load patient details.</div>
-            )}
+            ) : null }
 
             <div className="border-b border-slate-200">
                 <nav className="-mb-px flex space-x-6">
@@ -83,8 +90,7 @@ export default function TreatmentPlanPage({ selectedClinic, user, patientId }) {
     );
 }
 
-
-// --- Child Components ---
+// --- Child & Helper Components ---
 
 const PatientHeader = ({ patient }) => (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-6">
@@ -115,6 +121,7 @@ const HistoryReview = ({ history }) => {
 
     return (
         <div className="space-y-4">
+            {timeline.length === 0 && <p className="text-slate-500 text-center py-4">No history found for this patient.</p>}
             {timeline.map((item, index) => (
                 <div key={index} className="flex items-start gap-4 p-4 bg-white rounded-lg border">
                     <div className="flex-shrink-0 w-24 text-right">
@@ -133,6 +140,7 @@ const HistoryReview = ({ history }) => {
 
 const TreatmentProcessing = ({ plans, items }) => (
     <div className="bg-white rounded-lg border divide-y">
+         {(!items || items.filter(i => i.status !== 'Completed').length === 0) && <p className="text-slate-500 text-center py-4">No active treatments.</p>}
         {(items || []).filter(i => i.status !== 'Completed').map(item => {
             const plan = (plans || []).find(p => p.plan_id === item.plan_id);
             return (
@@ -157,7 +165,7 @@ const TreatmentProcessing = ({ plans, items }) => (
 );
 
 const ExTxCreated = ({ patientId, doctorId }) => (
-    <div className="p-4 bg-white rounded-lg border space-y-6">
+     <div className="p-4 bg-white rounded-lg border space-y-6">
         <div>
             <h3 className="font-semibold text-lg text-slate-700 mb-2">Examination Findings (Ex)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -203,6 +211,7 @@ const ScanDocuments = ({ patientId, documents }) => (
             <input type="file" className="hidden" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {(!documents || documents.length === 0) && <p className="text-slate-500 text-center py-4 col-span-full">No documents uploaded.</p>}
             {(documents || []).map(doc => (
                 <div key={doc.document_id} className="border rounded-lg p-3 flex items-center gap-3">
                     <FileText className="h-10 w-10 text-slate-500 flex-shrink-0" />
