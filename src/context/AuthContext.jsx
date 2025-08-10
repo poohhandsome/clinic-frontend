@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('user', JSON.stringify(userData)); // Also store user info
         setToken(authToken);
         setUser(userData);
-        window.location.hash = '#dashboard';
+        window.location.hash = '#/';
     };
 
     const logout = () => {
