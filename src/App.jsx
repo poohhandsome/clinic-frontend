@@ -119,8 +119,13 @@ export default function App() {
 
     // Handle treatment plan from both sidebar and patient page
     if (route === 'treatment-plan') {
-      const patientId = params[0] ?? null; // supports "#/treatment-plan" and "#/treatment-plan/123"
-      const checkInTime = params.get('checkin');
+      const patientId = params[0] ?? null;
+
+      // FIX: Correctly parse the check-in time from the full URL hash
+      const queryParamsString = currentPath.split('?')[1] || '';
+      const queryParams = new URLSearchParams(queryParamsString);
+      const checkInTime = queryParams.get('checkin');
+
       return <TreatmentPlanPage {...otherPageProps} patientId={patientId} checkInTime={checkInTime} />;
     }
 
