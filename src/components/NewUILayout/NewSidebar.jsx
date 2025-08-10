@@ -1,7 +1,7 @@
 // src/components/NewUILayout/NewSidebar.jsx (REPLACE)
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3, ClipboardList } from 'lucide-react';
 import clinicLogo from '../../assets/clinic-logo.png';
 
 const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
