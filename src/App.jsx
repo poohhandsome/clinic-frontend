@@ -129,6 +129,7 @@ export default function App() {
             case '#confirmed': return <ConfirmedAppointmentsPage {...otherPageProps} />;
             case '#schedules': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#settings': return <SettingsPage {...otherPageProps} />;
+            case '#treatment-plan': return <TreatmentPlanPage {...otherPageProps} />;
             default: return <DashboardPage {...dashboardProps} />;
         }
     };
