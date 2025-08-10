@@ -110,7 +110,7 @@ export default function App() {
         const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
         const otherPageProps = { selectedClinic, user };
 
-        // **THIS IS THE HYBRID ROUTING LOGIC**
+        // THIS LOGIC NOW CORRECTLY HANDLES BOTH CASES
         if (currentPath.startsWith('#/treatment-plan')) {
             const pathParts = currentPath.split('/');
             const patientId = pathParts.length > 2 ? pathParts[2] : null;
@@ -121,7 +121,7 @@ export default function App() {
             case '#dashboard': return <DashboardPage {...dashboardProps} />;
             case '#clinic-dashboard': return <PlaceholderPage title="Clinic Dashboard" />;
             case '#appointments': return <PatientsPage {...otherPageProps} />;
-            // The '#treatment-plan' case is now handled by the logic above
+            // THE REDUNDANT '#treatment-plan' CASE IS NOW REMOVED
             case '#doctors': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#treatments': return <PlaceholderPage title="Treatments Management" />;
             case '#billing': return <PlaceholderPage title="Billing Management" />;
