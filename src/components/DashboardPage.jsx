@@ -1,9 +1,11 @@
+// src/components/DashboardPage.jsx (REPLACE)
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { format, getHours, getMinutes, isToday } from 'date-fns';
-import AppointmentModal from './AppointmentModal.jsx';
+// THE FIX: Import the better modal and remove the old one
+import AddNewAppointmentModal from './AddNewAppointmentModal.jsx'; 
 import authorizedFetch from '../api.js';
-import DashboardControls from './DashboardControls.jsx'; // 1. Import the new controls
+import DashboardControls from './DashboardControls.jsx';
 
 const timeToMinutes = (time) => {
     if (!time) return 0;
@@ -42,16 +44,12 @@ const CurrentTimeIndicator = ({ hourHeight, timelineStartHour, timelineEndHour }
     );
 };
 
-// 2. Pass down the new props for the controls
 export default function DashboardPage({ selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
     const [dayAppointments, setDayAppointments] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
     const hourHeight = 80;
-    const handleCreateClick = () => {
-        setModalData({ time: '09:00', doctorId: null, date: currentDate });
-        setIsModalOpen(true);
-    };
+
     const timelineStartHour = 8;
     const timelineEndHour = 20;
     const hours = Array.from({ length: timelineEndHour - timelineStartHour + 1 }, (_, i) => i + timelineStartHour);
@@ -68,15 +66,23 @@ export default function DashboardPage({ selectedClinic, currentDate, setCurrentD
     };
     useEffect(fetchAppointments, [selectedClinic, currentDate, filteredDoctorIds]);
 
+    // THE FIX: This function now prepares data for the better modal
     const handleSlotClick = (time, doctorId) => {
         setModalData({ time, doctorId, date: currentDate });
         setIsModalOpen(true);
     };
+    
+    // THE FIX: This function, for the "+ Create" button, does the same
+    const handleCreateClick = () => {
+        setModalData({ time: '09:00', doctorId: null, date: currentDate });
+        setIsModalOpen(true);
+    };
 
-    const handleModalClose = (didBook) => {
+    // THE FIX: The close handler is now simpler and refreshes appointments
+    const handleModalClose = () => {
         setIsModalOpen(false);
         setModalData(null);
-        if (didBook) fetchAppointments();
+        fetchAppointments(); // Refresh appointments after modal closes
     };
     
     const isSlotInWorkingHours = (slotHour, slotMinute, doctorId) => {
@@ -89,11 +95,15 @@ export default function DashboardPage({ selectedClinic, currentDate, setCurrentD
     };
 
     return (
-        // 3. Main container is now a flex row
         <div className="h-full w-full bg-white flex flex-row">
-            {isModalOpen && <AppointmentModal data={modalData} clinicId={selectedClinic} onClose={handleModalClose} />}
+            {/* THE FIX: We are now calling the correct modal component */}
+            {isModalOpen && <AddNewAppointmentModal 
+                initialData={modalData} 
+                clinicId={selectedClinic} 
+                onClose={handleModalClose}
+                onUpdate={fetchAppointments} 
+            />}
             
-            {/* 4. The controls are now part of the page */}
             <DashboardControls 
                 currentDate={currentDate}
                 setCurrentDate={setCurrentDate}
@@ -101,10 +111,9 @@ export default function DashboardPage({ selectedClinic, currentDate, setCurrentD
                 filteredDoctorIds={filteredDoctorIds}
                 setFilteredDoctorIds={setFilteredDoctorIds}
                 dailySchedule={dailySchedule}
-                onCreateClick={handleCreateClick} // <-- ADD THIS LINE
+                onCreateClick={handleCreateClick}
             />
 
-            {/* 5. The schedule grid is now in a flex-1 container */}
             <div className="flex-1 flex flex-col border-l border-slate-200">
                 <div className="grid shrink-0" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
                     <div className="p-2 border-r border-b border-slate-200 flex items-center justify-center">
