@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { Search, Settings, Menu, Home, ChevronsUpDown } from 'lucide-react';
+import { Search, Settings, Menu, Home, ChevronsUpDown, LogOut } from 'lucide-react'; // Import LogOut icon
 import { useAuth } from '../../context/AuthContext';
 import authorizedFetch from '../../api';
 
-// --- NEW Custom Clinic Dropdown ---
+// --- Custom Clinic Dropdown ---
 const ClinicSwitcher = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [allClinics, setAllClinics] = useState([]);
@@ -67,7 +67,7 @@ const ClinicSwitcher = () => {
 };
 
 export default function NewHeader({ isSidebarOpen, setIsSidebarOpen }) {
-    const { user } = useAuth();
+    const { user, logout } = useAuth(); // Get the logout function from the context
     
     return (
         <header className="relative bg-white flex items-center justify-between px-4 sm:px-6 h-16 shrink-0 z-30 border-b border-slate-200">
@@ -79,24 +79,32 @@ export default function NewHeader({ isSidebarOpen, setIsSidebarOpen }) {
                     <Menu size={22} />
                 </button>
 
-                {/* --- UPDATED CLINIC SWITCHER AND NEW HOME ICON --- */}
                 <ClinicSwitcher />
-                <a href="/#/" className="p-2 rounded-full hover:bg-slate-100 text-slate-600">
+                <a href="/#/" className="p-2 rounded-full hover:bg-slate-100 text-slate-600" aria-label="Home">
                     <Home size={20} />
                 </a>
             </div>
 
             <div className="flex items-center gap-2">
-                <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500"><Search size={20} /></button>
-                <a href="#/nurse/settings" className="p-2 rounded-full hover:bg-slate-100 text-slate-500">
+                <button className="p-2 rounded-full hover:bg-slate-100 text-slate-500" aria-label="Search">
+                    <Search size={20} />
+                </button>
+                <a href="#/nurse/settings" className="p-2 rounded-full hover:bg-slate-100 text-slate-500" aria-label="Settings">
                     <Settings size={20} />
                 </a>
                 
                 <div className="w-px h-6 bg-slate-200 mx-2"></div>
+                
                 <span className="text-sm font-medium text-slate-600">{user.username}</span>
+                
                 <div className="w-9 h-9 rounded-full bg-sky-100 flex items-center justify-center font-bold text-sky-600 text-sm">
                     {user.username.charAt(0).toUpperCase()}
                 </div>
+                
+                {/* --- NEW LOGOUT BUTTON --- */}
+                <button onClick={logout} className="p-2 rounded-full hover:bg-slate-100 text-slate-600" aria-label="Logout">
+                    <LogOut size={20} />
+                </button>
             </div>
         </header>
     );
