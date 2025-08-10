@@ -89,18 +89,15 @@ export default function PatientsPage({ selectedClinic }) {
         setIsAddAppointmentModalOpen(true);
     };
     
-    // **MODIFIED**: This now handles the check-in action
     const handleActionClick = (action, appointment) => {
-        // This now correctly opens the modal for all actions
         setActionModal({ isOpen: true, action, appointment });
     };
     
-    // **MODIFIED**: This now accepts a checkInTime and passes it in the URL
+    // **THE FIX IS HERE**: This now navigates to the correct nurse sub-route
     const handlePatientClick = (patientId, checkInTime = null) => {
         if (patientId) {
-            let hash = `#/treatment-plan/${patientId}`;
+            let hash = `#/nurse/treatment-plan/${patientId}`;
             if (checkInTime) {
-                // Encode the timestamp to make it URL-safe
                 hash += `?checkin=${encodeURIComponent(checkInTime)}`;
             }
             window.location.hash = hash;
@@ -109,8 +106,7 @@ export default function PatientsPage({ selectedClinic }) {
 
     return (
         <div className="p-6 h-full flex flex-col bg-slate-50">
-            {/* ... Your buttons and filters ... */}
-             <button onClick={() => handleSlotClick({ time: '09:00', doctorId: null })} className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40">
+            <button onClick={() => handleSlotClick({ time: '09:00', doctorId: null })} className="fixed bottom-8 right-8 w-14 h-14 bg-sky-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-sky-700 z-40">
                 <Plus size={28} />
             </button>
             
@@ -155,7 +151,7 @@ export default function PatientsPage({ selectedClinic }) {
                 </div>
                  <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm">
                     <div className="relative flex-grow">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1.2 text-slate-400" size={20} />
                         <input type="text" placeholder="Search Appointments..." className="w-full pl-10 pr-4 py-2 border rounded-md"/>
                     </div>
                      <select value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="p-2 border rounded-md text-sm">
