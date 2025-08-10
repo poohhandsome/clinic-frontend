@@ -114,38 +114,34 @@ export default function App() {
     }
 
     const renderPage = () => {
-        const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
-        const otherPageProps = { selectedClinic, user };
+    const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
+    const otherPageProps = { selectedClinic, user };
 
-        // **MODIFIED**: This logic now also extracts the check-in time
-        if (currentPath.startsWith('#/treatment-plan')) {
-            const [path, query] = currentPath.split('?');
-            const patientId = path.split('/')[2] || null;
+    // Handle treatment plan from both sidebar and patient page
+    if (route === 'treatment-plan') {
+      const patientId = params[0] ?? null; // supports "#/treatment-plan" and "#/treatment-plan/123"
+      const checkInTime = params.get('checkin');
+      return <TreatmentPlanPage {...otherPageProps} patientId={patientId} checkInTime={checkInTime} />;
+    }
 
-            const params = new URLSearchParams(query);
-            const checkInTime = params.get('checkin');
-
-            return <TreatmentPlanPage {...otherPageProps} patientId={patientId} checkInTime={checkInTime} />;
-        }
-
-        switch (currentPath) {
-            case '#dashboard': return <DashboardPage {...dashboardProps} />;
-            case '#clinic-dashboard': return <PlaceholderPage title="Clinic Dashboard" />;
-            case '#appointments': return <PatientsPage {...otherPageProps} />;
-            case '#doctors': return <DoctorSchedulesPage {...otherPageProps} />;
-            case '#treatments': return <PlaceholderPage title="Treatments Management" />;
-            case '#billing': return <PlaceholderPage title="Billing Management" />;
-            case '#lab-costs': return <PlaceholderPage title="Lab Costs Management" />;
-            case '#summary': return <PlaceholderPage title="Summary" />;
-            case '#pending': return <PendingAppointmentsPage {...otherPageProps} />;
-            case '#confirmed': return <ConfirmedAppointmentsPage {...otherPageProps} />;
-            case '#schedules': return <DoctorSchedulesPage {...otherPageProps} />;
-            case '#settings': return <SettingsPage {...otherPageProps} />;
-            default: return <DashboardPage {...dashboardProps} />;
-        }
-    
+    switch (route) {
+      case 'dashboard':          return <DashboardPage {...dashboardProps} />;
+      case 'clinic-dashboard':   return <PlaceholderPage title="Clinic Dashboard" />;
+      case 'appointments':       return <PatientsPage {...otherPageProps} />;
+      case 'doctors':            return <DoctorSchedulesPage {...otherPageProps} />;
+      case 'treatments':         return <PlaceholderPage title="Treatments Management" />;
+      case 'billing':            return <PlaceholderPage title="Billing Management" />;
+      case 'lab-costs':          return <PlaceholderPage title="Lab Costs Management" />;
+      case 'summary':            return <PlaceholderPage title="Summary" />;
+      case 'pending':            return <PendingAppointmentsPage {...otherPageProps} />;
+      case 'confirmed':          return <ConfirmedAppointmentsPage {...otherPageProps} />;
+      case 'schedules':          return <DoctorSchedulesPage {...otherPageProps} />;
+      case 'settings':           return <SettingsPage {...otherPageProps} />;
+      default:                   return <DashboardPage {...dashboardProps} />;
+    }
   };
 
+      
     const selectedClinicName = allClinics.find(c => c.id === selectedClinic)?.name || 'Unknown Clinic';
 
     return (
