@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { format, getHours, getMinutes, isToday } from 'date-fns';
 // THE FIX: Import the better modal and remove the old one
-import AddNewAppointmentModal from './AddNewAppointmentModal.jsx'; 
+import AddNewAppointmentModal from '../components/AddNewAppointmentModal.jsx';
 import authorizedFetch from '../api.js';
-import DashboardControls from './DashboardControls.jsx';
+import DashboardControls from '../components/DashboardControls.jsx';
 
 const timeToMinutes = (time) => {
     if (!time) return 0;

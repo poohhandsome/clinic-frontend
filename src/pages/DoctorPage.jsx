@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, Download, Save, Send, Printer } from 'lucide-react';
 import authorizedFetch from '../api';
-import PatientInfoColumn from './PatientInfoColumn';
+import PatientInfoColumn from '../components/PatientInfoColumn';
 
 // --- Main Component ---
 export default function DoctorPage({ user, patientId, checkInTime }) {
