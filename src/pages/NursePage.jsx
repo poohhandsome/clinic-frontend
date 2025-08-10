@@ -1,184 +1,124 @@
-// src/components/DashboardPage.jsx (REPLACE)
+// src/App.jsx (REPLACE)
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { format, getHours, getMinutes, isToday } from 'date-fns';
-// THE FIX: Import the better modal and remove the old one
-import AddNewAppointmentModal from '../components/AddNewAppointmentModal.jsx';
-import authorizedFetch from '../api.js';
-import DashboardControls from '../components/DashboardControls.jsx';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext.jsx';
+import LoginPage from './components/LoginPage.jsx';
+import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
+import LandingPage from './pages/LandingPage.jsx';
+import NursePage from './pages/NursePage.jsx';
+import DoctorPage from './pages/DoctorPage.jsx';
+import SettingsPage from './components/SettingsPage.jsx';
+import NewHeader from './components/NewUILayout/NewHeader.jsx';
+import NewSidebar from './components/NewUILayout/NewSidebar.jsx';
+import authorizedFetch from './api.js';
+import { format } from 'date-fns';
 
-const timeToMinutes = (time) => {
-    if (!time) return 0;
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
+const useHashNavigation = () => {
+    const [currentPath, setCurrentPath] = useState(window.location.hash || '#/');
+    useEffect(() => {
+        const handleHashChange = () => setCurrentPath(window.location.hash || '#/');
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, []);
+    return currentPath;
 };
 
-const CurrentTimeIndicator = ({ hourHeight, timelineStartHour, timelineEndHour }) => {
-    const [topPosition, setTopPosition] = useState(null);
-
+const MainLayout = ({ children, user, selectedClinic, allClinics, currentDate, setCurrentDate }) => {
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [pendingCount, setPendingCount] = useState(0);
+    const currentPath = useHashNavigation();
+    
     useEffect(() => {
-        const updatePosition = () => {
-            const now = new Date();
-            const currentHour = getHours(now);
-            if (currentHour >= timelineStartHour && currentHour <= timelineEndHour) {
-                const minutesSinceTimelineStart = (currentHour - timelineStartHour) * 60 + getMinutes(now);
-                setTopPosition(minutesSinceTimelineStart * (hourHeight / 60));
-            } else {
-                setTopPosition(null);
-            }
-        };
+        if (selectedClinic) {
+            const fetchPending = () => {
+                authorizedFetch(`/api/pending-appointments?clinic_id=${selectedClinic}`)
+                    .then(res => res.json())
+                    .then(data => setPendingCount(data.length || 0))
+                    .catch(err => console.error("Failed to fetch pending count:", err));
+            };
+            fetchPending();
+            const interval = setInterval(fetchPending, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [selectedClinic]);
 
-        updatePosition();
-        const interval = setInterval(updatePosition, 60000);
-        return () => clearInterval(interval);
-    }, [hourHeight, timelineStartHour, timelineEndHour]);
+    const handleChangeClinic = () => {
+        localStorage.removeItem('selectedClinic');
+        window.location.hash = '#/'; // Go to landing page after changing clinic
+        window.location.reload();
+    };
 
-    if (topPosition === null) return null;
+    const selectedClinicName = allClinics.find(c => c.id === selectedClinic)?.name || 'Unknown Clinic';
 
     return (
-        <div className="absolute left-16 right-0 z-20" style={{ top: `${topPosition}px` }}>
-            <div className="relative h-px bg-red-500">
-                <div className="absolute -left-1.5 -top-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
+        <div className="flex h-screen bg-slate-50">
+            <NewSidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} currentPath={currentPath} />
+            <div className="flex-1 flex flex-col overflow-hidden">
+                <NewHeader 
+                    isSidebarOpen={isSidebarOpen}
+                    setIsSidebarOpen={setIsSidebarOpen}
+                    currentDate={currentDate} 
+                    setCurrentDate={setCurrentDate} 
+                    pendingCount={pendingCount}
+                    selectedClinicName={selectedClinicName}
+                    onChangeClinic={handleChangeClinic}
+                />
+                <main className="flex-1 overflow-y-auto">
+                    {children}
+                </main>
             </div>
         </div>
     );
 };
 
-export default function NursePage({ selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
-    const [dayAppointments, setDayAppointments] = useState([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalData, setModalData] = useState(null);
-    const hourHeight = 80;
-
-    const timelineStartHour = 8;
-    const timelineEndHour = 20;
-    const hours = Array.from({ length: timelineEndHour - timelineStartHour + 1 }, (_, i) => i + timelineStartHour);
-
-     const displayedDoctors = useMemo(() => {
-        // THE FIX: Only filter if doctors is an actual array
-        if (!Array.isArray(doctors)) {
-            return [];
-        }
-        return doctors.filter(doc => filteredDoctorIds.includes(doc.id));
-    }, [doctors, filteredDoctorIds]);
-    const fetchAppointments = () => {
-        if (selectedClinic) {
-            const dateString = format(currentDate, 'yyyy-MM-dd');
-            authorizedFetch(`/api/clinic-day-schedule?clinic_id=${selectedClinic}&date=${dateString}`)
-                .then(res => res.json()).then(data => setDayAppointments(data.appointments || []))
-                .catch(err => console.error("Failed to fetch day appointments:", err));
-        }
-    };
-    useEffect(fetchAppointments, [selectedClinic, currentDate, filteredDoctorIds]);
-
-    // THE FIX: This function now prepares data for the better modal
-    const handleSlotClick = (time, doctorId) => {
-        setModalData({ time, doctorId, date: currentDate });
-        setIsModalOpen(true);
-    };
+export default function App() {
+    const { isAuthenticated, user } = useAuth();
+    const [allClinics, setAllClinics] = useState([]);
+    const [selectedClinic, setSelectedClinic] = useState(() => Number(localStorage.getItem('selectedClinic')) || null);
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const currentPath = useHashNavigation();
     
-    // THE FIX: This function, for the "+ Create" button, does the same
-    const handleCreateClick = () => {
-        setModalData({ time: '09:00', doctorId: null, date: currentDate });
-        setIsModalOpen(true);
+    useEffect(() => {
+        if (isAuthenticated) {
+            authorizedFetch('/api/clinics').then(res => res.json()).then(setAllClinics);
+        }
+    }, [isAuthenticated]);
+
+    const handleClinicSelect = (clinicId) => {
+        localStorage.setItem('selectedClinic', clinicId);
+        setSelectedClinic(clinicId);
     };
 
-    // THE FIX: The close handler is now simpler and refreshes appointments
-    const handleModalClose = () => {
-        setIsModalOpen(false);
-        setModalData(null);
-        fetchAppointments(); // Refresh appointments after modal closes
-    };
-    
-    const isSlotInWorkingHours = (slotHour, slotMinute, doctorId) => {
-        const schedule = dailySchedule[doctorId];
-        if (!schedule || !schedule.startTime || !schedule.endTime) return false;
-        const slotTotalMinutes = slotHour * 60 + slotMinute;
-        const startTotalMinutes = timeToMinutes(schedule.startTime);
-        const endTotalMinutes = timeToMinutes(schedule.endTime);
-        return slotTotalMinutes >= startTotalMinutes && slotTotalMinutes < endTotalMinutes;
+    if (!isAuthenticated) return <LoginPage />;
+    if (currentPath === '#/') return <LandingPage />;
+    if (!selectedClinic) return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
+
+    const renderPage = () => {
+        const route = currentPath.split('/')[1];
+        const patientId = currentPath.split('/')[2] || null;
+        const checkInTime = new URLSearchParams(currentPath.split('?')[1] || '').get('checkin');
+
+        switch (route) {
+            case 'nurse':
+                return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
+            case 'doctor':
+                return <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />;
+            case 'settings':
+                return <SettingsPage onDataChange={() => {}} />;
+            default:
+                return <div>Page not found. Please select a role from the <a href="/#/">landing page</a>.</div>;
+        }
     };
 
     return (
-        <div className="h-full w-full bg-white flex flex-row">
-            {/* THE FIX: We are now calling the correct modal component */}
-            {isModalOpen && <AddNewAppointmentModal 
-                initialData={modalData} 
-                clinicId={selectedClinic} 
-                onClose={handleModalClose}
-                onUpdate={fetchAppointments} 
-            />}
-            
-            <DashboardControls 
-                currentDate={currentDate}
-                setCurrentDate={setCurrentDate}
-                doctors={doctors}
-                filteredDoctorIds={filteredDoctorIds}
-                setFilteredDoctorIds={setFilteredDoctorIds}
-                dailySchedule={dailySchedule}
-                onCreateClick={handleCreateClick}
-            />
-
-            <div className="flex-1 flex flex-col border-l border-slate-200">
-                <div className="grid shrink-0" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
-                    <div className="p-2 border-r border-b border-slate-200 flex items-center justify-center">
-                        <div className="text-center">
-                            <p className="text-xs font-bold text-sky-600 uppercase">{format(currentDate, 'EEE')}</p>
-                            <div className="w-9 h-9 flex items-center justify-center bg-sky-600 rounded-full text-white text-lg font-semibold mt-1">
-                                {format(currentDate, 'd')}
-                            </div>
-                        </div>
-                    </div>
-                    {displayedDoctors.map(doc => (
-                        <div key={doc.id} className="p-3 border-b border-r border-slate-200 text-center">
-                            <span className="font-semibold text-slate-800">{doc.name}</span>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="flex-1 overflow-y-auto relative">
-                    <div className="grid relative" style={{ gridTemplateColumns: `5rem repeat(${displayedDoctors.length}, minmax(0, 1fr))` }}>
-                        <div className="col-start-1 col-end-2 row-start-1 row-end-[-1]">
-                            {hours.map(hour => (
-                                <div key={hour} className="h-20 relative border-r border-slate-200">
-                                    <span className="absolute -top-2.5 right-2 text-xs font-semibold text-slate-800">
-                                        {format(new Date(0, 0, 0, hour), 'ha')}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                        
-                        {displayedDoctors.map((doc, index) => (
-                            <div key={doc.id} className="relative border-r border-slate-200" style={{ gridColumnStart: index + 2 }}>
-                                {hours.map(hour => (
-                                    <React.Fragment key={hour}>
-                                        <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 0, doc.id) ? 'cursor-pointer' : 'bg-slate-50'}`} 
-                                             onClick={() => isSlotInWorkingHours(hour, 0, doc.id) && handleSlotClick(`${String(hour).padStart(2, '0')}:00`, doc.id)} />
-                                        <div className={`h-10 border-b border-slate-200 ${isSlotInWorkingHours(hour, 30, doc.id) ? 'cursor-pointer' : 'bg-slate-50'}`} 
-                                             onClick={() => isSlotInWorkingHours(hour, 30, doc.id) && handleSlotClick(`${String(hour).padStart(2, '0')}:30`, doc.id)} />
-                                    </React.Fragment>
-                                ))}
-                                
-                                {dayAppointments.filter(app => app.doctor_id === doc.id).map(app => {
-                                    const appointmentStartMinutes = timeToMinutes(app.appointment_time);
-                                    const top = (appointmentStartMinutes - (timelineStartHour * 60)) * (hourHeight / 60);
-                                    const height = (timeToMinutes(app.end_time) - appointmentStartMinutes) * (hourHeight / 60);
-                                    if (top < 0 || appointmentStartMinutes > timelineEndHour * 60) return null;
-
-                                    return (
-                                        <div key={app.id} className="absolute w-[calc(100%-0.5rem)] left-1 p-2 rounded-lg bg-sky-500 text-white shadow-md z-10" style={{ top: `${top}px`, height: `${height}px`, minHeight: '20px' }}>
-                                            <p className="font-bold text-xs leading-tight">{app.details || 'Appointment'}</p>
-                                            <p className="text-xs opacity-80">{app.patient_name_at_booking}</p>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
-                        
-                        {isToday(currentDate) && <CurrentTimeIndicator hourHeight={hourHeight} timelineStartHour={timelineStartHour} timelineEndHour={timelineEndHour} />}
-                    </div>
-                </div>
-            </div>
-        </div>
+        <MainLayout 
+            user={user} 
+            selectedClinic={selectedClinic} 
+            allClinics={allClinics}
+            currentDate={currentDate}
+            setCurrentDate={setCurrentDate}
+        >
+            {renderPage()}
+        </MainLayout>
     );
 }

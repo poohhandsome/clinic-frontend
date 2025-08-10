@@ -1,4 +1,5 @@
-// src/components/TreatmentPlanPage.jsx (REPLACE)
+
+// src/pages/DoctorPage.jsx (REPLACE)
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
@@ -6,51 +7,41 @@ import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, D
 import authorizedFetch from '../api';
 import PatientInfoColumn from '../components/PatientInfoColumn';
 
-// --- Main Component ---
 export default function DoctorPage({ user, patientId, checkInTime }) {
     const [activeTab, setActiveTab] = useState('history');
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [history, setHistory] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     // This single, powerful useEffect handles ALL patient data loading.
     // It runs whenever the patientId from the URL changes.
-    useEffect(() => {
+     useEffect(() => {
         if (patientId) {
             setIsLoading(true);
-            // Fetch both the patient's main details and their history at the same time.
-            Promise.all([
-                authorizedFetch(`/api/patients/${patientId}`),
-                authorizedFetch(`/api/patients/${patientId}/treatment-history`)
-            ])
-            .then(async ([patientRes, historyRes]) => {
-                if (!patientRes.ok) throw new Error('Failed to fetch patient details.');
-                if (!historyRes.ok) throw new Error('Failed to fetch patient history.');
-                
-                const patientData = await patientRes.json();
-                const historyData = await historyRes.json();
-                
-                setSelectedPatient(patientData);
-                setHistory(historyData);
-            })
-            .catch(err => {
-                console.error("Error fetching patient data:", err);
-                setSelectedPatient(null);
-                setHistory(null);
-            })
-            .finally(() => setIsLoading(false));
+            authorizedFetch(`/api/patients/${patientId}`)
+                .then(res => res.json())
+                .then(setSelectedPatient)
+                .catch(() => setSelectedPatient(null)) // Clear on error
+                .finally(() => setIsLoading(false));
         } else {
-            // If there's no patientId in the URL, clear everything.
             setSelectedPatient(null);
-            setHistory(null);
             setIsLoading(false);
         }
-    }, [patientId]); // The key: This effect only depends on the ID from the URL.
+    }, [patientId]);
 
-    // This function's ONLY job is to change the URL.
-    // The useEffect above will handle the rest.
+    useEffect(() => {
+        if (selectedPatient) {
+            authorizedFetch(`/api/patients/${selectedPatient.patient_id}/treatment-history`)
+                .then(res => res.json())
+                .then(setHistory)
+                .catch(() => setHistory(null));
+        } else {
+            setHistory(null);
+        }
+    }, [selectedPatient]);
+
     const handlePatientSelect = (patient) => {
-        window.location.hash = `#/treatment-plan/${patient.patient_id}`;
+        window.location.hash = `#/doctor/${patient.patient_id}`;
     };
 
     const tabs = [

@@ -1,21 +1,17 @@
+// src/App.jsx (REPLACE)
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
 import LoginPage from './components/LoginPage.jsx';
 import ClinicSelectionPage from './components/ClinicSelectionPage.jsx';
-
-// Import Pages
 import LandingPage from './pages/LandingPage.jsx';
 import NursePage from './pages/NursePage.jsx';
 import DoctorPage from './pages/DoctorPage.jsx';
-import SettingsPage from './components/SettingsPage.jsx'; // Assuming this remains a component
-
-// Import Layout Components
+import SettingsPage from './components/SettingsPage.jsx';
 import NewHeader from './components/NewUILayout/NewHeader.jsx';
 import NewSidebar from './components/NewUILayout/NewSidebar.jsx';
-
 import authorizedFetch from './api.js';
 import { format } from 'date-fns';
-
 
 const useHashNavigation = () => {
     const [currentPath, setCurrentPath] = useState(window.location.hash || '#/');
@@ -27,8 +23,6 @@ const useHashNavigation = () => {
     return currentPath;
 };
 
-
-// Main Application Layout Component
 const MainLayout = ({ children, user, selectedClinic, allClinics, currentDate, setCurrentDate }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
@@ -50,18 +44,15 @@ const MainLayout = ({ children, user, selectedClinic, allClinics, currentDate, s
 
     const handleChangeClinic = () => {
         localStorage.removeItem('selectedClinic');
-        window.location.reload(); // Easiest way to force re-selection
+        window.location.hash = '#/'; // Go to landing page after changing clinic
+        window.location.reload();
     };
 
     const selectedClinicName = allClinics.find(c => c.id === selectedClinic)?.name || 'Unknown Clinic';
 
     return (
         <div className="flex h-screen bg-slate-50">
-            <NewSidebar 
-                isSidebarOpen={isSidebarOpen}
-                setIsSidebarOpen={setIsSidebarOpen}
-                currentPath={currentPath}
-            />
+            <NewSidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} currentPath={currentPath} />
             <div className="flex-1 flex flex-col overflow-hidden">
                 <NewHeader 
                     isSidebarOpen={isSidebarOpen}
@@ -80,61 +71,42 @@ const MainLayout = ({ children, user, selectedClinic, allClinics, currentDate, s
     );
 };
 
-
 export default function App() {
     const { isAuthenticated, user } = useAuth();
     const [allClinics, setAllClinics] = useState([]);
-    const [selectedClinic, setSelectedClinic] = useState(() => {
-        const savedClinic = localStorage.getItem('selectedClinic');
-        return savedClinic ? Number(savedClinic) : null;
-    });
+    const [selectedClinic, setSelectedClinic] = useState(() => Number(localStorage.getItem('selectedClinic')) || null);
     const [currentDate, setCurrentDate] = useState(new Date());
     const currentPath = useHashNavigation();
     
     useEffect(() => {
         if (isAuthenticated) {
-            authorizedFetch('/api/clinics')
-                .then(res => res.json())
-                .then(setAllClinics)
-                .catch(err => console.error("Failed to fetch clinics", err));
+            authorizedFetch('/api/clinics').then(res => res.json()).then(setAllClinics);
         }
     }, [isAuthenticated]);
 
     const handleClinicSelect = (clinicId) => {
-        setSelectedClinic(clinicId);
         localStorage.setItem('selectedClinic', clinicId);
+        setSelectedClinic(clinicId);
     };
 
     if (!isAuthenticated) return <LoginPage />;
-    
-    // Step 1: Handle Landing Page
-    if (currentPath === '#/' || currentPath === '') {
-        return <LandingPage />;
-    }
-    
-    // Step 2: Handle Clinic Selection if a role is chosen but clinic is not set
-    if (!selectedClinic) {
-        return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
-    }
+    if (currentPath === '#/') return <LandingPage />;
+    if (!selectedClinic) return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
 
-    // Step 3: Render the main application with the correct page
     const renderPage = () => {
-        const route = currentPath.split('/')[1]; // e.g., 'nurse', 'doctor'
-        
+        const route = currentPath.split('/')[1];
+        const patientId = currentPath.split('/')[2] || null;
+        const checkInTime = new URLSearchParams(currentPath.split('?')[1] || '').get('checkin');
+
         switch (route) {
             case 'nurse':
-                // NursePage will contain the logic from the old DashboardPage
-                return <NursePage user={user} selectedClinic={selectedClinic} currentDate={currentDate} setCurrentDate={setCurrentDate} allClinics={allClinics} />;
+                return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
             case 'doctor':
-                const patientId = currentPath.split('/')[2] || null;
-                 const checkInTime = new URLSearchParams(currentPath.split('?')[1] || '').get('checkin');
-                // DoctorPage will be the TreatmentPlanPage
-                return <DoctorPage user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />;
+                return <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />;
             case 'settings':
-                 return <SettingsPage onDataChange={() => {}} />; // Assuming settings is a general page
+                return <SettingsPage onDataChange={() => {}} />;
             default:
-                // Fallback to landing page if route is unknown
-                return <LandingPage />;
+                return <div>Page not found. Please select a role from the <a href="/#/">landing page</a>.</div>;
         }
     };
 
