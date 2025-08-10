@@ -48,7 +48,10 @@ export default function DashboardPage({ selectedClinic, currentDate, setCurrentD
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalData, setModalData] = useState(null);
     const hourHeight = 80;
-
+    const handleCreateClick = () => {
+        setModalData({ time: '09:00', doctorId: null, date: currentDate });
+        setIsModalOpen(true);
+    };
     const timelineStartHour = 8;
     const timelineEndHour = 20;
     const hours = Array.from({ length: timelineEndHour - timelineStartHour + 1 }, (_, i) => i + timelineStartHour);
@@ -98,6 +101,7 @@ export default function DashboardPage({ selectedClinic, currentDate, setCurrentD
                 filteredDoctorIds={filteredDoctorIds}
                 setFilteredDoctorIds={setFilteredDoctorIds}
                 dailySchedule={dailySchedule}
+                onCreateClick={handleCreateClick} // <-- ADD THIS LINE
             />
 
             {/* 5. The schedule grid is now in a flex-1 container */}

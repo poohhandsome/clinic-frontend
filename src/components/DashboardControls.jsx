@@ -35,7 +35,7 @@ const MiniCalendar = ({ currentDate, setCurrentDate }) => {
     );
 };
 
-export default function DashboardControls({ currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule }) {
+export default function DashboardControls({ currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, onCreateClick }) {
     const [isDoctorsOpen, setIsDoctorsOpen] = useState(true);
     const workingDoctorIds = Object.keys(dailySchedule).map(id => parseInt(id, 10));
     
@@ -45,7 +45,7 @@ export default function DashboardControls({ currentDate, setCurrentDate, doctors
 
     return (
         <div className="bg-slate-50 w-64 p-4 flex flex-col gap-8 border-r border-slate-200">
-             <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-md border border-slate-200 hover:bg-slate-200">
+             <button onClick={onCreateClick} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 font-semibold rounded-lg shadow-md border border-slate-200 hover:bg-slate-200">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M19 12.998h-6v6h-2v-6H5v-2h6v-6h2v6h6z"/></svg>
                 Create
             </button>
