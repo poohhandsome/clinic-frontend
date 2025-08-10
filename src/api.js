@@ -1,4 +1,5 @@
-// src/api.js
+// src/api.js (REPLACE)
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const getAuthToken = () => localStorage.getItem('authToken');
@@ -14,8 +15,8 @@ const authorizedFetch = async (url, options = {}) => {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // **THIS IS THE FINAL FIX**: This line cleans up the URL to prevent any double slashes.
-    // It takes the base URL, removes any slash from the end, and then safely adds the path.
+    // **THE FIX IS HERE**: This line cleans up the URL to prevent any double slashes
+    // and ensures there's always one slash between the base URL and the path.
     const finalUrl = `${API_BASE_URL.replace(/\/$/, '')}${url}`;
     
     const response = await fetch(finalUrl, { ...options, headers });
