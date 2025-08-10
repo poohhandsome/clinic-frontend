@@ -2,43 +2,56 @@
 
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, Download, Save, Send, Printer } from 'lucide-react';
+import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, Download, Save, Send, Printer, Search, X } from 'lucide-react';
 import authorizedFetch from '../api';
-
 // --- Main Component ---
-export default function TreatmentPlanPage({ selectedClinic, user, patientId }) {
+export default function TreatmentPlanPage({ selectedClinic, user, patientId: initialPatientId }) {
     const [activeTab, setActiveTab] = useState('history');
-    const [patient, setPatient] = useState(null);
-    const [history, setHistory] = useState({ plans: [], items: [], findings: [], documents: [] });
+    const [selectedPatient, setSelectedPatient] = useState(null);
+    const [history, setHistory] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (patientId) {
-            setIsLoading(true);
-            Promise.all([
-                authorizedFetch(`/api/patients/${patientId}`),
-                authorizedFetch(`/api/patients/${patientId}/treatment-history`)
-            ])
-            .then(async ([patientRes, historyRes]) => {
-                if (!patientRes.ok) throw new Error(`Patient fetch failed with status: ${patientRes.status}`);
-                if (!historyRes.ok) throw new Error(`History fetch failed with status: ${historyRes.status}`);
-
-                const patientData = await patientRes.json();
-                const historyData = await historyRes.json();
-
-                setPatient(patientData);
-                setHistory(historyData);
-            })
-            .catch(err => {
-                console.error("Error fetching patient data:", err);
-                setPatient(null); // Clear patient data on error
-            })
-            .finally(() => setIsLoading(false));
+        if (initialPatientId) {
+            authorizedFetch(`/api/patients/${initialPatientId}`)
+                .then(res => res.json())
+                .then(patientData => {
+                    setSelectedPatient(patientData); // This triggers the second useEffect
+                })
+                .catch(err => {
+                    console.error("Failed to fetch initial patient:", err);
+                    setIsLoading(false);
+                });
         } else {
             setIsLoading(false);
-            setPatient(null);
         }
-    }, [patientId]);
+    }, [initialPatientId]);
+
+    // Fetch history whenever a new patient is selected
+    useEffect(() => {
+        if (selectedPatient) {
+            setIsLoading(true);
+            authorizedFetch(`/api/patients/${selectedPatient.patient_id}/treatment-history`)
+                .then(res => res.json())
+                .then(historyData => setHistory(historyData))
+                .catch(err => {
+                    console.error("Error fetching patient history:", err);
+                    setHistory(null);
+                })
+                .finally(() => setIsLoading(false));
+        } else {
+            setHistory(null);
+        }
+    }, [selectedPatient]);
+
+    const handlePatientSelect = (patient) => {
+        setSelectedPatient(patient);
+    };
+    const handleClearPatient = () => {
+        setSelectedPatient(null);
+        // Also clear the URL hash to go back to the search state
+        window.location.hash = '#/treatment-plan';
+    };
 
     const tabs = [
         { id: 'history', label: 'History Review', icon: <Clock size={16} /> },
@@ -49,69 +62,130 @@ export default function TreatmentPlanPage({ selectedClinic, user, patientId }) {
 
     const renderContent = () => {
         if (isLoading) return <div className="text-center p-8">Loading patient data...</div>;
-        if (!patient) return <div className="text-center p-8 text-red-600">No patient selected or found. Please go back and select a patient.</div>;
+        if (!history) return <div className="text-center p-8 text-slate-500">No history to display.</div>;
 
         switch (activeTab) {
             case 'history': return <HistoryReview history={history} />;
-            case 'create': return <ExTxCreated patientId={patient.patient_id} doctorId={user.id} />;
+            case 'create': return <ExTxCreated patientId={selectedPatient.patient_id} doctorId={user.id} />;
             case 'processing': return <TreatmentProcessing plans={history.plans} items={history.items} />;
-            case 'scans': return <ScanDocuments patientId={patient.patient_id} documents={history.documents} />;
+            case 'scans': return <ScanDocuments patientId={selectedPatient.patient_id} documents={history.documents} />;
             default: return null;
         }
     };
+    if (isLoading && !selectedPatient) {
+        return <div className="p-6 text-center">Loading...</div>;
+    }
+
 
     return (
         <div className="p-6 h-full overflow-y-auto bg-slate-50">
-            {isLoading ? (
-                <div className="text-center p-8">Loading...</div>
-            ) : patient ? (
-                <PatientHeader patient={patient} />
-            ) : null }
-
-            <div className="border-b border-slate-200">
-                <nav className="-mb-px flex space-x-6">
-                    {tabs.map(tab => (
-                        <TabButton
-                            key={tab.id}
-                            active={activeTab === tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            icon={tab.icon}
-                        >
-                            {tab.label}
-                        </TabButton>
-                    ))}
-                </nav>
-            </div>
-
-            <div className="mt-6">
-                {renderContent()}
-            </div>
+            {!selectedPatient ? (
+                <PatientSearch onPatientSelect={setSelectedPatient} />
+            ) : (
+                <>
+                    <PatientHeader patient={selectedPatient} onClearPatient={handleClearPatient} />
+                    <div className="border-b border-slate-200">
+                        <nav className="-mb-px flex space-x-6">
+                            {tabs.map(tab => (
+                                <TabButton
+                                    key={tab.id}
+                                    active={activeTab === tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    icon={tab.icon}
+                                >
+                                    {tab.label}
+                                </TabButton>
+                            ))}
+                        </nav>
+                    </div>
+                    <div className="mt-6">
+                        {renderContent()}
+                    </div>
+                </>
+            )}
         </div>
     );
 }
 
+// --- New Search Component ---
+const PatientSearch = ({ onPatientSelect }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [results, setResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    const handleSearch = async (e) => {
+        e.preventDefault();
+        if (!searchTerm.trim()) return;
+        setIsSearching(true);
+        try {
+            const res = await authorizedFetch(`/api/patients?query=${searchTerm}`);
+            const data = await res.json();
+            setResults(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    return (
+        <div className="max-w-2xl mx-auto">
+            <h2 className="text-2xl font-bold text-center text-slate-700 mb-4">Find a Patient</h2>
+            <p className="text-center text-slate-500 mb-6">Search by name, DN, or phone number to begin managing a treatment plan.</p>
+            <form onSubmit={handleSearch} className="flex gap-2">
+                <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search for patient..."
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-sky-500 focus:border-sky-500"
+                    autoFocus
+                />
+                <button type="submit" disabled={isSearching} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg shadow-sm hover:bg-sky-700 disabled:opacity-50">
+                    <Search size={20} />
+                </button>
+            </form>
+            <div className="mt-4 bg-white rounded-lg border max-h-96 overflow-y-auto">
+                {results.map(patient => (
+                    <div
+                        key={patient.patient_id}
+                        onClick={() => onPatientSelect(patient)}
+                        className="p-4 hover:bg-slate-100 cursor-pointer border-b last:border-b-0"
+                    >
+                        <p className="font-semibold text-slate-800">{patient.first_name_th} {patient.last_name_th}</p>
+                        <p className="text-sm text-slate-500">DN: {patient.dn} | Phone: {patient.mobile_phone}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 // --- Child & Helper Components ---
 
-const PatientHeader = ({ patient }) => (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-6">
-        <div className="flex justify-between items-start">
-            <div>
-                <h2 className="text-2xl font-bold text-slate-800">{patient.first_name_th} {patient.last_name_th}</h2>
-                <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
-                    <span>ID: {patient.dn}</span>
-                    <span>Age: {patient.date_of_birth ? `${new Date().getFullYear() - new Date(patient.date_of_birth).getFullYear()}` : 'N/A'}</span>
-                    <span>Gender: {patient.gender}</span>
-                </div>
+const PatientHeader = ({ patient, onClearPatient }) => (
+    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-6 flex justify-between items-start">
+        <div>
+            <h2 className="text-2xl font-bold text-slate-800">{patient.first_name_th} {patient.last_name_th}</h2>
+            <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
+                <span>ID: {patient.dn}</span>
+                <span>Age: {patient.date_of_birth ? `${new Date().getFullYear() - new Date(patient.date_of_birth).getFullYear()}` : 'N/A'}</span>
+                <span>Gender: {patient.gender}</span>
             </div>
-            <div className="text-right">
-                <div className="text-sm font-semibold text-red-600 bg-red-100 px-2 py-1 rounded">
-                    Allergies: {patient.allergies || 'None recorded'}
-                </div>
+        </div>
+        <div className="text-right">
+             <button onClick={onClearPatient} className="text-sm font-semibold text-slate-600 hover:text-red-600 flex items-center gap-1 mb-2">
+                <X size={14} /> Change Patient
+            </button>
+            <div className="text-sm font-semibold text-red-600 bg-red-100 px-2 py-1 rounded">
+                Allergies: {patient.allergies || 'None recorded'}
             </div>
         </div>
     </div>
 );
 
+// ... The rest of the components (HistoryReview, TreatmentProcessing, etc.) remain the same as the previous correct version ...
 
 const HistoryReview = ({ history }) => {
     const timeline = [
@@ -136,7 +210,6 @@ const HistoryReview = ({ history }) => {
         </div>
     );
 };
-
 
 const TreatmentProcessing = ({ plans, items }) => (
     <div className="bg-white rounded-lg border divide-y">
@@ -201,7 +274,6 @@ const ExTxCreated = ({ patientId, doctorId }) => (
         </div>
     </div>
 );
-
 
 const ScanDocuments = ({ patientId, documents }) => (
     <div className="bg-white p-4 rounded-lg border">

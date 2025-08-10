@@ -110,9 +110,10 @@ export default function App() {
         const dashboardProps = { selectedClinic, currentDate, setCurrentDate, doctors, filteredDoctorIds, setFilteredDoctorIds, dailySchedule, user };
         const otherPageProps = { selectedClinic, user };
 
-        // **THIS IS THE CRITICAL FIX**: Handle dynamic routes for treatment plans
-        if (currentPath.startsWith('#/treatment-plan/')) {
-            const patientId = currentPath.split('/')[2];
+        // **THIS IS THE HYBRID ROUTING LOGIC**
+        if (currentPath.startsWith('#/treatment-plan')) {
+            const pathParts = currentPath.split('/');
+            const patientId = pathParts.length > 2 ? pathParts[2] : null;
             return <TreatmentPlanPage {...otherPageProps} patientId={patientId} />;
         }
 
@@ -120,6 +121,7 @@ export default function App() {
             case '#dashboard': return <DashboardPage {...dashboardProps} />;
             case '#clinic-dashboard': return <PlaceholderPage title="Clinic Dashboard" />;
             case '#appointments': return <PatientsPage {...otherPageProps} />;
+            // The '#treatment-plan' case is now handled by the logic above
             case '#doctors': return <DoctorSchedulesPage {...otherPageProps} />;
             case '#treatments': return <PlaceholderPage title="Treatments Management" />;
             case '#billing': return <PlaceholderPage title="Billing Management" />;
