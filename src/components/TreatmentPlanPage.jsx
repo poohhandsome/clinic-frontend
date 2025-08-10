@@ -1,6 +1,7 @@
-// src/components/TreatmentPlanPage.jsx
+// src/components/TreatmentPlanPage.jsx (REPLACE)
 
 import React, { useState } from 'react';
+import { format } from 'date-fns'; // <-- THE FIX IS HERE
 import { Clock, Stethoscope, ClipboardList, Microscope, UploadCloud, FileText, Download, Save, Send, Printer } from 'lucide-react';
 
 // Dummy Data for Illustration
