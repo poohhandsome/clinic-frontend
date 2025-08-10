@@ -122,8 +122,8 @@ export default function App() {
       const patientId = params[0] ?? null;
 
       // FIX: Correctly parse the check-in time from the full URL hash
-      const queryParamsString = currentPath.split('?')[1] || '';
-      const queryParams = new URLSearchParams(queryParamsString);
+      const queryString = currentPath.split('?')[1] || '';
+      const queryParams = new URLSearchParams(queryString);
       const checkInTime = queryParams.get('checkin');
 
       return <TreatmentPlanPage {...otherPageProps} patientId={patientId} checkInTime={checkInTime} />;
