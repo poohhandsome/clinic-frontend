@@ -1,12 +1,17 @@
-// src/layouts/DoctorLayout.jsx (NEW FILE)
+// src/layouts/DoctorLayout.jsx
 
-import React from 'react';
+import React, { useState } from 'react';
+import NewHeader from '../components/NewUILayout/NewHeader';
 
-// This is a simple layout wrapper for pages that DON'T need the main sidebar and header.
 export default function DoctorLayout({ children }) {
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
     return (
-        <div className="h-screen bg-slate-50">
-            {children}
+        <div className="h-screen flex flex-col bg-slate-50">
+            <NewHeader isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
+            <div className="flex-1 overflow-hidden">
+                {children}
+            </div>
         </div>
     );
 }

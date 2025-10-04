@@ -1,48 +1,66 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { ChevronsRight, ChevronsLeft, Calendar, LogOut as CheckSquare } from 'lucide-react';
 import authorizedFetch from '../api';
 import PatientInfoCard from './shared/PatientInfoCard';
 import SearchTreatmentModal from './shared/SearchTreatmentModal';
+import DoctorSubSidebar from './DoctorSubSidebar';
+import CheckoutModal from './CheckoutModal';
 
 const DoctorDashboard = ({ selectedClinic }) => {
     const { user } = useAuth();
-    const [queue, setQueue] = useState([]);
+
+    // Layout state
+    const [isSubSidebarOpen, setIsSubSidebarOpen] = useState(true);
+
+    // Queue and patient state
+    const [allPatients, setAllPatients] = useState([]);
     const [selectedPatient, setSelectedPatient] = useState(null);
+
+    // Filter state
+    const [statusFilters, setStatusFilters] = useState({
+        queue: true,
+        draftCheckout: false,
+        checkout: false
+    });
+    const [checkoutDateRange, setCheckoutDateRange] = useState({
+        start: new Date().toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+    });
+
+    // Tab state
     const [activeTab, setActiveTab] = useState('history');
+    const [examSubPage, setExamSubPage] = useState('medicalHistory'); // 'medicalHistory' or 'examination'
+
+    // Data state
+    const [patientHistory, setPatientHistory] = useState([]);
+    const [historyDateRange, setHistoryDateRange] = useState({
+        start: '',
+        end: ''
+    });
     const [isLoading, setIsLoading] = useState(false);
 
-    // History data
-    const [patientHistory, setPatientHistory] = useState([]);
-
-    // Examination form data
-    const [examForm, setExamForm] = useState({
+    // Medical History form
+    const [medicalHistoryForm, setMedicalHistoryForm] = useState({
         chief_complaint: '',
-        vital_signs: {
-            blood_pressure: '',
-            heart_rate: '',
-            temperature: '',
-            oxygen_saturation: '',
-            weight: '',
-            height: ''
-        },
-        physical_exam: '',
-        diagnosis: ''
+        present_illness: '',
+        past_medical_history: ''
+    });
+
+    // Examination form
+    const [examForm, setExamForm] = useState({
+        location: '',
+        clinical_findings: '',
+        principal_diagnosis: ''
     });
     const [savedExamId, setSavedExamId] = useState(null);
 
-    // Treatment plan form data
-    const [planForm, setPlanForm] = useState({
-        medications: [{ name: '', dosage: '', frequency: '', duration: '' }],
-        instructions: '',
-        follow_up_date: ''
-    });
-
-    // Visit treatments
+    // Treatment state
     const [visitTreatments, setVisitTreatments] = useState([]);
     const [showTreatmentModal, setShowTreatmentModal] = useState(false);
 
-    // Document upload
-    const [documentFile, setDocumentFile] = useState(null);
+    // Checkout modal state
+    const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
     // Check role authorization
     useEffect(() => {
@@ -52,47 +70,38 @@ const DoctorDashboard = ({ selectedClinic }) => {
         }
     }, [user]);
 
-    // Fetch queue every 30 seconds
+    // Fetch queue based on filters
     useEffect(() => {
         if (user && selectedClinic) {
             fetchQueue();
-            const interval = setInterval(fetchQueue, 30000); // 30 seconds
+            const interval = setInterval(fetchQueue, 30000);
             return () => clearInterval(interval);
         }
-    }, [user, selectedClinic]);
+    }, [user, selectedClinic, statusFilters, checkoutDateRange]);
 
     const fetchQueue = async () => {
-        console.log('=== FETCHING QUEUE (FRONTEND) ===');
-        console.log('User:', user);
-        console.log('Selected Clinic:', selectedClinic);
-
-        if (!user || !selectedClinic) {
-            console.log('Cannot fetch queue - missing user or clinic');
-            return;
-        }
+        if (!user || !selectedClinic) return;
 
         try {
-            const url = `/api/visits/queue/${user.id}?clinic_id=${selectedClinic}`;
-            console.log('Fetching queue from URL:', url);
+            const statuses = [];
+            if (statusFilters.queue) statuses.push('checked-in');
+            if (statusFilters.draftCheckout) statuses.push('draft_checkout');
+            if (statusFilters.checkout) statuses.push('completed');
+
+            const statusParam = statuses.join(',');
+            const url = `/api/visits/queue/${user.id}?clinic_id=${selectedClinic}&status=${statusParam}`;
 
             const res = await authorizedFetch(url);
-            console.log('Response status:', res.status);
-            console.log('Response OK:', res.ok);
-
             if (!res.ok) throw new Error('Failed to fetch queue');
 
             const data = await res.json();
-            console.log('Queue data received:', data);
-            console.log('Queue length:', data.length);
-
-            setQueue(data);
-            console.log('Queue state updated');
+            setAllPatients(data);
         } catch (err) {
             console.error('Error fetching queue:', err);
         }
     };
 
-    // Load patient history when patient is selected
+    // Load patient data when selected
     useEffect(() => {
         if (selectedPatient) {
             fetchPatientHistory();
@@ -112,7 +121,6 @@ const DoctorDashboard = ({ selectedClinic }) => {
             setPatientHistory(data);
         } catch (err) {
             console.error('Error fetching history:', err);
-            alert('Failed to load patient history');
         } finally {
             setIsLoading(false);
         }
@@ -125,24 +133,21 @@ const DoctorDashboard = ({ selectedClinic }) => {
             const res = await authorizedFetch(`/api/examinations/visit/${selectedPatient.visit_id}`);
             if (res.ok) {
                 const data = await res.json();
-                setSavedExamId(data.finding_id);
-                // Load existing exam data
-                setExamForm({
-                    chief_complaint: data.chief_complaint || '',
-                    vital_signs: data.vital_signs ? JSON.parse(data.vital_signs) : {
-                        blood_pressure: '',
-                        heart_rate: '',
-                        temperature: '',
-                        oxygen_saturation: '',
-                        weight: '',
-                        height: ''
-                    },
-                    physical_exam: data.physical_exam || '',
-                    diagnosis: data.diagnosis || ''
-                });
+                if (data) {
+                    setSavedExamId(data.finding_id);
+                    setMedicalHistoryForm({
+                        chief_complaint: data.chief_complaint || '',
+                        present_illness: data.present_illness || '',
+                        past_medical_history: data.past_medical_history || ''
+                    });
+                    setExamForm({
+                        location: data.location || '',
+                        clinical_findings: data.clinical_findings || '',
+                        principal_diagnosis: data.principal_diagnosis || ''
+                    });
+                }
             }
         } catch (err) {
-            // No existing exam, that's fine
             setSavedExamId(null);
         }
     };
@@ -160,21 +165,54 @@ const DoctorDashboard = ({ selectedClinic }) => {
         }
     };
 
-    // Handle examination form submit
-    const handleExamSubmit = async (e) => {
+    // Save medical history
+    const handleSaveMedicalHistory = async (e) => {
         e.preventDefault();
-
-        if (!selectedPatient) {
-            alert('No patient selected');
-            return;
-        }
+        if (!selectedPatient) return;
 
         try {
-            const res = await authorizedFetch('/api/examinations', {
-                method: 'POST',
+            const method = savedExamId ? 'PUT' : 'POST';
+            const url = savedExamId ? `/api/examinations/${savedExamId}` : '/api/examinations';
+
+            const res = await authorizedFetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     visit_id: selectedPatient.visit_id,
+                    ...medicalHistoryForm,
+                    ...examForm
+                })
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || 'Failed to save medical history');
+            }
+
+            const data = await res.json();
+            setSavedExamId(data.finding_id);
+            alert('Medical history saved successfully');
+        } catch (err) {
+            console.error('Error saving medical history:', err);
+            alert(err.message);
+        }
+    };
+
+    // Save examination
+    const handleSaveExamination = async (e) => {
+        e.preventDefault();
+        if (!selectedPatient) return;
+
+        try {
+            const method = savedExamId ? 'PUT' : 'POST';
+            const url = savedExamId ? `/api/examinations/${savedExamId}` : '/api/examinations';
+
+            const res = await authorizedFetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    visit_id: selectedPatient.visit_id,
+                    ...medicalHistoryForm,
                     ...examForm
                 })
             });
@@ -193,70 +231,8 @@ const DoctorDashboard = ({ selectedClinic }) => {
         }
     };
 
-    // Handle treatment plan submit
-    const handlePlanSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!savedExamId) {
-            alert('Please save examination first');
-            return;
-        }
-
-        // Filter out empty medications
-        const validMedications = planForm.medications.filter(m => m.name && m.dosage);
-
-        try {
-            const res = await authorizedFetch('/api/treatment-plans', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    examination_id: savedExamId,
-                    medications: validMedications,
-                    instructions: planForm.instructions,
-                    follow_up_date: planForm.follow_up_date || null
-                })
-            });
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.message || 'Failed to save treatment plan');
-            }
-
-            alert('Treatment plan saved successfully');
-        } catch (err) {
-            console.error('Error saving treatment plan:', err);
-            alert(err.message);
-        }
-    };
-
-    // Add medication row
-    const addMedicationRow = () => {
-        setPlanForm(prev => ({
-            ...prev,
-            medications: [...prev.medications, { name: '', dosage: '', frequency: '', duration: '' }]
-        }));
-    };
-
-    // Remove medication row
-    const removeMedicationRow = (index) => {
-        setPlanForm(prev => ({
-            ...prev,
-            medications: prev.medications.filter((_, i) => i !== index)
-        }));
-    };
-
-    // Handle medication change
-    const handleMedicationChange = (index, field, value) => {
-        setPlanForm(prev => ({
-            ...prev,
-            medications: prev.medications.map((med, i) =>
-                i === index ? { ...med, [field]: value } : med
-            )
-        }));
-    };
-
-    // Handle treatment selection from modal
-    const handleTreatmentSelect = async (treatment, quantity, customPrice) => {
+    // Handle treatment selection
+    const handleTreatmentSelect = async (treatment) => {
         if (!selectedPatient) return;
 
         try {
@@ -266,8 +242,9 @@ const DoctorDashboard = ({ selectedClinic }) => {
                 body: JSON.stringify({
                     visit_id: selectedPatient.visit_id,
                     treatment_id: treatment.treatment_id,
-                    quantity: parseInt(quantity),
-                    custom_price: customPrice ? parseFloat(customPrice) : undefined
+                    actual_price: treatment.standard_price,
+                    tooth_numbers: '',
+                    notes: ''
                 })
             });
 
@@ -304,642 +281,484 @@ const DoctorDashboard = ({ selectedClinic }) => {
         }
     };
 
-    // Complete visit
-    const handleCompleteVisit = async () => {
+    // Handle checkout
+    const handleCheckout = async (password, isDraft) => {
         if (!selectedPatient) return;
 
-        if (!confirm('Mark this visit as completed?')) return;
-
         try {
-            const res = await authorizedFetch(`/api/visits/${selectedPatient.visit_id}/complete`, {
-                method: 'PUT'
+            const status = isDraft ? 'draft_checkout' : 'completed';
+            const res = await authorizedFetch(`/api/visits/${selectedPatient.visit_id}/checkout`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password, status })
             });
 
-            if (!res.ok) throw new Error('Failed to complete visit');
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || 'Failed to checkout');
+            }
 
-            alert('Visit completed successfully');
+            alert(`Patient ${isDraft ? 'moved to draft checkout' : 'checked out'} successfully`);
             setSelectedPatient(null);
             fetchQueue();
         } catch (err) {
-            console.error('Error completing visit:', err);
-            alert(err.message);
+            throw err;
         }
     };
 
-    // Calculate alert color
+    const filteredPatients = allPatients;
+
     const getAlertColor = (level) => {
-        if (!level) return '#10B981'; // green
-        if (level >= 3) return '#EF4444'; // red
-        if (level >= 2) return '#F59E0B'; // yellow
-        return '#10B981'; // green
+        if (!level) return '#10B981';
+        if (level >= 3) return '#EF4444';
+        if (level >= 2) return '#F59E0B';
+        return '#10B981';
+    };
+
+    const getStatusBadge = (status) => {
+        const statusLower = status?.toLowerCase();
+        if (statusLower === 'checked-in') return { bg: '#DBEAFE', text: '#1E40AF', label: 'Queue' };
+        if (statusLower === 'draft_checkout') return { bg: '#E9D5FF', text: '#7C3AED', label: 'Draft' };
+        if (statusLower === 'completed') return { bg: '#D1FAE5', text: '#047857', label: 'Complete' };
+        return { bg: '#F3F4F6', text: '#6B7280', label: status };
     };
 
     return (
-        <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
-            {/* Sidebar - 10% width */}
-            <div style={{
-                width: '10%',
-                minWidth: '120px',
-                backgroundColor: 'white',
-                borderRight: '1px solid #e5e7eb',
-                overflowY: 'auto',
-                padding: '15px 10px'
-            }}>
-                <h3 style={{ fontSize: '14px', marginBottom: '15px', textAlign: 'center' }}>Queue</h3>
+        <div className="flex h-full bg-slate-100">
+            {/* Patient Queue Sidebar with toggle */}
+            <div className="relative">
+                <div className="w-32 bg-white border-r border-slate-200 overflow-y-auto p-3">
+                    <button
+                        onClick={() => setIsSubSidebarOpen(!isSubSidebarOpen)}
+                        className="w-full mb-3 p-2 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center justify-center transition-colors"
+                        title="Toggle filters"
+                    >
+                        {isSubSidebarOpen ? <ChevronsLeft size={20} className="text-blue-600" /> : <ChevronsRight size={20} className="text-blue-600" />}
+                    </button>
 
-                {queue.length === 0 ? (
-                    <p style={{ fontSize: '12px', color: '#999', textAlign: 'center' }}>No patients</p>
-                ) : (
-                    queue.map((patient) => (
-                        <div
-                            key={patient.visit_id}
-                            onClick={() => setSelectedPatient(patient)}
-                            style={{
-                                padding: '10px',
-                                marginBottom: '10px',
-                                backgroundColor: selectedPatient?.visit_id === patient.visit_id ? '#e0f2fe' : '#f9fafb',
-                                border: `2px solid ${getAlertColor(patient.alert_level)}`,
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            <div style={{
-                                fontSize: '16px',
-                                fontWeight: 'bold',
-                                marginBottom: '5px',
-                                color: getAlertColor(patient.alert_level),
-                                textAlign: 'center'
-                            }}>
-                                {patient.dn}
-                            </div>
-                            <div style={{ fontSize: '11px', color: '#666', textAlign: 'center' }}>
-                                {patient.first_name_th} {patient.last_name_th}
-                            </div>
-                            <div style={{ fontSize: '10px', color: '#999', marginTop: '5px', textAlign: 'center' }}>
-                                {new Date(patient.check_in_time).toLocaleTimeString('th-TH', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                })}
-                            </div>
-                        </div>
-                    ))
-                )}
+                    <h3 className="text-xs font-semibold text-slate-700 mb-3 text-center">Patients</h3>
+
+                    {filteredPatients.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center">No patients</p>
+                    ) : (
+                        filteredPatients.map((patient) => {
+                            const statusBadge = getStatusBadge(patient.status);
+                            return (
+                                <div
+                                    key={patient.visit_id}
+                                    onClick={() => setSelectedPatient(patient)}
+                                    className="relative p-2 mb-2 rounded-lg cursor-pointer transition-all"
+                                    style={{
+                                        backgroundColor: selectedPatient?.visit_id === patient.visit_id ? '#E0F2FE' : '#F9FAFB',
+                                        border: `2px solid ${getAlertColor(patient.alert_level)}`
+                                    }}
+                                >
+                                    <div
+                                        className="absolute top-1 right-1 text-xs px-1.5 py-0.5 rounded font-semibold"
+                                        style={{ backgroundColor: statusBadge.bg, color: statusBadge.text }}
+                                    >
+                                        {statusBadge.label}
+                                    </div>
+                                    <div className="font-bold text-sm text-center mt-3" style={{ color: getAlertColor(patient.alert_level) }}>
+                                        {patient.dn}
+                                    </div>
+                                    <div className="text-xs text-slate-600 text-center truncate">
+                                        {patient.first_name_th}
+                                    </div>
+                                    <div className="text-xs text-slate-400 text-center mt-1">
+                                        {new Date(patient.check_in_time).toLocaleTimeString('th-TH', {
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
             </div>
 
-            {/* Main Content Area - 90% width */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            {/* Sub-Sidebar */}
+            {isSubSidebarOpen && (
+                <DoctorSubSidebar
+                    statusFilters={statusFilters}
+                    onStatusFilterChange={(filter, checked) => setStatusFilters(prev => ({ ...prev, [filter]: checked }))}
+                    checkoutDateRange={checkoutDateRange}
+                    onCheckoutDateChange={(field, value) => setCheckoutDateRange(prev => ({ ...prev, [field]: value }))}
+                />
+            )}
+
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col overflow-hidden">
                 {!selectedPatient ? (
-                    <div style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#999'
-                    }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <h2>Doctor Dashboard</h2>
-                            <p>Select a patient from the queue to begin</p>
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center text-slate-400">
+                            <h2 className="text-2xl font-semibold">Doctor Dashboard</h2>
+                            <p className="mt-2">Select a patient from the queue to begin</p>
                         </div>
                     </div>
                 ) : (
                     <>
-                        {/* Patient Info Header */}
-                        <div style={{
-                            padding: '15px 20px',
-                            backgroundColor: 'white',
-                            borderBottom: '1px solid #e5e7eb'
-                        }}>
+                        {/* Patient Header */}
+                        <div className="bg-white border-b border-slate-200 p-4">
                             <PatientInfoCard patient={selectedPatient} />
                         </div>
 
                         {/* Tabs */}
-                        <div style={{
-                            display: 'flex',
-                            gap: '5px',
-                            padding: '10px 20px',
-                            backgroundColor: 'white',
-                            borderBottom: '2px solid #e5e7eb'
-                        }}>
-                            {['history', 'exam', 'treatment', 'document', 'complete'].map((tab) => (
+                        <div className="bg-white border-b border-slate-200 px-4 flex justify-between items-center">
+                            <div className="flex gap-2">
                                 <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    style={{
-                                        padding: '10px 20px',
-                                        backgroundColor: activeTab === tab ? '#3B82F6' : 'transparent',
-                                        color: activeTab === tab ? 'white' : '#666',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontWeight: activeTab === tab ? 'bold' : 'normal',
-                                        transition: 'all 0.2s'
-                                    }}
+                                    onClick={() => setActiveTab('history')}
+                                    className={`px-4 py-3 font-semibold transition-colors ${
+                                        activeTab === 'history'
+                                            ? 'text-blue-600 border-b-2 border-blue-600'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
                                 >
-                                    {tab === 'history' && 'History'}
-                                    {tab === 'exam' && 'Ex & Tx'}
-                                    {tab === 'treatment' && 'Treatments'}
-                                    {tab === 'document' && 'Documents'}
-                                    {tab === 'complete' && 'Complete'}
+                                    Patient History
                                 </button>
-                            ))}
+                                <button
+                                    onClick={() => setActiveTab('exTx')}
+                                    className={`px-4 py-3 font-semibold transition-colors ${
+                                        activeTab === 'exTx'
+                                            ? 'text-blue-600 border-b-2 border-blue-600'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    Ex & Tx Creation
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('txProcessing')}
+                                    className={`px-4 py-3 font-semibold transition-colors ${
+                                        activeTab === 'txProcessing'
+                                            ? 'text-blue-600 border-b-2 border-blue-600'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    Tx Processing
+                                </button>
+                            </div>
+
+                            {/* Checkout Button */}
+                            <button
+                                onClick={() => setShowCheckoutModal(true)}
+                                className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                            >
+                                <CheckSquare size={18} />
+                                Checkout
+                            </button>
                         </div>
 
                         {/* Tab Content */}
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
-                            {/* History Tab */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {/* Patient History Tab */}
                             {activeTab === 'history' && (
                                 <div>
-                                    <h2 style={{ marginBottom: '20px' }}>Patient History</h2>
+                                    <div className="mb-4 flex items-center gap-4 bg-white p-4 rounded-lg border border-slate-200">
+                                        <Calendar size={18} className="text-slate-500" />
+                                        <span className="text-sm font-semibold text-slate-700">Date Range:</span>
+                                        <input
+                                            type="date"
+                                            value={historyDateRange.start}
+                                            onChange={(e) => setHistoryDateRange(prev => ({ ...prev, start: e.target.value }))}
+                                            className="px-3 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <span className="text-slate-500">to</span>
+                                        <input
+                                            type="date"
+                                            value={historyDateRange.end}
+                                            onChange={(e) => setHistoryDateRange(prev => ({ ...prev, end: e.target.value }))}
+                                            className="px-3 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+
                                     {isLoading && <p>Loading history...</p>}
                                     {!isLoading && patientHistory.length === 0 && (
-                                        <p style={{ color: '#999' }}>No previous visits</p>
+                                        <p className="text-slate-500 text-center py-8">No previous visits</p>
                                     )}
-                                    {!isLoading && patientHistory.map((visit, index) => (
-                                        <div
-                                            key={visit.visit_id || index}
-                                            style={{
-                                                backgroundColor: 'white',
-                                                padding: '15px',
-                                                marginBottom: '15px',
-                                                borderRadius: '8px',
-                                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                                <h3>
-                                                    Visit: {new Date(visit.visit_date).toLocaleDateString('th-TH')}
-                                                </h3>
-                                                <span style={{
-                                                    padding: '4px 8px',
-                                                    backgroundColor: '#e0f2fe',
-                                                    borderRadius: '4px',
-                                                    fontSize: '12px'
-                                                }}>
-                                                    {visit.status}
-                                                </span>
+                                    {!isLoading && patientHistory.map((visit, index) => {
+                                        // Apply date filter
+                                        const visitDate = new Date(visit.visit_date);
+                                        if (historyDateRange.start && visitDate < new Date(historyDateRange.start)) return null;
+                                        if (historyDateRange.end && visitDate > new Date(historyDateRange.end)) return null;
+
+                                        return (
+                                            <div
+                                                key={visit.visit_id || index}
+                                                className="bg-white p-6 mb-4 rounded-lg border border-slate-200 shadow-sm"
+                                            >
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <h3 className="text-lg font-semibold text-slate-800">
+                                                        {new Date(visit.visit_date).toLocaleDateString('th-TH', {
+                                                            year: 'numeric',
+                                                            month: 'long',
+                                                            day: 'numeric'
+                                                        })}
+                                                    </h3>
+                                                    <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+                                                        {visit.status}
+                                                    </span>
+                                                </div>
+                                                {visit.doctor_name && (
+                                                    <p className="text-sm text-slate-600 mb-2">
+                                                        <strong>Doctor:</strong> {visit.doctor_name} ({visit.specialty})
+                                                    </p>
+                                                )}
+                                                {visit.chief_complaint && (
+                                                    <p className="text-sm text-slate-600 mb-2">
+                                                        <strong>Chief Complaint:</strong> {visit.chief_complaint}
+                                                    </p>
+                                                )}
+                                                {visit.principal_diagnosis && (
+                                                    <p className="text-sm text-slate-600 mb-2">
+                                                        <strong>Diagnosis:</strong> {visit.principal_diagnosis}
+                                                    </p>
+                                                )}
+                                                {visit.treatments && visit.treatments.length > 0 && (
+                                                    <div className="mt-3">
+                                                        <strong className="text-sm text-slate-700">Treatments:</strong>
+                                                        <ul className="mt-2 space-y-1">
+                                                            {visit.treatments.map((t, i) => (
+                                                                <li key={i} className="text-sm text-slate-600 ml-4">
+                                                                    • {t.code} - {t.name}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
                                             </div>
-                                            {visit.doctor_name && (
-                                                <p><strong>Doctor:</strong> {visit.doctor_name} ({visit.specialty})</p>
-                                            )}
-                                            {visit.diagnosis && (
-                                                <p><strong>Diagnosis:</strong> {visit.diagnosis}</p>
-                                            )}
-                                            {visit.medications && (
-                                                <div>
-                                                    <strong>Medications:</strong>
-                                                    <ul style={{ marginTop: '5px', paddingLeft: '20px' }}>
-                                                        {JSON.parse(visit.medications).map((med, i) => (
-                                                            <li key={i}>{med.name} - {med.dosage} ({med.frequency})</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                            {visit.treatments && visit.treatments.length > 0 && (
-                                                <div>
-                                                    <strong>Treatments:</strong>
-                                                    <ul style={{ marginTop: '5px', paddingLeft: '20px' }}>
-                                                        {visit.treatments.map((t, i) => (
-                                                            <li key={i}>{t.code} - {t.name} (x{t.quantity})</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
 
-                            {/* Exam & Treatment Plan Tab */}
-                            {activeTab === 'exam' && (
+                            {/* Ex & Tx Creation Tab */}
+                            {activeTab === 'exTx' && (
                                 <div>
-                                    <h2 style={{ marginBottom: '20px' }}>Examination & Treatment Plan</h2>
-
-                                    {/* Examination Form */}
-                                    <form onSubmit={handleExamSubmit} style={{
-                                        backgroundColor: 'white',
-                                        padding: '20px',
-                                        borderRadius: '8px',
-                                        marginBottom: '20px',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                                    }}>
-                                        <h3 style={{ marginBottom: '15px' }}>Examination</h3>
-
-                                        <div style={{ marginBottom: '15px' }}>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                Chief Complaint
-                                            </label>
-                                            <textarea
-                                                value={examForm.chief_complaint}
-                                                onChange={(e) => setExamForm({ ...examForm, chief_complaint: e.target.value })}
-                                                rows="3"
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '8px',
-                                                    border: '1px solid #ddd',
-                                                    borderRadius: '4px'
-                                                }}
-                                            />
-                                        </div>
-
-                                        <div style={{ marginBottom: '15px' }}>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                Vital Signs
-                                            </label>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                                                <input
-                                                    type="text"
-                                                    placeholder="BP (e.g., 120/80)"
-                                                    value={examForm.vital_signs.blood_pressure}
-                                                    onChange={(e) => setExamForm({
-                                                        ...examForm,
-                                                        vital_signs: { ...examForm.vital_signs, blood_pressure: e.target.value }
-                                                    })}
-                                                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="HR (bpm)"
-                                                    value={examForm.vital_signs.heart_rate}
-                                                    onChange={(e) => setExamForm({
-                                                        ...examForm,
-                                                        vital_signs: { ...examForm.vital_signs, heart_rate: e.target.value }
-                                                    })}
-                                                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Temp (°C)"
-                                                    value={examForm.vital_signs.temperature}
-                                                    onChange={(e) => setExamForm({
-                                                        ...examForm,
-                                                        vital_signs: { ...examForm.vital_signs, temperature: e.target.value }
-                                                    })}
-                                                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="O2 Sat (%)"
-                                                    value={examForm.vital_signs.oxygen_saturation}
-                                                    onChange={(e) => setExamForm({
-                                                        ...examForm,
-                                                        vital_signs: { ...examForm.vital_signs, oxygen_saturation: e.target.value }
-                                                    })}
-                                                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Weight (kg)"
-                                                    value={examForm.vital_signs.weight}
-                                                    onChange={(e) => setExamForm({
-                                                        ...examForm,
-                                                        vital_signs: { ...examForm.vital_signs, weight: e.target.value }
-                                                    })}
-                                                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Height (cm)"
-                                                    value={examForm.vital_signs.height}
-                                                    onChange={(e) => setExamForm({
-                                                        ...examForm,
-                                                        vital_signs: { ...examForm.vital_signs, height: e.target.value }
-                                                    })}
-                                                    style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div style={{ marginBottom: '15px' }}>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                Physical Examination
-                                            </label>
-                                            <textarea
-                                                value={examForm.physical_exam}
-                                                onChange={(e) => setExamForm({ ...examForm, physical_exam: e.target.value })}
-                                                rows="4"
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '8px',
-                                                    border: '1px solid #ddd',
-                                                    borderRadius: '4px'
-                                                }}
-                                            />
-                                        </div>
-
-                                        <div style={{ marginBottom: '15px' }}>
-                                            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                Diagnosis
-                                            </label>
-                                            <textarea
-                                                value={examForm.diagnosis}
-                                                onChange={(e) => setExamForm({ ...examForm, diagnosis: e.target.value })}
-                                                rows="3"
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '8px',
-                                                    border: '1px solid #ddd',
-                                                    borderRadius: '4px'
-                                                }}
-                                            />
-                                        </div>
-
+                                    {/* Sub-navigation */}
+                                    <div className="flex gap-3 mb-6">
                                         <button
-                                            type="submit"
-                                            style={{
-                                                padding: '10px 20px',
-                                                backgroundColor: '#3B82F6',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontWeight: 'bold'
-                                            }}
+                                            onClick={() => setExamSubPage('medicalHistory')}
+                                            className={`px-6 py-2 font-semibold rounded-lg transition-colors ${
+                                                examSubPage === 'medicalHistory'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                                            }`}
                                         >
-                                            Save Examination
+                                            Medical History
                                         </button>
-                                    </form>
+                                        <button
+                                            onClick={() => setExamSubPage('examination')}
+                                            className={`px-6 py-2 font-semibold rounded-lg transition-colors ${
+                                                examSubPage === 'examination'
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            Examination
+                                        </button>
+                                    </div>
 
-                                    {/* Treatment Plan Form */}
-                                    {savedExamId && (
-                                        <form onSubmit={handlePlanSubmit} style={{
-                                            backgroundColor: 'white',
-                                            padding: '20px',
-                                            borderRadius: '8px',
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                                        }}>
-                                            <h3 style={{ marginBottom: '15px' }}>Treatment Plan</h3>
+                                    {/* Medical History Sub-page */}
+                                    {examSubPage === 'medicalHistory' && (
+                                        <form onSubmit={handleSaveMedicalHistory} className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                                            <h3 className="text-lg font-semibold text-slate-800 mb-6">Medical History</h3>
 
-                                            <div style={{ marginBottom: '15px' }}>
-                                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                    Medications
-                                                </label>
-                                                {planForm.medications.map((med, index) => (
-                                                    <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Medication name"
-                                                            value={med.name}
-                                                            onChange={(e) => handleMedicationChange(index, 'name', e.target.value)}
-                                                            style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Dosage"
-                                                            value={med.dosage}
-                                                            onChange={(e) => handleMedicationChange(index, 'dosage', e.target.value)}
-                                                            style={{ width: '120px', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Frequency"
-                                                            value={med.frequency}
-                                                            onChange={(e) => handleMedicationChange(index, 'frequency', e.target.value)}
-                                                            style={{ width: '120px', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                        />
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Duration"
-                                                            value={med.duration}
-                                                            onChange={(e) => handleMedicationChange(index, 'duration', e.target.value)}
-                                                            style={{ width: '100px', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
-                                                        />
-                                                        {planForm.medications.length > 1 && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removeMedicationRow(index)}
-                                                                style={{
-                                                                    padding: '8px 12px',
-                                                                    backgroundColor: '#DC2626',
-                                                                    color: 'white',
-                                                                    border: 'none',
-                                                                    borderRadius: '4px',
-                                                                    cursor: 'pointer'
-                                                                }}
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                ))}
+                                            <div className="space-y-6">
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                        Chief Complaint (CC)
+                                                    </label>
+                                                    <textarea
+                                                        value={medicalHistoryForm.chief_complaint}
+                                                        onChange={(e) => setMedicalHistoryForm(prev => ({ ...prev, chief_complaint: e.target.value }))}
+                                                        rows="3"
+                                                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Enter chief complaint..."
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                        Present Illness (PI)
+                                                    </label>
+                                                    <textarea
+                                                        value={medicalHistoryForm.present_illness}
+                                                        onChange={(e) => setMedicalHistoryForm(prev => ({ ...prev, present_illness: e.target.value }))}
+                                                        rows="4"
+                                                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Enter present illness..."
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                        Past Medical History (PMH)
+                                                    </label>
+                                                    <textarea
+                                                        value={medicalHistoryForm.past_medical_history}
+                                                        onChange={(e) => setMedicalHistoryForm(prev => ({ ...prev, past_medical_history: e.target.value }))}
+                                                        rows="4"
+                                                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Enter past medical history..."
+                                                    />
+                                                </div>
+
                                                 <button
-                                                    type="button"
-                                                    onClick={addMedicationRow}
-                                                    style={{
-                                                        padding: '8px 16px',
-                                                        backgroundColor: '#10B981',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '4px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '14px'
-                                                    }}
+                                                    type="submit"
+                                                    className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                                                 >
-                                                    + Add Medication
+                                                    Save History
                                                 </button>
                                             </div>
+                                        </form>
+                                    )}
 
-                                            <div style={{ marginBottom: '15px' }}>
-                                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                    Instructions
-                                                </label>
-                                                <textarea
-                                                    value={planForm.instructions}
-                                                    onChange={(e) => setPlanForm({ ...planForm, instructions: e.target.value })}
-                                                    rows="4"
-                                                    style={{
-                                                        width: '100%',
-                                                        padding: '8px',
-                                                        border: '1px solid #ddd',
-                                                        borderRadius: '4px'
-                                                    }}
-                                                />
+                                    {/* Examination Sub-page */}
+                                    {examSubPage === 'examination' && (
+                                        <form onSubmit={handleSaveExamination} className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                                            <h3 className="text-lg font-semibold text-slate-800 mb-6">Examination</h3>
+
+                                            <div className="space-y-6">
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                        Location
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={examForm.location}
+                                                        onChange={(e) => setExamForm(prev => ({ ...prev, location: e.target.value }))}
+                                                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="e.g., Tooth #14, Upper right quadrant..."
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                        Clinical Findings
+                                                    </label>
+                                                    <textarea
+                                                        value={examForm.clinical_findings}
+                                                        onChange={(e) => setExamForm(prev => ({ ...prev, clinical_findings: e.target.value }))}
+                                                        rows="4"
+                                                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Enter clinical findings..."
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                        Diagnosis
+                                                    </label>
+                                                    <textarea
+                                                        value={examForm.principal_diagnosis}
+                                                        onChange={(e) => setExamForm(prev => ({ ...prev, principal_diagnosis: e.target.value }))}
+                                                        rows="3"
+                                                        className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                        placeholder="Enter diagnosis..."
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-slate-700 mb-3">
+                                                        Treatment Plan
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowTreatmentModal(true)}
+                                                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                                                    >
+                                                        + Add Treatment
+                                                    </button>
+
+                                                    {visitTreatments.length > 0 && (
+                                                        <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden">
+                                                            <table className="w-full">
+                                                                <thead className="bg-slate-50">
+                                                                    <tr>
+                                                                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Code</th>
+                                                                        <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Name</th>
+                                                                        <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">Price</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-slate-200">
+                                                                    {visitTreatments.map((t) => (
+                                                                        <tr key={t.visit_treatment_id}>
+                                                                            <td className="px-4 py-3 text-sm text-slate-700">{t.code}</td>
+                                                                            <td className="px-4 py-3 text-sm text-slate-700">{t.name}</td>
+                                                                            <td className="px-4 py-3 text-sm text-slate-700 text-right">
+                                                                                ฿{parseFloat(t.price || t.actual_price || 0).toFixed(2)}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <button
+                                                    type="submit"
+                                                    className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                                                >
+                                                    Save Examination
+                                                </button>
                                             </div>
-
-                                            <div style={{ marginBottom: '15px' }}>
-                                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                    Follow-up Date
-                                                </label>
-                                                <input
-                                                    type="date"
-                                                    value={planForm.follow_up_date}
-                                                    onChange={(e) => setPlanForm({ ...planForm, follow_up_date: e.target.value })}
-                                                    style={{
-                                                        padding: '8px',
-                                                        border: '1px solid #ddd',
-                                                        borderRadius: '4px'
-                                                    }}
-                                                />
-                                            </div>
-
-                                            <button
-                                                type="submit"
-                                                style={{
-                                                    padding: '10px 20px',
-                                                    backgroundColor: '#3B82F6',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '4px',
-                                                    cursor: 'pointer',
-                                                    fontWeight: 'bold'
-                                                }}
-                                            >
-                                                Save Treatment Plan
-                                            </button>
                                         </form>
                                     )}
                                 </div>
                             )}
 
-                            {/* Treatment Processing Tab */}
-                            {activeTab === 'treatment' && (
+                            {/* Tx Processing Tab */}
+                            {activeTab === 'txProcessing' && (
                                 <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                        <h2>Treatment Processing</h2>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h2 className="text-2xl font-semibold text-slate-800">Treatment Processing</h2>
                                         <button
                                             onClick={() => setShowTreatmentModal(true)}
-                                            style={{
-                                                padding: '10px 20px',
-                                                backgroundColor: '#3B82F6',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontWeight: 'bold'
-                                            }}
+                                            className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                                         >
                                             + Add Treatment
                                         </button>
                                     </div>
 
                                     {visitTreatments.length === 0 ? (
-                                        <p style={{ color: '#999' }}>No treatments added yet</p>
+                                        <p className="text-slate-500 text-center py-12 bg-white rounded-lg border border-slate-200">
+                                            No treatments added yet
+                                        </p>
                                     ) : (
-                                        <table style={{
-                                            width: '100%',
-                                            backgroundColor: 'white',
-                                            borderCollapse: 'collapse',
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                                        }}>
-                                            <thead>
-                                                <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                                                    <th style={{ padding: '12px', textAlign: 'left' }}>Code</th>
-                                                    <th style={{ padding: '12px', textAlign: 'left' }}>Name</th>
-                                                    <th style={{ padding: '12px', textAlign: 'center' }}>Quantity</th>
-                                                    <th style={{ padding: '12px', textAlign: 'right' }}>Price</th>
-                                                    <th style={{ padding: '12px', textAlign: 'right' }}>Total</th>
-                                                    <th style={{ padding: '12px', textAlign: 'center' }}>Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {visitTreatments.map((vt) => (
-                                                    <tr key={vt.visit_treatment_id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                                        <td style={{ padding: '12px' }}>{vt.code}</td>
-                                                        <td style={{ padding: '12px' }}>{vt.name}</td>
-                                                        <td style={{ padding: '12px', textAlign: 'center' }}>{vt.quantity}</td>
-                                                        <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                            ฿{parseFloat(vt.price).toFixed(2)}
-                                                        </td>
-                                                        <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                            ฿{parseFloat(vt.total_price).toFixed(2)}
-                                                        </td>
-                                                        <td style={{ padding: '12px', textAlign: 'center' }}>
-                                                            <button
-                                                                onClick={() => handleRemoveTreatment(vt.visit_treatment_id)}
-                                                                style={{
-                                                                    padding: '6px 12px',
-                                                                    backgroundColor: '#DC2626',
-                                                                    color: 'white',
-                                                                    border: 'none',
-                                                                    borderRadius: '4px',
-                                                                    cursor: 'pointer',
-                                                                    fontSize: '12px'
-                                                                }}
-                                                            >
-                                                                Remove
-                                                            </button>
-                                                        </td>
+                                        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                                            <table className="w-full">
+                                                <thead className="bg-slate-50 border-b border-slate-200">
+                                                    <tr>
+                                                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Code</th>
+                                                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Name</th>
+                                                        <th className="px-6 py-4 text-right text-sm font-semibold text-slate-700">Price</th>
+                                                        <th className="px-6 py-4 text-center text-sm font-semibold text-slate-700">Actions</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-200">
+                                                    {visitTreatments.map((vt) => (
+                                                        <tr key={vt.visit_treatment_id} className="hover:bg-slate-50">
+                                                            <td className="px-6 py-4 text-sm text-slate-700">{vt.code}</td>
+                                                            <td className="px-6 py-4 text-sm text-slate-700">{vt.name}</td>
+                                                            <td className="px-6 py-4 text-sm text-slate-700 text-right">
+                                                                ฿{parseFloat(vt.price || vt.actual_price || 0).toFixed(2)}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <button
+                                                                    onClick={() => handleRemoveTreatment(vt.visit_treatment_id)}
+                                                                    className="px-3 py-1 bg-red-600 text-white text-xs font-semibold rounded hover:bg-red-700 transition-colors"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     )}
-                                </div>
-                            )}
-
-                            {/* Document Tab */}
-                            {activeTab === 'document' && (
-                                <div>
-                                    <h2 style={{ marginBottom: '20px' }}>Scan Document</h2>
-                                    <div style={{
-                                        backgroundColor: 'white',
-                                        padding: '20px',
-                                        borderRadius: '8px',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                                    }}>
-                                        <p style={{ marginBottom: '15px', color: '#666' }}>
-                                            Upload patient documents (scans, lab results, etc.)
-                                        </p>
-                                        <input
-                                            type="file"
-                                            onChange={(e) => setDocumentFile(e.target.files[0])}
-                                            style={{ marginBottom: '15px' }}
-                                        />
-                                        <button
-                                            onClick={() => alert('Document upload functionality to be implemented')}
-                                            style={{
-                                                padding: '10px 20px',
-                                                backgroundColor: '#3B82F6',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            Upload Document
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Complete Visit Tab */}
-                            {activeTab === 'complete' && (
-                                <div>
-                                    <h2 style={{ marginBottom: '20px' }}>Complete Visit</h2>
-                                    <div style={{
-                                        backgroundColor: 'white',
-                                        padding: '20px',
-                                        borderRadius: '8px',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                                    }}>
-                                        <h3>Visit Summary</h3>
-                                        <p style={{ margin: '10px 0' }}>
-                                            <strong>Patient:</strong> {selectedPatient.first_name_th} {selectedPatient.last_name_th}
-                                        </p>
-                                        <p style={{ margin: '10px 0' }}>
-                                            <strong>Examination:</strong> {savedExamId ? 'Completed ✓' : 'Not saved'}
-                                        </p>
-                                        <p style={{ margin: '10px 0' }}>
-                                            <strong>Treatments Added:</strong> {visitTreatments.length}
-                                        </p>
-
-                                        <button
-                                            onClick={handleCompleteVisit}
-                                            style={{
-                                                marginTop: '20px',
-                                                padding: '15px 30px',
-                                                backgroundColor: '#10B981',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontWeight: 'bold',
-                                                fontSize: '16px'
-                                            }}
-                                        >
-                                            Complete Visit
-                                        </button>
-                                    </div>
                                 </div>
                             )}
                         </div>
@@ -952,6 +771,15 @@ const DoctorDashboard = ({ selectedClinic }) => {
                 <SearchTreatmentModal
                     onSelect={handleTreatmentSelect}
                     onClose={() => setShowTreatmentModal(false)}
+                />
+            )}
+
+            {/* Checkout Modal */}
+            {showCheckoutModal && (
+                <CheckoutModal
+                    patient={selectedPatient}
+                    onClose={() => setShowCheckoutModal(false)}
+                    onCheckout={handleCheckout}
                 />
             )}
         </div>
