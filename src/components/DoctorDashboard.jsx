@@ -216,6 +216,45 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
         }
     };
 
+    // Update treatment field in state
+    const handleUpdateTreatmentField = (visitTreatmentId, field, value) => {
+        setVisitTreatments(prev =>
+            prev.map(vt =>
+                vt.visit_treatment_id === visitTreatmentId
+                    ? { ...vt, [field]: value }
+                    : vt
+            )
+        );
+    };
+
+    // Auto-save treatment on blur
+    const handleAutoSaveTreatment = async (visitTreatmentId) => {
+        const treatment = visitTreatments.find(vt => vt.visit_treatment_id === visitTreatmentId);
+        if (!treatment) return;
+
+        try {
+            const res = await authorizedFetch(`/api/visit-treatments/${visitTreatmentId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    location: treatment.location || null,
+                    clinical_findings: treatment.clinical_findings || null,
+                    diagnosis: treatment.diagnosis || null
+                })
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.message || 'Failed to save');
+            }
+
+            console.log('Auto-saved treatment:', visitTreatmentId);
+        } catch (err) {
+            console.error('Error auto-saving treatment:', err);
+            // Silently fail - user can try again on next blur
+        }
+    };
+
     return (
         <>
             {/* Patient Header */}
@@ -427,81 +466,88 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
                         )}
 
                         {examSubPage === 'examination' && (
-                            <form onSubmit={handleSaveExamination} className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
-                                <h3 className="text-lg font-semibold text-slate-800 mb-6">Examination</h3>
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Location</label>
-                                        <input
-                                            type="text"
-                                            value={examForm.location}
-                                            onChange={(e) => setExamForm(prev => ({ ...prev, location: e.target.value }))}
-                                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            placeholder="e.g., Tooth #14, Upper right quadrant..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Clinical Findings</label>
-                                        <textarea
-                                            value={examForm.clinical_findings}
-                                            onChange={(e) => setExamForm(prev => ({ ...prev, clinical_findings: e.target.value }))}
-                                            rows="4"
-                                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            placeholder="Enter clinical findings..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-2">Diagnosis</label>
-                                        <textarea
-                                            value={examForm.principal_diagnosis}
-                                            onChange={(e) => setExamForm(prev => ({ ...prev, principal_diagnosis: e.target.value }))}
-                                            rows="3"
-                                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            placeholder="Enter diagnosis..."
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-3">Treatment Plan</label>
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowTreatmentModal(true)}
-                                            className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                                        >
-                                            + Add Treatment
-                                        </button>
-                                        {visitTreatments.length > 0 && (
-                                            <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden">
-                                                <table className="w-full">
-                                                    <thead className="bg-slate-50">
-                                                        <tr>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Code</th>
-                                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-600">Name</th>
-                                                            <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600">Price</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-200">
-                                                        {visitTreatments.map((t) => (
-                                                            <tr key={t.visit_treatment_id}>
-                                                                <td className="px-4 py-3 text-sm text-slate-700">{t.code}</td>
-                                                                <td className="px-4 py-3 text-sm text-slate-700">{t.name}</td>
-                                                                <td className="px-4 py-3 text-sm text-slate-700 text-right">
-                                                                    ฿{parseFloat(t.price || t.actual_price || 0).toFixed(2)}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        )}
-                                    </div>
+                            <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-semibold text-slate-800">Examination & Treatment Plan</h3>
                                     <button
-                                        type="submit"
-                                        className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                                        type="button"
+                                        onClick={() => setShowTreatmentModal(true)}
+                                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
                                     >
-                                        Save Examination
+                                        + Add Treatment
                                     </button>
                                 </div>
-                            </form>
+
+                                {visitTreatments.length === 0 ? (
+                                    <p className="text-slate-500 text-center py-8">No treatments added yet. Click "+ Add Treatment" to begin.</p>
+                                ) : (
+                                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-slate-50 border-b border-slate-200">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Location</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Clinical Findings</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Diagnosis</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Treatment</th>
+                                                    <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Price</th>
+                                                    <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-200">
+                                                {visitTreatments.map((vt, index) => (
+                                                    <tr key={vt.visit_treatment_id} className="hover:bg-slate-50">
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="text"
+                                                                value={vt.location || ''}
+                                                                onChange={(e) => handleUpdateTreatmentField(vt.visit_treatment_id, 'location', e.target.value)}
+                                                                onBlur={() => handleAutoSaveTreatment(vt.visit_treatment_id)}
+                                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="e.g., Tooth #14"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <textarea
+                                                                value={vt.clinical_findings || ''}
+                                                                onChange={(e) => handleUpdateTreatmentField(vt.visit_treatment_id, 'clinical_findings', e.target.value)}
+                                                                onBlur={() => handleAutoSaveTreatment(vt.visit_treatment_id)}
+                                                                rows="2"
+                                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="Clinical findings..."
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <textarea
+                                                                value={vt.diagnosis || ''}
+                                                                onChange={(e) => handleUpdateTreatmentField(vt.visit_treatment_id, 'diagnosis', e.target.value)}
+                                                                onBlur={() => handleAutoSaveTreatment(vt.visit_treatment_id)}
+                                                                rows="2"
+                                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="Diagnosis..."
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-slate-700">
+                                                            <div className="font-medium">{vt.code}</div>
+                                                            <div className="text-xs text-slate-500">{vt.name}</div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-sm text-slate-700 text-right">
+                                                            ฿{parseFloat(vt.price || vt.actual_price || 0).toFixed(2)}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <button
+                                                                onClick={() => handleRemoveTreatment(vt.visit_treatment_id)}
+                                                                className="px-3 py-1 bg-red-600 text-white text-xs font-semibold rounded hover:bg-red-700 transition-colors"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 )}

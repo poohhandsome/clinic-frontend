@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import authorizedFetch from '../../api';
 
 const SearchTreatmentModal = ({ onSelect, onClose }) => {
@@ -29,10 +29,10 @@ const SearchTreatmentModal = ({ onSelect, onClose }) => {
         } finally {
             setIsSearching(false);
         }
-    }, [authorizedFetch]);
+    }, []);
 
     // Handle search with debouncing
-    useState(() => {
+    useEffect(() => {
         const timeoutId = setTimeout(() => {
             performSearch(searchQuery);
         }, 500);
