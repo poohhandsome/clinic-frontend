@@ -94,7 +94,16 @@ export default function App() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            authorizedFetch('/api/clinics').then(res => res.json()).then(setAllClinics);
+            authorizedFetch('/api/clinics')
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to fetch clinics');
+                    return res.json();
+                })
+                .then(setAllClinics)
+                .catch(err => {
+                    console.error('Error fetching clinics:', err);
+                    setAllClinics([]);
+                });
         }
     }, [isAuthenticated]);
 

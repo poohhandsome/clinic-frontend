@@ -10,14 +10,16 @@ export default function SearchPatientModal({ onClose, onSelectPatient }) {
 
     const handleSearch = async (e) => {
         e.preventDefault();
-        if (!searchTerm) return;
+        if (!searchTerm.trim()) return;
         try {
-            const res = await authorizedFetch(`/api/patients?query=${searchTerm}`);
+            const res = await authorizedFetch(`/api/patients?query=${encodeURIComponent(searchTerm.trim())}`);
             if (!res.ok) throw new Error('Search failed');
             const data = await res.json();
-            setResults(data);
+            setResults(Array.isArray(data) ? data : []);
         } catch (err) {
-            console.error(err);
+            console.error('Patient search error:', err);
+            setResults([]);
+            alert('Failed to search patients. Please try again.');
         }
     };
 
