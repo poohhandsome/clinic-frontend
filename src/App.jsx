@@ -135,11 +135,11 @@ export default function App() {
 
     // ROUTE 2: Doctor routes
     if (mainRoute === 'doctor') {
-        // Doctor Dashboard (new treatment management system)
-        if (subRoute === 'dashboard') {
+        // If no subRoute (just #/doctor), show new Doctor Dashboard
+        if (!subRoute) {
             return <DoctorDashboard />;
         }
-        // Original Doctor Treatment Plan Page (uses its own layout)
+        // Otherwise, original Doctor Treatment Plan Page (uses its own layout)
         return (
             <DoctorLayout>
                 <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />
@@ -170,7 +170,7 @@ export default function App() {
                      return <SettingsPage onDataChange={() => {}} />;
 
                 // New routes for Treatment Management System
-                case 'treatment-management':
+                case 'treatments':
                     return <TreatmentManagementPage />;
                 case 'counter':
                     return <CounterPage />;
