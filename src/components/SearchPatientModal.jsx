@@ -1,18 +1,24 @@
 // src/components/SearchPatientModal.jsx (REPLACE)
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search } from 'lucide-react';
 import authorizedFetch from '../api';
 
 export default function SearchPatientModal({ onClose, onSelectPatient }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [results, setResults] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!searchTerm.trim()) return;
+    // Debounced search function
+    const performSearch = useCallback(async (query) => {
+        if (!query.trim()) {
+            setResults([]);
+            return;
+        }
+
+        setIsLoading(true);
         try {
-            const res = await authorizedFetch(`/api/patients?query=${encodeURIComponent(searchTerm.trim())}`);
+            const res = await authorizedFetch(`/api/patients?query=${encodeURIComponent(query.trim())}`);
             if (!res.ok) throw new Error('Search failed');
             const data = await res.json();
             setResults(Array.isArray(data) ? data : []);
@@ -20,7 +26,23 @@ export default function SearchPatientModal({ onClose, onSelectPatient }) {
             console.error('Patient search error:', err);
             setResults([]);
             alert('Failed to search patients. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
+    }, []);
+
+    // Debounce effect - auto-search after user stops typing
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            performSearch(searchTerm);
+        }, 500); // Wait 500ms after user stops typing
+
+        return () => clearTimeout(timer);
+    }, [searchTerm, performSearch]);
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        performSearch(searchTerm); // Also allow immediate search on Enter
     };
 
     return (
@@ -52,14 +74,31 @@ export default function SearchPatientModal({ onClose, onSelectPatient }) {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                             {results.map((patient) => (
-                                <tr key={patient.patient_id} className="hover:bg-slate-50 cursor-pointer" onClick={() => { onSelectPatient(patient); onClose(); }}>
-                                    <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{patient.dn}{patient.dn_old && ` (${patient.dn_old})`}</td>
-                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.first_name_th}</td>
-                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.last_name_th}</td>
-                                    <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.mobile_phone}</td>
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan="4" className="p-8 text-center">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+                                            <p className="text-sm text-slate-500">Searching...</p>
+                                        </div>
+                                    </td>
                                 </tr>
-                            ))}
+                            ) : results.length === 0 ? (
+                                <tr>
+                                    <td colSpan="4" className="p-8 text-center text-slate-500">
+                                        {searchTerm ? 'No patients found' : 'Enter search term above'}
+                                    </td>
+                                </tr>
+                            ) : (
+                                results.map((patient) => (
+                                    <tr key={patient.patient_id} className="hover:bg-slate-50 cursor-pointer" onClick={() => { onSelectPatient(patient); onClose(); }}>
+                                        <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{patient.dn}{patient.dn_old && ` (${patient.dn_old})`}</td>
+                                        <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.first_name_th}</td>
+                                        <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.last_name_th}</td>
+                                        <td className="p-3 whitespace-nowrap text-sm text-slate-700">{patient.mobile_phone}</td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>

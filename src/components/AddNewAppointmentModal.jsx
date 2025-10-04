@@ -94,6 +94,23 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validate required fields
+        if (!formData.doctor_id) {
+            alert('Please select a doctor');
+            return;
+        }
+
+        if (!formData.appointment_date || !formData.appointment_time) {
+            alert('Please select appointment date and time');
+            return;
+        }
+
+        if (!selectedPatient) {
+            alert('Please select a patient');
+            return;
+        }
+
         const payload = {
             ...formData,
             clinic_id: clinicId,
@@ -107,7 +124,10 @@ export default function AddNewAppointmentModal({ initialData, clinicId, onClose,
                 method: 'POST',
                 body: JSON.stringify(payload)
             });
-            if (!res.ok) throw new Error('Failed to create appointment.');
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.msg || 'Failed to create appointment.');
+            }
             onUpdate();
             onClose();
         } catch (err) {

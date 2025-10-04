@@ -60,10 +60,12 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
                     <tbody className="divide-y divide-slate-200">
                         {pending.map(app => (
                             <tr key={app.id}>
-                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{format(new Date(app.appointment_date), 'MMM d, yyyy')}</td>
-                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{app.appointment_time}</td>
-                                <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{app.patient_name}</td>
-                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{app.doctor_name}</td>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">
+                                    {app.appointment_date ? format(new Date(app.appointment_date), 'MMM d, yyyy') : 'N/A'}
+                                </td>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{app.appointment_time || 'N/A'}</td>
+                                <td className="p-3 whitespace-nowrap text-sm font-medium text-slate-900">{app.patient_name || 'Unknown'}</td>
+                                <td className="p-3 whitespace-nowrap text-sm text-slate-700">{app.doctor_name || 'Unknown'}</td>
                                 <td className="p-3 whitespace-nowrap text-sm font-medium space-x-2">
                                     <button className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold hover:bg-green-200" onClick={() => handleAction(app.id, 'confirmed')}>Approve</button>
                                     <button className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold hover:bg-red-200" onClick={() => handleAction(app.id, 'cancelled')}>Deny</button>
