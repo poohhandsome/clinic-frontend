@@ -575,7 +575,7 @@ const DoctorDashboard = ({ selectedClinic }) => {
     const { user } = useAuth();
 
     // Layout state
-    const [isSubSidebarOpen, setIsSubSidebarOpen] = useState(false);
+    const [isSubSidebarOpen, setIsSubSidebarOpen] = useState(true);
 
     // Queue and patient state
     const [allPatients, setAllPatients] = useState([]);
