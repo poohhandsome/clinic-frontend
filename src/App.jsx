@@ -133,16 +133,15 @@ export default function App() {
         return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
     }
 
-    // ROUTE 2: Doctor routes
+    // ROUTE 2: Doctor routes (all use DoctorLayout for consistent header)
     if (mainRoute === 'doctor') {
-        // If no subRoute (just #/doctor), show new Doctor Dashboard
-        if (!subRoute) {
-            return <DoctorDashboard selectedClinic={selectedClinic} />;
-        }
-        // Otherwise, original Doctor Treatment Plan Page (uses its own layout)
         return (
             <DoctorLayout>
-                <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />
+                {!subRoute ? (
+                    <DoctorDashboard selectedClinic={selectedClinic} />
+                ) : (
+                    <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />
+                )}
             </DoctorLayout>
         );
     }
