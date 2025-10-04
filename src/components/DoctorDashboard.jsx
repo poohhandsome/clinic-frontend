@@ -168,7 +168,7 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
         }
     };
 
-    const handleTreatmentSelect = async (treatment) => {
+    const handleTreatmentSelect = async (treatment, quantity, customPrice) => {
         if (!selectedPatient) return;
 
         try {
@@ -178,9 +178,8 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
                 body: JSON.stringify({
                     visit_id: selectedPatient.visit_id,
                     treatment_id: treatment.treatment_id,
-                    actual_price: treatment.standard_price,
-                    tooth_numbers: '',
-                    notes: ''
+                    quantity: quantity || 1,
+                    custom_price: customPrice || treatment.standard_price
                 })
             });
 
