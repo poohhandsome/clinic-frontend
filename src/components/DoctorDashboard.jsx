@@ -575,7 +575,7 @@ const DoctorDashboard = ({ selectedClinic }) => {
     const { user } = useAuth();
 
     // Layout state
-    const [isSubSidebarOpen, setIsSubSidebarOpen] = useState(true);
+    const [isSubSidebarOpen, setIsSubSidebarOpen] = useState(false);
 
     // Queue and patient state
     const [allPatients, setAllPatients] = useState([]);
@@ -703,6 +703,16 @@ const DoctorDashboard = ({ selectedClinic }) => {
                 ) : (
                     allPatients.map((patient) => {
                         const statusBadge = getStatusBadge(patient.status);
+
+                        // Calculate waiting time in minutes
+                        const checkInTime = new Date(patient.check_in_time);
+                        const now = new Date();
+                        const waitingMinutes = Math.floor((now - checkInTime) / (1000 * 60));
+
+                        // Determine warning indicators
+                        const showRedExclamation = waitingMinutes > 15;
+                        const showRedBox = waitingMinutes > 45;
+
                         return (
                             <div
                                 key={patient.visit_id}
@@ -712,8 +722,8 @@ const DoctorDashboard = ({ selectedClinic }) => {
                                 }}
                                 className="relative p-2 mb-2 rounded-lg cursor-pointer transition-all"
                                 style={{
-                                    backgroundColor: selectedPatientId === patient.visit_id ? '#E0F2FE' : '#F9FAFB',
-                                    border: `2px solid ${getAlertColor(patient.alert_level)}`
+                                    backgroundColor: showRedBox ? '#FEE2E2' : (selectedPatientId === patient.visit_id ? '#E0F2FE' : '#F9FAFB'),
+                                    border: `2px solid ${showRedBox ? '#EF4444' : getAlertColor(patient.alert_level)}`
                                 }}
                             >
                                 <div
@@ -722,7 +732,8 @@ const DoctorDashboard = ({ selectedClinic }) => {
                                 >
                                     {statusBadge.label}
                                 </div>
-                                <div className="font-bold text-sm text-center mt-3" style={{ color: getAlertColor(patient.alert_level) }}>
+                                <div className="font-bold text-sm text-center mt-3 flex items-center justify-center gap-1" style={{ color: getAlertColor(patient.alert_level) }}>
+                                    {showRedExclamation && <span className="text-red-600 font-bold">!</span>}
                                     {patient.dn}
                                 </div>
                                 <div className="text-xs text-slate-600 text-center truncate">
