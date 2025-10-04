@@ -178,8 +178,9 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
                 body: JSON.stringify({
                     visit_id: selectedPatient.visit_id,
                     treatment_id: treatment.treatment_id,
-                    quantity: quantity || 1,
-                    custom_price: customPrice || treatment.standard_price
+                    custom_price: customPrice || treatment.standard_price,
+                    tooth_numbers: '',
+                    notes: ''
                 })
             });
 
@@ -236,9 +237,8 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    location: treatment.location || null,
-                    clinical_findings: treatment.clinical_findings || null,
-                    diagnosis: treatment.diagnosis || null
+                    tooth_numbers: treatment.tooth_numbers || null,
+                    notes: treatment.notes || null
                 })
             });
 
@@ -484,10 +484,9 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
                                         <table className="w-full">
                                             <thead className="bg-slate-50 border-b border-slate-200">
                                                 <tr>
-                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Location</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Clinical Findings</th>
-                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Diagnosis</th>
                                                     <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Treatment</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Tooth Numbers</th>
+                                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Notes</th>
                                                     <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Price</th>
                                                     <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Actions</th>
                                                 </tr>
@@ -495,39 +494,29 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
                                             <tbody className="divide-y divide-slate-200">
                                                 {visitTreatments.map((vt, index) => (
                                                     <tr key={vt.visit_treatment_id} className="hover:bg-slate-50">
-                                                        <td className="px-4 py-3">
-                                                            <input
-                                                                type="text"
-                                                                value={vt.location || ''}
-                                                                onChange={(e) => handleUpdateTreatmentField(vt.visit_treatment_id, 'location', e.target.value)}
-                                                                onBlur={() => handleAutoSaveTreatment(vt.visit_treatment_id)}
-                                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                placeholder="e.g., Tooth #14"
-                                                            />
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <textarea
-                                                                value={vt.clinical_findings || ''}
-                                                                onChange={(e) => handleUpdateTreatmentField(vt.visit_treatment_id, 'clinical_findings', e.target.value)}
-                                                                onBlur={() => handleAutoSaveTreatment(vt.visit_treatment_id)}
-                                                                rows="2"
-                                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                placeholder="Clinical findings..."
-                                                            />
-                                                        </td>
-                                                        <td className="px-4 py-3">
-                                                            <textarea
-                                                                value={vt.diagnosis || ''}
-                                                                onChange={(e) => handleUpdateTreatmentField(vt.visit_treatment_id, 'diagnosis', e.target.value)}
-                                                                onBlur={() => handleAutoSaveTreatment(vt.visit_treatment_id)}
-                                                                rows="2"
-                                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                                placeholder="Diagnosis..."
-                                                            />
-                                                        </td>
                                                         <td className="px-4 py-3 text-sm text-slate-700">
                                                             <div className="font-medium">{vt.code}</div>
                                                             <div className="text-xs text-slate-500">{vt.name}</div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="text"
+                                                                value={vt.tooth_numbers || ''}
+                                                                onChange={(e) => handleUpdateTreatmentField(vt.visit_treatment_id, 'tooth_numbers', e.target.value)}
+                                                                onBlur={() => handleAutoSaveTreatment(vt.visit_treatment_id)}
+                                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="e.g., #14, #15"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <textarea
+                                                                value={vt.notes || ''}
+                                                                onChange={(e) => handleUpdateTreatmentField(vt.visit_treatment_id, 'notes', e.target.value)}
+                                                                onBlur={() => handleAutoSaveTreatment(vt.visit_treatment_id)}
+                                                                rows="2"
+                                                                className="w-full px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                placeholder="Clinical notes..."
+                                                            />
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-slate-700 text-right">
                                                             ฿{parseFloat(vt.price || vt.actual_price || 0).toFixed(2)}
