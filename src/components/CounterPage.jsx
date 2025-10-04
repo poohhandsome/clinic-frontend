@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const CounterPage = () => {
+const CounterPage = ({ selectedClinic }) => {
     const { authorizedFetch, user } = useAuth();
-    const [selectedClinic, setSelectedClinic] = useState(null);
     const [pendingBills, setPendingBills] = useState([]);
     const [selectedBill, setSelectedBill] = useState(null);
     const [billDetails, setBillDetails] = useState(null);
@@ -123,25 +122,6 @@ const CounterPage = () => {
     return (
         <div style={{ padding: '20px', maxWidth: '1600px', margin: '0 auto' }}>
             <h1 style={{ marginBottom: '20px' }}>Payment Counter</h1>
-
-            {/* Clinic selector placeholder - integrate with existing clinic selection */}
-            <div style={{ marginBottom: '20px' }}>
-                <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Select Clinic:</label>
-                <select
-                    value={selectedClinic || ''}
-                    onChange={(e) => setSelectedClinic(e.target.value)}
-                    style={{
-                        padding: '8px',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        minWidth: '200px'
-                    }}
-                >
-                    <option value="">-- Select Clinic --</option>
-                    <option value="1">Clinic 1</option>
-                    {/* TODO: Integrate with actual clinic list */}
-                </select>
-            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 {/* Left: Pending Bills List */}

@@ -3,9 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import PatientInfoCard from './shared/PatientInfoCard';
 import SearchTreatmentModal from './shared/SearchTreatmentModal';
 
-const DoctorDashboard = () => {
+const DoctorDashboard = ({ selectedClinic }) => {
     const { authorizedFetch, user } = useAuth();
-    const [selectedClinic, setSelectedClinic] = useState(null);
     const [queue, setQueue] = useState([]);
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [activeTab, setActiveTab] = useState('history');

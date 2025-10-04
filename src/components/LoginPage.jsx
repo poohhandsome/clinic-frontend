@@ -46,7 +46,8 @@ export default function LoginPage() {
 
         try {
             // Security: This data is sent over a secure HTTPS connection.
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/login`, {
+            const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+            const response = await fetch(`${apiUrl}/api/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),

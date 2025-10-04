@@ -137,7 +137,7 @@ export default function App() {
     if (mainRoute === 'doctor') {
         // If no subRoute (just #/doctor), show new Doctor Dashboard
         if (!subRoute) {
-            return <DoctorDashboard />;
+            return <DoctorDashboard selectedClinic={selectedClinic} />;
         }
         // Otherwise, original Doctor Treatment Plan Page (uses its own layout)
         return (
@@ -173,7 +173,7 @@ export default function App() {
                 case 'treatments':
                     return <TreatmentManagementPage />;
                 case 'counter':
-                    return <CounterPage />;
+                    return <CounterPage selectedClinic={selectedClinic} />;
 
                 default:
                     return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
