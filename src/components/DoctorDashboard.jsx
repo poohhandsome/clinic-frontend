@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import authorizedFetch from '../api';
 import PatientInfoCard from './shared/PatientInfoCard';
 import SearchTreatmentModal from './shared/SearchTreatmentModal';
 
 const DoctorDashboard = ({ selectedClinic }) => {
-    const { authorizedFetch, user } = useAuth();
+    const { user } = useAuth();
     const [queue, setQueue] = useState([]);
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [activeTab, setActiveTab] = useState('history');

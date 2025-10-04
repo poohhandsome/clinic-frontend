@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import authorizedFetch from '../api';
 
 const TreatmentManagementPage = () => {
-    const { authorizedFetch, user } = useAuth();
+    const { user } = useAuth();
     const [treatments, setTreatments] = useState([]);
     const [filteredTreatments, setFilteredTreatments] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');

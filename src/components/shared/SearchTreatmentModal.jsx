@@ -1,8 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import authorizedFetch from '../../api';
 
 const SearchTreatmentModal = ({ onSelect, onClose }) => {
-    const { authorizedFetch } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);

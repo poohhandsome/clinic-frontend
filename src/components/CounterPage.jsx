@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import authorizedFetch from '../api';
 
 const CounterPage = ({ selectedClinic }) => {
-    const { authorizedFetch, user } = useAuth();
+    const { user } = useAuth();
     const [pendingBills, setPendingBills] = useState([]);
     const [selectedBill, setSelectedBill] = useState(null);
     const [billDetails, setBillDetails] = useState(null);
