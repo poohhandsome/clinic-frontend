@@ -10,6 +10,9 @@ import DoctorPage from './pages/DoctorPage.jsx';
 import SettingsPage from './components/SettingsPage.jsx';
 import DoctorSchedulesPage from './components/DoctorSchedulesPage.jsx';
 import PatientsPage from './components/PatientsPage.jsx';
+import TreatmentManagementPage from './components/TreatmentManagementPage.jsx';
+import DoctorDashboard from './components/DoctorDashboard.jsx';
+import CounterPage from './components/CounterPage.jsx';
 import NewHeader from './components/NewUILayout/NewHeader.jsx';
 import NewSidebar from './components/NewUILayout/NewSidebar.jsx';
 import DoctorLayout from './layouts/DoctorLayout.jsx';
@@ -130,8 +133,13 @@ export default function App() {
         return <ClinicSelectionPage clinics={allClinics} onSelectClinic={handleClinicSelect} />;
     }
 
-    // ROUTE 2: Doctor's Treatment Plan Page (uses its own layout)
+    // ROUTE 2: Doctor routes
     if (mainRoute === 'doctor') {
+        // Doctor Dashboard (new treatment management system)
+        if (subRoute === 'dashboard') {
+            return <DoctorDashboard />;
+        }
+        // Original Doctor Treatment Plan Page (uses its own layout)
         return (
             <DoctorLayout>
                 <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientId} checkInTime={checkInTime} />
@@ -151,7 +159,7 @@ export default function App() {
                     return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
                 case 'appointments':
                     return <PatientsPage selectedClinic={selectedClinic} user={user} />;
-                
+
                 // **THE FIX IS HERE**: Add a case for the new treatment plan route
                 case 'treatment-plan':
                     return <DoctorPage key={selectedClinic} user={user} selectedClinic={selectedClinic} patientId={patientIdForTxPlan} checkInTime={checkInTimeForTxPlan} />;
@@ -160,6 +168,13 @@ export default function App() {
                     return <DoctorSchedulesPage selectedClinic={selectedClinic} user={user} />;
                 case 'settings':
                      return <SettingsPage onDataChange={() => {}} />;
+
+                // New routes for Treatment Management System
+                case 'treatment-management':
+                    return <TreatmentManagementPage />;
+                case 'counter':
+                    return <CounterPage />;
+
                 default:
                     return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
             }
