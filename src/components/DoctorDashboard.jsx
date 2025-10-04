@@ -62,13 +62,31 @@ const DoctorDashboard = ({ selectedClinic }) => {
     }, [user, selectedClinic]);
 
     const fetchQueue = async () => {
-        if (!user || !selectedClinic) return;
+        console.log('=== FETCHING QUEUE (FRONTEND) ===');
+        console.log('User:', user);
+        console.log('Selected Clinic:', selectedClinic);
+
+        if (!user || !selectedClinic) {
+            console.log('Cannot fetch queue - missing user or clinic');
+            return;
+        }
 
         try {
-            const res = await authorizedFetch(`/api/visits/queue/${user.id}?clinic_id=${selectedClinic}`);
+            const url = `/api/visits/queue/${user.id}?clinic_id=${selectedClinic}`;
+            console.log('Fetching queue from URL:', url);
+
+            const res = await authorizedFetch(url);
+            console.log('Response status:', res.status);
+            console.log('Response OK:', res.ok);
+
             if (!res.ok) throw new Error('Failed to fetch queue');
+
             const data = await res.json();
+            console.log('Queue data received:', data);
+            console.log('Queue length:', data.length);
+
             setQueue(data);
+            console.log('Queue state updated');
         } catch (err) {
             console.error('Error fetching queue:', err);
         }
