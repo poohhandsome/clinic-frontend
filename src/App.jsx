@@ -161,7 +161,8 @@ export default function App() {
                 {renderNursePage()}
             </MainLayout>
         );
-    
+    }
+
     // Fallback if no route matches
     return <LandingPage />;
-}}
+}

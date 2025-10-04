@@ -8,8 +8,15 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
     const fetchPending = () => {
         if (selectedClinic) {
             authorizedFetch(`/api/pending-appointments?clinic_id=${selectedClinic}`)
-                .then(res => res.json())
-                .then(data => setPending(data));
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to fetch pending appointments');
+                    return res.json();
+                })
+                .then(data => setPending(data))
+                .catch(err => {
+                    console.error('Error fetching pending appointments:', err);
+                    setPending([]); // Set empty array on error to prevent crashes
+                });
         }
     };
 
@@ -23,7 +30,15 @@ export default function PendingAppointmentsPage({ selectedClinic }) {
         authorizedFetch(`/api/appointments/${appointmentId}`, {
             method: 'PATCH',
             body: JSON.stringify({ status: newStatus }),
-        }).then(fetchPending);
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('Failed to update appointment status');
+                return fetchPending();
+            })
+            .catch(err => {
+                console.error('Error updating appointment:', err);
+                alert('Failed to update appointment. Please try again.');
+            });
     };
 
     return (
