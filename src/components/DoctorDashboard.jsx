@@ -638,29 +638,7 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
         }
     };
 
-    // Mark treatment as complete
-    const markComplete = async (treatment) => {
-        try {
-            const res = await authorizedFetch(`/api/visit-treatments/${treatment.visit_treatment_id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'completed' })
-            });
-
-            if (!res.ok) throw new Error('Failed to mark complete');
-
-            // Remove from upper section
-            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.visit_treatment_id !== treatment.visit_treatment_id));
-            setSelectedTreatments(selectedTreatments.filter(id => id !== treatment.visit_treatment_id));
-
-            alert('Treatment marked as complete and ready for billing');
-            onRefresh();
-        } catch (error) {
-            alert('Error marking complete: ' + error.message);
-        }
-    };
-
-    // Continue treatment later
+    // Continue treatment later (moves back to lower section with faded appearance)
     const continueLater = async (treatment) => {
         try {
             const res = await authorizedFetch(`/api/visit-treatments/${treatment.visit_treatment_id}`, {
@@ -682,129 +660,151 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
         }
     };
 
+    // Filter treatments for upper and lower sections
+    const inProgressTreatments = availableTreatments.filter(t => t.status === 'in_progress');
+    const pendingTreatments = availableTreatments.filter(t => t.status === 'pending' || !t.status || t.status === 'completed');
+
     return (
         <div className="space-y-6">
-            {/* UPPER SECTION: Treatments In Progress */}
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">Treatments In Progress</h3>
-                {upperSectionTreatments.length === 0 ? (
-                    <p className="text-slate-500 text-center py-8 italic bg-slate-50 rounded-lg">
-                        No treatments selected yet. Select from available plans below.
+            {/* UPPER SECTION: Treatments In Progress - TABLE */}
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 bg-blue-50">
+                    <h3 className="text-lg font-semibold text-slate-800">Treatments In Progress</h3>
+                </div>
+                {inProgressTreatments.length === 0 ? (
+                    <p className="text-slate-500 text-center py-12 italic">
+                        No treatments in progress. Click ↑ arrow below to start treatment.
                     </p>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {upperSectionTreatments.map(treatment => (
-                            <div key={treatment.visit_treatment_id} className="border border-blue-300 rounded-lg p-4 bg-blue-50 shadow-sm">
-                                <h4 className="font-semibold text-slate-800 mb-2">{treatment.name || 'Treatment'}</h4>
-                                <p className="text-sm text-slate-600">
-                                    <strong>Code:</strong> {treatment.code}
-                                </p>
-                                <p className="text-sm text-slate-600">
-                                    <strong>Tooth:</strong> {treatment.tooth_numbers || 'N/A'}
-                                </p>
-                                <p className="text-sm text-slate-600 mb-3">
-                                    <strong>Cost:</strong> ฿{parseFloat(treatment.actual_price || treatment.price || 0).toFixed(2)}
-                                </p>
-
-                                {/* Write Record Button */}
-                                <button
-                                    onClick={() => setShowRecordBox(showRecordBox === treatment.visit_treatment_id ? null : treatment.visit_treatment_id)}
-                                    className="w-full px-3 py-2 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600 mb-2"
-                                >
-                                    {showRecordBox === treatment.visit_treatment_id ? '✍️ Hide Record' : '✍️ Write Record'}
-                                </button>
-
-                                {/* Text Box for Treatment Record */}
-                                {showRecordBox === treatment.visit_treatment_id && (
-                                    <div className="mb-2">
-                                        <textarea
-                                            placeholder="Write treatment details (what was done today)..."
-                                            value={treatmentRecords[treatment.visit_treatment_id] || ''}
-                                            onChange={(e) => setTreatmentRecords({
-                                                ...treatmentRecords,
-                                                [treatment.visit_treatment_id]: e.target.value
-                                            })}
-                                            rows="4"
-                                            className="w-full p-2 border border-slate-300 rounded-md text-sm mb-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                        />
-                                        <button
-                                            onClick={() => saveTreatmentRecord(treatment.visit_treatment_id)}
-                                            className="w-full px-3 py-1 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 font-semibold"
-                                        >
-                                            💾 Save Record
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* Action Buttons */}
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => markComplete(treatment)}
-                                        className="flex-1 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700"
-                                    >
-                                        ✓ Mark Complete
-                                    </button>
-                                    <button
-                                        onClick={() => continueLater(treatment)}
-                                        className="flex-1 px-3 py-2 bg-yellow-600 text-white text-sm font-semibold rounded-md hover:bg-yellow-700"
-                                    >
-                                        → Continue Later
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Code</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Treatment</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Doctor</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Tooth #</th>
+                                    <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Price</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Treatment Record</th>
+                                    <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                                {inProgressTreatments.map(treatment => (
+                                    <tr key={treatment.visit_treatment_id} className="hover:bg-slate-50">
+                                        <td className="px-4 py-3 text-sm text-slate-700 font-medium">{treatment.code}</td>
+                                        <td className="px-4 py-3 text-sm text-slate-700">{treatment.name}</td>
+                                        <td className="px-4 py-3 text-sm text-slate-600">{treatment.doctor_name || 'N/A'}</td>
+                                        <td className="px-4 py-3 text-sm text-slate-700">{treatment.tooth_numbers || '-'}</td>
+                                        <td className="px-4 py-3 text-sm text-slate-700 text-right">
+                                            ฿{parseFloat(treatment.actual_price || treatment.price || 0).toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {showRecordBox === treatment.visit_treatment_id ? (
+                                                <div className="flex gap-2">
+                                                    <textarea
+                                                        placeholder="Write treatment details..."
+                                                        value={treatmentRecords[treatment.visit_treatment_id] || ''}
+                                                        onChange={(e) => setTreatmentRecords({
+                                                            ...treatmentRecords,
+                                                            [treatment.visit_treatment_id]: e.target.value
+                                                        })}
+                                                        rows="2"
+                                                        className="flex-1 px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                    <button
+                                                        onClick={() => saveTreatmentRecord(treatment.visit_treatment_id)}
+                                                        className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 font-semibold whitespace-nowrap"
+                                                    >
+                                                        💾 Save
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setShowRecordBox(treatment.visit_treatment_id)}
+                                                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                                                >
+                                                    ✍️ Write Record
+                                                </button>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <button
+                                                onClick={() => continueLater(treatment)}
+                                                className="px-3 py-1 bg-orange-500 text-white text-sm font-semibold rounded hover:bg-orange-600 transition-colors"
+                                                title="Continue next visit"
+                                            >
+                                                ↓ Continue
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
 
-            {/* LOWER SECTION: Available Treatments */}
-            <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">Available Treatments (from Ex & Tx Creation)</h3>
-                {availableTreatments.length === 0 ? (
-                    <p className="text-slate-500 text-center py-8 bg-slate-50 rounded-lg">
-                        No treatments found. Add treatments in the "Ex & Tx Creation" tab first.
+            {/* LOWER SECTION: Available Treatments - TABLE */}
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+                    <h3 className="text-lg font-semibold text-slate-800">Available Treatments (from Ex & Tx Creation)</h3>
+                </div>
+                {pendingTreatments.length === 0 ? (
+                    <p className="text-slate-500 text-center py-12">
+                        No treatments available. Add treatments in "Ex & Tx Creation" tab.
                     </p>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {availableTreatments.map(treatment => (
-                            <div key={treatment.visit_treatment_id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
-                                <div className="flex items-start gap-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedTreatments.includes(treatment.visit_treatment_id)}
-                                        onChange={() => toggleSelectTreatment(treatment)}
-                                        className="mt-1 w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                                    />
-                                    <div className="flex-1">
-                                        <h4 className="font-semibold text-slate-800">{treatment.name}</h4>
-                                        <p className="text-sm text-slate-600 mt-1">
-                                            <strong>Code:</strong> {treatment.code}
-                                        </p>
-                                        <p className="text-sm text-slate-600 mt-1">
-                                            <strong>Tooth:</strong> {treatment.tooth_numbers || 'N/A'}
-                                        </p>
-                                        <p className="text-sm text-slate-600">
-                                            <strong>Status:</strong>{' '}
-                                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                                                treatment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                treatment.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                                                'bg-yellow-100 text-yellow-800'
-                                            }`}>
-                                                {treatment.status || 'pending'}
-                                            </span>
-                                        </p>
-                                        <p className="text-sm text-slate-600 mt-1">
-                                            <strong>Cost:</strong> ฿{parseFloat(treatment.actual_price || treatment.price || 0).toFixed(2)}
-                                        </p>
-                                        {treatment.performed_at && (
-                                            <p className="text-xs text-slate-500 mt-1">
-                                                Added: {new Date(treatment.performed_at).toLocaleDateString()}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Code</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Treatment</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Doctor</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Tooth #</th>
+                                    <th className="px-4 py-3 text-right text-sm font-semibold text-slate-700">Price</th>
+                                    <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Notes</th>
+                                    <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                                {pendingTreatments.map(treatment => {
+                                    const isPending = treatment.status === 'pending' || !treatment.status;
+                                    const isCompleted = treatment.status === 'completed';
+                                    const isContinued = treatment.treatment_record && (isPending || isCompleted);
+                                    return (
+                                        <tr
+                                            key={treatment.visit_treatment_id}
+                                            className={`hover:bg-slate-50 ${isContinued ? 'opacity-50 bg-slate-50' : ''}`}
+                                        >
+                                            <td className="px-4 py-3 text-sm text-slate-700 font-medium">{treatment.code}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-700">{treatment.name}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-600">{treatment.doctor_name || 'N/A'}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-700">{treatment.tooth_numbers || '-'}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-700 text-right">
+                                                ฿{parseFloat(treatment.actual_price || treatment.price || 0).toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-600">
+                                                {treatment.notes || '-'}
+                                                {isContinued && <span className="text-xs text-orange-600 ml-2">(Continued)</span>}
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                {!isCompleted && (
+                                                    <button
+                                                        onClick={() => toggleSelectTreatment(treatment)}
+                                                        className="px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors"
+                                                        title="Start treatment"
+                                                    >
+                                                        ↑ Start
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
@@ -955,6 +955,23 @@ const DoctorDashboard = ({ selectedClinic }) => {
                         const showRedExclamation = waitingMinutes > 15;
                         const showRedBox = waitingMinutes > 45;
 
+                        // Determine card background color based on status
+                        let cardBgColor = '#F9FAFB'; // default white
+                        let borderColor = getAlertColor(patient.alert_level);
+
+                        if (statusLower === 'draft_checkout') {
+                            cardBgColor = '#E9D5FF'; // purple for draft
+                            borderColor = '#7C3AED';
+                        } else if (statusLower === 'completed') {
+                            cardBgColor = '#BFDBFE'; // blue for completed
+                            borderColor = '#2563EB';
+                        } else if (showRedBox) {
+                            cardBgColor = '#FEE2E2';
+                            borderColor = '#EF4444';
+                        } else if (selectedPatientId === patient.visit_id) {
+                            cardBgColor = '#E0F2FE';
+                        }
+
                         return (
                             <div
                                 key={patient.visit_id}
@@ -964,8 +981,8 @@ const DoctorDashboard = ({ selectedClinic }) => {
                                 }}
                                 className="relative p-2 mb-2 rounded-lg cursor-pointer transition-all"
                                 style={{
-                                    backgroundColor: showRedBox ? '#FEE2E2' : (selectedPatientId === patient.visit_id ? '#E0F2FE' : '#F9FAFB'),
-                                    border: `2px solid ${showRedBox ? '#EF4444' : getAlertColor(patient.alert_level)}`
+                                    backgroundColor: cardBgColor,
+                                    border: `2px solid ${borderColor}`
                                 }}
                             >
                                 <div
@@ -975,7 +992,7 @@ const DoctorDashboard = ({ selectedClinic }) => {
                                     {statusBadge.label}
                                 </div>
                                 <div className="font-bold text-sm text-center mt-3 flex items-center justify-center gap-1" style={{ color: getAlertColor(patient.alert_level) }}>
-                                    {showRedExclamation && <span className="text-red-600 font-bold">!</span>}
+                                    {(statusLower === 'checked-in' || statusLower === 'pending') && showRedExclamation && <span className="text-red-600 font-bold">!</span>}
                                     {patient.dn}
                                 </div>
                                 <div className="text-xs text-slate-600 text-center truncate">
