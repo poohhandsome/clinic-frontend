@@ -662,7 +662,13 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
 
     // Filter treatments for upper and lower sections
     const inProgressTreatments = availableTreatments.filter(t => t.status === 'in_progress');
-    const pendingTreatments = availableTreatments.filter(t => t.status === 'pending' || !t.status || t.status === 'completed');
+    const pendingTreatments = availableTreatments.filter(t =>
+        t.status === 'pending' ||
+        !t.status ||
+        t.status === 'completed' ||
+        t.status === null ||
+        t.status === ''
+    );
 
     return (
         <div className="space-y-6">
@@ -790,15 +796,13 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
                                                 {isContinued && <span className="text-xs text-orange-600 ml-2">(Continued)</span>}
                                             </td>
                                             <td className="px-4 py-3 text-center">
-                                                {!isCompleted && (
-                                                    <button
-                                                        onClick={() => toggleSelectTreatment(treatment)}
-                                                        className="px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors"
-                                                        title="Start treatment"
-                                                    >
-                                                        ↑ Start
-                                                    </button>
-                                                )}
+                                                <button
+                                                    onClick={() => toggleSelectTreatment(treatment)}
+                                                    className="px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors"
+                                                    title="Start treatment"
+                                                >
+                                                    ↑ Start
+                                                </button>
                                             </td>
                                         </tr>
                                     );
