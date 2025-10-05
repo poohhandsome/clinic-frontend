@@ -22,6 +22,22 @@ const authorizedFetch = async (url, options = {}) => {
     const response = await fetch(finalUrl, { ...options, headers });
 
     if (response.status === 401) {
+        // Check if this is a password verification error (not session expiry)
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const clonedResponse = response.clone();
+            try {
+                const errorData = await clonedResponse.json();
+                // If error is about incorrect password, don't log out
+                if (errorData.message && errorData.message.toLowerCase().includes('password')) {
+                    return response; // Return response, let component handle it
+                }
+            } catch (e) {
+                // If can't parse JSON, continue with normal 401 handling
+            }
+        }
+
+        // Session expired - log out
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
         window.location.hash = '#login';
