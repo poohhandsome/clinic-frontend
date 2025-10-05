@@ -141,31 +141,231 @@ const HistoryReview = ({ history }) => {
     );
 };
 
-const TreatmentProcessing = ({ plans, items }) => (
-    <div className="bg-white rounded-lg border divide-y">
-         {(!items || items.filter(i => i.status !== 'Completed').length === 0) && <p className="text-slate-500 text-center py-4">No active treatments.</p>}
-        {(items || []).filter(i => i.status !== 'Completed').map(item => {
-            const plan = (plans || []).find(p => p.plan_id === item.plan_id);
-            return (
-                <div key={item.item_id} className="p-4 grid grid-cols-3 items-center gap-4">
-                    <div>
-                        <div className="font-semibold text-slate-800">{item.description}</div>
-                        {plan && <div className="text-xs text-slate-500">Plan from: {format(new Date(plan.plan_date), 'd MMM yyyy')}</div>}
+const TreatmentProcessing = ({ plans, items }) => {
+    const [upperSectionTreatments, setUpperSectionTreatments] = useState([]);
+    const [selectedPlans, setSelectedPlans] = useState([]);
+    const [showRecordBox, setShowRecordBox] = useState(null);
+    const [treatmentRecords, setTreatmentRecords] = useState({});
+    const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+    // Toggle plan selection - moves to upper section when checked
+    const toggleSelectPlan = (plan) => {
+        if (selectedPlans.includes(plan.plan_id)) {
+            // Uncheck - remove from selected
+            setSelectedPlans(selectedPlans.filter(id => id !== plan.plan_id));
+            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.plan_id !== plan.plan_id));
+        } else {
+            // Check - add to upper section
+            setSelectedPlans([...selectedPlans, plan.plan_id]);
+            setUpperSectionTreatments([...upperSectionTreatments, { ...plan, status: 'In Progress' }]);
+        }
+    };
+
+    // Save treatment record
+    const saveTreatmentRecord = async (treatmentId) => {
+        const record = treatmentRecords[treatmentId];
+        if (!record || !record.trim()) {
+            alert('Please write treatment details before saving');
+            return;
+        }
+
+        try {
+            const res = await authorizedFetch('/api/treatment-plans/record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    plan_id: treatmentId,
+                    treatment_record: record,
+                    recorded_at: new Date()
+                })
+            });
+
+            if (!res.ok) throw new Error('Failed to save record');
+
+            alert('Treatment record saved successfully');
+            setShowRecordBox(null);
+        } catch (error) {
+            alert('Error saving record: ' + error.message);
+        }
+    };
+
+    // Mark treatment as complete
+    const markComplete = async (treatment) => {
+        try {
+            const res = await authorizedFetch(`/api/treatment-plans/${treatment.plan_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Completed' })
+            });
+
+            if (!res.ok) throw new Error('Failed to mark complete');
+
+            // Remove from upper section
+            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.plan_id !== treatment.plan_id));
+            setSelectedPlans(selectedPlans.filter(id => id !== treatment.plan_id));
+
+            alert('Treatment marked as complete');
+        } catch (error) {
+            alert('Error marking complete: ' + error.message);
+        }
+    };
+
+    // Continue treatment later
+    const continueLater = async (treatment) => {
+        try {
+            const res = await authorizedFetch(`/api/treatment-plans/${treatment.plan_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'In Progress' })
+            });
+
+            if (!res.ok) throw new Error('Failed to update status');
+
+            // Move back to lower section only
+            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.plan_id !== treatment.plan_id));
+            setSelectedPlans(selectedPlans.filter(id => id !== treatment.plan_id));
+
+            alert('Treatment will continue next visit');
+        } catch (error) {
+            alert('Error updating treatment: ' + error.message);
+        }
+    };
+
+    const handleCheckout = () => {
+        if (upperSectionTreatments.length === 0) {
+            alert('No treatments in progress. Please select treatments first.');
+            return;
+        }
+
+        alert('Checkout functionality - only completed treatments will be billed');
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* UPPER SECTION: Treatments In Progress */}
+            <div className="bg-white rounded-lg border p-6">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Treatments In Progress</h3>
+                {upperSectionTreatments.length === 0 ? (
+                    <p className="text-slate-500 text-center py-8 italic">
+                        No treatments selected yet. Select from available plans below.
+                    </p>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {upperSectionTreatments.map(treatment => (
+                            <div key={treatment.plan_id} className="border border-slate-300 rounded-lg p-4 bg-slate-50 shadow-sm">
+                                <h4 className="font-semibold text-slate-800 mb-2">{treatment.description || treatment.notes || 'Treatment'}</h4>
+                                <p className="text-sm text-slate-600">
+                                    <strong>Tooth:</strong> {treatment.tooth_numbers || 'N/A'}
+                                </p>
+                                <p className="text-sm text-slate-600 mb-3">
+                                    <strong>Cost:</strong> ฿{treatment.cost || treatment.estimated_cost || 0}
+                                </p>
+
+                                {/* Write Record Button */}
+                                <button
+                                    onClick={() => setShowRecordBox(showRecordBox === treatment.plan_id ? null : treatment.plan_id)}
+                                    className="w-full px-3 py-2 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600 mb-2 flex items-center justify-center gap-2"
+                                >
+                                    <FileText size={16} />
+                                    {showRecordBox === treatment.plan_id ? 'Hide Record' : 'Write Record ✍️'}
+                                </button>
+
+                                {/* Text Box for Treatment Record */}
+                                {showRecordBox === treatment.plan_id && (
+                                    <div className="mb-2">
+                                        <textarea
+                                            placeholder="Write treatment details (what was done today)..."
+                                            value={treatmentRecords[treatment.plan_id] || ''}
+                                            onChange={(e) => setTreatmentRecords({
+                                                ...treatmentRecords,
+                                                [treatment.plan_id]: e.target.value
+                                            })}
+                                            rows="4"
+                                            className="w-full p-2 border border-slate-300 rounded-md text-sm mb-2"
+                                        />
+                                        <button
+                                            onClick={() => saveTreatmentRecord(treatment.plan_id)}
+                                            className="w-full px-3 py-1 bg-green-500 text-white text-sm rounded-md hover:bg-green-600"
+                                        >
+                                            Save Record
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => markComplete(treatment)}
+                                        className="flex-1 px-3 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700"
+                                    >
+                                        ✓ Mark Complete
+                                    </button>
+                                    <button
+                                        onClick={() => continueLater(treatment)}
+                                        className="flex-1 px-3 py-2 bg-yellow-600 text-white text-sm font-semibold rounded-md hover:bg-yellow-700"
+                                    >
+                                        → Continue Later
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                    <div>
-                        <div className="w-full bg-slate-200 rounded-full h-2.5">
-                            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${item.progress}%` }}></div>
-                        </div>
+                )}
+            </div>
+
+            {/* LOWER SECTION: Available Treatment Plans */}
+            <div className="bg-white rounded-lg border p-6">
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Available Treatment Plans</h3>
+                {(!plans || plans.length === 0) ? (
+                    <p className="text-slate-500 text-center py-8">No treatment plans found for this patient.</p>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {plans.map(plan => (
+                            <div key={plan.plan_id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                                <div className="flex items-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedPlans.includes(plan.plan_id)}
+                                        onChange={() => toggleSelectPlan(plan)}
+                                        className="mt-1 w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                    />
+                                    <div className="flex-1">
+                                        <h4 className="font-semibold text-slate-800">{plan.description || plan.notes || 'Treatment Plan'}</h4>
+                                        <p className="text-sm text-slate-600 mt-1">
+                                            <strong>Tooth:</strong> {plan.tooth_numbers || 'N/A'}
+                                        </p>
+                                        <p className="text-sm text-slate-600">
+                                            <strong>Status:</strong> <StatusTag status={plan.status || 'Pending'} />
+                                        </p>
+                                        <p className="text-sm text-slate-600 mt-1">
+                                            <strong>Cost:</strong> ฿{plan.cost || plan.estimated_cost || 0}
+                                        </p>
+                                        {plan.plan_date && (
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Created: {format(new Date(plan.plan_date), 'd MMM yyyy')}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                    <div className="flex items-center justify-end gap-2">
-                        <StatusTag status={item.status} />
-                        <button className="text-sm font-semibold text-blue-600 hover:underline">Update</button>
-                    </div>
-                </div>
-            );
-        })}
-    </div>
-);
+                )}
+            </div>
+
+            {/* Checkout Button */}
+            <div className="flex justify-end">
+                <button
+                    onClick={handleCheckout}
+                    disabled={isCheckingOut}
+                    className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
+                >
+                    {isCheckingOut ? 'Processing...' : 'Check Out'}
+                </button>
+            </div>
+        </div>
+    );
+};
 
 const ExTxCreated = ({ patientId, doctorId }) => (
      <div className="p-4 bg-white rounded-lg border space-y-6">
