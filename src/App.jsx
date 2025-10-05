@@ -14,6 +14,7 @@ import TreatmentManagementPage from './components/TreatmentManagementPage.jsx';
 import DoctorDashboard from './components/DoctorDashboard.jsx';
 import CounterPage from './components/CounterPage.jsx';
 import OperationsDashboard from './components/OperationsDashboard.jsx';
+import BillingPage from './components/BillingPage.jsx';
 import NewHeader from './components/NewUILayout/NewHeader.jsx';
 import NewSidebar from './components/NewUILayout/NewSidebar.jsx';
 import DoctorLayout from './layouts/DoctorLayout.jsx';
@@ -176,6 +177,8 @@ export default function App() {
                     return <OperationsDashboard selectedClinic={selectedClinic} />;
                 case 'counter':
                     return <CounterPage selectedClinic={selectedClinic} />;
+                case 'billing':
+                    return <BillingPage selectedClinic={selectedClinic} />;
 
                 default:
                     return <NursePage key={selectedClinic} user={user} selectedClinic={selectedClinic} />;
