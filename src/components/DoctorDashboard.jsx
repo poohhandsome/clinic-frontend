@@ -568,77 +568,61 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
     const [selectedTreatments, setSelectedTreatments] = useState([]);
     const [showRecordBox, setShowRecordBox] = useState(null);
     const [treatmentRecords, setTreatmentRecords] = useState({});
-    const [treatmentPlans, setTreatmentPlans] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Fetch treatment plans for this patient
-    useEffect(() => {
-        if (patientId) {
-            fetchTreatmentPlans();
-        }
-    }, [patientId]);
-
-    const fetchTreatmentPlans = async () => {
-        setIsLoading(true);
-        try {
-            const res = await authorizedFetch(`/api/treatment-plans/patient/${patientId}`);
-            if (!res.ok) throw new Error('Failed to fetch treatment plans');
-            const data = await res.json();
-            setTreatmentPlans(data);
-        } catch (err) {
-            console.error('Error fetching treatment plans:', err);
-            setTreatmentPlans([]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    // Use visitTreatments directly - treatments are added in Ex & Tx Creation tab
+    const availableTreatments = visitTreatments || [];
 
     // Toggle treatment selection - moves to upper section when checked
-    const toggleSelectTreatment = async (plan) => {
-        if (selectedTreatments.includes(plan.plan_id)) {
-            // Uncheck - remove from selected
-            setSelectedTreatments(selectedTreatments.filter(id => id !== plan.plan_id));
-            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.plan_id !== plan.plan_id));
-        } else {
-            // Check - add to upper section and create visit_treatment record
-            setSelectedTreatments([...selectedTreatments, plan.plan_id]);
-            setUpperSectionTreatments([...upperSectionTreatments, { ...plan, status: 'in_progress' }]);
+    const toggleSelectTreatment = async (treatment) => {
+        if (selectedTreatments.includes(treatment.visit_treatment_id)) {
+            // Uncheck - remove from selected and update status
+            setSelectedTreatments(selectedTreatments.filter(id => id !== treatment.visit_treatment_id));
+            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.visit_treatment_id !== treatment.visit_treatment_id));
 
-            // Create visit_treatment record if it doesn't exist
+            // Update status back to pending
             try {
-                await authorizedFetch('/api/visit-treatments', {
-                    method: 'POST',
+                await authorizedFetch(`/api/visit-treatments/${treatment.visit_treatment_id}`, {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        visit_id: visitId,
-                        treatment_id: plan.treatment_id || plan.plan_id,
-                        actual_price: plan.estimated_cost || plan.cost || 0,
-                        tooth_numbers: plan.tooth_numbers || '',
-                        status: 'in_progress',
-                        notes: plan.notes || ''
-                    })
+                    body: JSON.stringify({ status: 'pending' })
                 });
                 onRefresh();
             } catch (err) {
-                console.error('Error creating visit treatment:', err);
+                console.error('Error updating treatment status:', err);
+            }
+        } else {
+            // Check - add to upper section and update status to in_progress
+            setSelectedTreatments([...selectedTreatments, treatment.visit_treatment_id]);
+            setUpperSectionTreatments([...upperSectionTreatments, { ...treatment, status: 'in_progress' }]);
+
+            // Update status to in_progress
+            try {
+                await authorizedFetch(`/api/visit-treatments/${treatment.visit_treatment_id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'in_progress' })
+                });
+                onRefresh();
+            } catch (err) {
+                console.error('Error updating treatment status:', err);
             }
         }
     };
 
     // Save treatment record
-    const saveTreatmentRecord = async (planId) => {
-        const record = treatmentRecords[planId];
+    const saveTreatmentRecord = async (treatmentId) => {
+        const record = treatmentRecords[treatmentId];
         if (!record || !record.trim()) {
             alert('Please write treatment details before saving');
             return;
         }
 
         try {
-            const res = await authorizedFetch('/api/treatment-plans/record', {
-                method: 'POST',
+            const res = await authorizedFetch(`/api/visit-treatments/${treatmentId}`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    plan_id: planId,
                     treatment_record: record,
                     recorded_at: new Date()
                 })
@@ -648,6 +632,7 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
 
             alert('Treatment record saved successfully');
             setShowRecordBox(null);
+            onRefresh();
         } catch (error) {
             alert('Error saving record: ' + error.message);
         }
@@ -656,24 +641,17 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
     // Mark treatment as complete
     const markComplete = async (treatment) => {
         try {
-            const res = await authorizedFetch(`/api/treatment-plans/${treatment.plan_id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'Completed' })
-            });
-
-            if (!res.ok) throw new Error('Failed to mark complete');
-
-            // Update visit_treatment status to completed
-            const vtRes = await authorizedFetch(`/api/visit-treatments/plan/${treatment.plan_id}/status`, {
+            const res = await authorizedFetch(`/api/visit-treatments/${treatment.visit_treatment_id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'completed' })
             });
 
+            if (!res.ok) throw new Error('Failed to mark complete');
+
             // Remove from upper section
-            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.plan_id !== treatment.plan_id));
-            setSelectedTreatments(selectedTreatments.filter(id => id !== treatment.plan_id));
+            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.visit_treatment_id !== treatment.visit_treatment_id));
+            setSelectedTreatments(selectedTreatments.filter(id => id !== treatment.visit_treatment_id));
 
             alert('Treatment marked as complete and ready for billing');
             onRefresh();
@@ -685,20 +663,20 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
     // Continue treatment later
     const continueLater = async (treatment) => {
         try {
-            const res = await authorizedFetch(`/api/treatment-plans/${treatment.plan_id}`, {
+            const res = await authorizedFetch(`/api/visit-treatments/${treatment.visit_treatment_id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'In Progress' })
+                body: JSON.stringify({ status: 'pending' })
             });
 
             if (!res.ok) throw new Error('Failed to update status');
 
             // Move back to lower section only
-            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.plan_id !== treatment.plan_id));
-            setSelectedTreatments(selectedTreatments.filter(id => id !== treatment.plan_id));
+            setUpperSectionTreatments(upperSectionTreatments.filter(t => t.visit_treatment_id !== treatment.visit_treatment_id));
+            setSelectedTreatments(selectedTreatments.filter(id => id !== treatment.visit_treatment_id));
 
             alert('Treatment will continue next visit');
-            fetchTreatmentPlans();
+            onRefresh();
         } catch (error) {
             alert('Error updating treatment: ' + error.message);
         }
@@ -716,38 +694,41 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {upperSectionTreatments.map(treatment => (
-                            <div key={treatment.plan_id} className="border border-blue-300 rounded-lg p-4 bg-blue-50 shadow-sm">
-                                <h4 className="font-semibold text-slate-800 mb-2">{treatment.description || treatment.notes || 'Treatment'}</h4>
+                            <div key={treatment.visit_treatment_id} className="border border-blue-300 rounded-lg p-4 bg-blue-50 shadow-sm">
+                                <h4 className="font-semibold text-slate-800 mb-2">{treatment.name || 'Treatment'}</h4>
+                                <p className="text-sm text-slate-600">
+                                    <strong>Code:</strong> {treatment.code}
+                                </p>
                                 <p className="text-sm text-slate-600">
                                     <strong>Tooth:</strong> {treatment.tooth_numbers || 'N/A'}
                                 </p>
                                 <p className="text-sm text-slate-600 mb-3">
-                                    <strong>Cost:</strong> ฿{treatment.estimated_cost || treatment.cost || 0}
+                                    <strong>Cost:</strong> ฿{parseFloat(treatment.actual_price || treatment.price || 0).toFixed(2)}
                                 </p>
 
                                 {/* Write Record Button */}
                                 <button
-                                    onClick={() => setShowRecordBox(showRecordBox === treatment.plan_id ? null : treatment.plan_id)}
+                                    onClick={() => setShowRecordBox(showRecordBox === treatment.visit_treatment_id ? null : treatment.visit_treatment_id)}
                                     className="w-full px-3 py-2 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600 mb-2"
                                 >
-                                    {showRecordBox === treatment.plan_id ? '✍️ Hide Record' : '✍️ Write Record'}
+                                    {showRecordBox === treatment.visit_treatment_id ? '✍️ Hide Record' : '✍️ Write Record'}
                                 </button>
 
                                 {/* Text Box for Treatment Record */}
-                                {showRecordBox === treatment.plan_id && (
+                                {showRecordBox === treatment.visit_treatment_id && (
                                     <div className="mb-2">
                                         <textarea
                                             placeholder="Write treatment details (what was done today)..."
-                                            value={treatmentRecords[treatment.plan_id] || ''}
+                                            value={treatmentRecords[treatment.visit_treatment_id] || ''}
                                             onChange={(e) => setTreatmentRecords({
                                                 ...treatmentRecords,
-                                                [treatment.plan_id]: e.target.value
+                                                [treatment.visit_treatment_id]: e.target.value
                                             })}
                                             rows="4"
                                             className="w-full p-2 border border-slate-300 rounded-md text-sm mb-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         />
                                         <button
-                                            onClick={() => saveTreatmentRecord(treatment.plan_id)}
+                                            onClick={() => saveTreatmentRecord(treatment.visit_treatment_id)}
                                             className="w-full px-3 py-1 bg-green-500 text-white text-sm rounded-md hover:bg-green-600 font-semibold"
                                         >
                                             💾 Save Record
@@ -776,47 +757,48 @@ const TreatmentProcessingTab = ({ visitId, patientId, visitTreatments, onRefresh
                 )}
             </div>
 
-            {/* LOWER SECTION: Available Treatment Plans */}
+            {/* LOWER SECTION: Available Treatments */}
             <div className="bg-white rounded-lg border border-slate-200 p-6">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">Available Treatment Plans</h3>
-                {isLoading ? (
-                    <p className="text-slate-500 text-center py-8">Loading treatment plans...</p>
-                ) : treatmentPlans.length === 0 ? (
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Available Treatments (from Ex & Tx Creation)</h3>
+                {availableTreatments.length === 0 ? (
                     <p className="text-slate-500 text-center py-8 bg-slate-50 rounded-lg">
-                        No treatment plans found for this patient. Create plans in the "Ex & Tx Created" tab first.
+                        No treatments found. Add treatments in the "Ex & Tx Creation" tab first.
                     </p>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {treatmentPlans.map(plan => (
-                            <div key={plan.plan_id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+                        {availableTreatments.map(treatment => (
+                            <div key={treatment.visit_treatment_id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
                                 <div className="flex items-start gap-3">
                                     <input
                                         type="checkbox"
-                                        checked={selectedTreatments.includes(plan.plan_id)}
-                                        onChange={() => toggleSelectTreatment(plan)}
+                                        checked={selectedTreatments.includes(treatment.visit_treatment_id)}
+                                        onChange={() => toggleSelectTreatment(treatment)}
                                         className="mt-1 w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
                                     />
                                     <div className="flex-1">
-                                        <h4 className="font-semibold text-slate-800">{plan.description || plan.notes || 'Treatment Plan'}</h4>
+                                        <h4 className="font-semibold text-slate-800">{treatment.name}</h4>
                                         <p className="text-sm text-slate-600 mt-1">
-                                            <strong>Tooth:</strong> {plan.tooth_numbers || 'N/A'}
+                                            <strong>Code:</strong> {treatment.code}
+                                        </p>
+                                        <p className="text-sm text-slate-600 mt-1">
+                                            <strong>Tooth:</strong> {treatment.tooth_numbers || 'N/A'}
                                         </p>
                                         <p className="text-sm text-slate-600">
                                             <strong>Status:</strong>{' '}
                                             <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                                                plan.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                                                plan.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                                                treatment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                                treatment.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
                                                 'bg-yellow-100 text-yellow-800'
                                             }`}>
-                                                {plan.status || 'Pending'}
+                                                {treatment.status || 'pending'}
                                             </span>
                                         </p>
                                         <p className="text-sm text-slate-600 mt-1">
-                                            <strong>Cost:</strong> ฿{plan.estimated_cost || plan.cost || 0}
+                                            <strong>Cost:</strong> ฿{parseFloat(treatment.actual_price || treatment.price || 0).toFixed(2)}
                                         </p>
-                                        {plan.plan_date && (
+                                        {treatment.performed_at && (
                                             <p className="text-xs text-slate-500 mt-1">
-                                                Created: {new Date(plan.plan_date).toLocaleDateString()}
+                                                Added: {new Date(treatment.performed_at).toLocaleDateString()}
                                             </p>
                                         )}
                                     </div>
