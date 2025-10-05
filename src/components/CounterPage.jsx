@@ -1,19 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import authorizedFetch from '../api';
+import { Search, RefreshCw, User, Printer, X } from 'lucide-react';
+import clinicLogo from '../assets/clinic-logo.png';
 
 const CounterPage = ({ selectedClinic }) => {
     const { user } = useAuth();
-    const [pendingBills, setPendingBills] = useState([]);
-    const [selectedBill, setSelectedBill] = useState(null);
+    const [patients, setPatients] = useState([]);
+    const [selectedPatient, setSelectedPatient] = useState(null);
     const [billDetails, setBillDetails] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [autoRefresh, setAutoRefresh] = useState(true);
 
-    // Payment form
-    const [paymentForm, setPaymentForm] = useState({
-        payment_method: 'cash',
-        paid_amount: ''
-    });
+    // Payment form state
+    const [paymentMethod, setPaymentMethod] = useState('cash');
+    const [amountReceived, setAmountReceived] = useState('');
+    const [transactionRef, setTransactionRef] = useState('');
 
     // Check role authorization
     useEffect(() => {
@@ -23,81 +26,106 @@ const CounterPage = ({ selectedClinic }) => {
         }
     }, [user]);
 
-    // Fetch pending bills
-    const fetchPendingBills = useCallback(async () => {
+    // Fetch patients ready for checkout
+    const fetchReadyPatients = useCallback(async () => {
         if (!selectedClinic) return;
 
         setIsLoading(true);
         try {
-            const res = await authorizedFetch(`/api/billing/pending?clinic_id=${selectedClinic}`);
-            if (!res.ok) throw new Error('Failed to fetch pending bills');
+            const res = await authorizedFetch(`/api/visits?clinic_id=${selectedClinic}&status=draft_checkout`);
+            if (!res.ok) throw new Error('Failed to fetch patients');
             const data = await res.json();
-            setPendingBills(data);
+            setPatients(data);
         } catch (err) {
-            console.error('Error fetching pending bills:', err);
-            alert('Failed to load pending bills');
+            console.error('Error fetching patients:', err);
         } finally {
             setIsLoading(false);
         }
-    }, [selectedClinic, authorizedFetch]);
+    }, [selectedClinic]);
 
     useEffect(() => {
         if (selectedClinic) {
-            fetchPendingBills();
+            fetchReadyPatients();
         }
-    }, [selectedClinic, fetchPendingBills]);
+    }, [selectedClinic, fetchReadyPatients]);
 
-    // Fetch bill details
-    const fetchBillDetails = async (billingId) => {
+    // Auto-refresh every 30 seconds
+    useEffect(() => {
+        if (autoRefresh && selectedClinic) {
+            const interval = setInterval(fetchReadyPatients, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [autoRefresh, selectedClinic, fetchReadyPatients]);
+
+    // Fetch bill details when patient is selected
+    const handleSelectPatient = async (patient) => {
+        setSelectedPatient(patient);
+
         try {
-            const res = await authorizedFetch(`/api/billing/${billingId}`);
+            // Fetch visit treatments
+            const res = await authorizedFetch(`/api/visits/${patient.visit_id}/treatments`);
             if (!res.ok) throw new Error('Failed to fetch bill details');
-            const data = await res.json();
-            setBillDetails(data);
-            setPaymentForm({
-                payment_method: 'cash',
-                paid_amount: data.total_amount
+            const treatments = await res.json();
+
+            // Calculate totals
+            const subtotal = treatments.reduce((sum, item) => sum + parseFloat(item.actual_price || 0), 0);
+            const discount = 0; // You can add discount logic here
+            const grandTotal = subtotal - discount;
+
+            setBillDetails({
+                patient,
+                treatments,
+                subtotal,
+                discount,
+                grandTotal
             });
+
+            // Set default amount received to grand total
+            setAmountReceived(grandTotal.toFixed(2));
         } catch (err) {
             console.error('Error fetching bill details:', err);
             alert('Failed to load bill details');
         }
     };
 
-    // Handle bill selection
-    const handleSelectBill = (bill) => {
-        setSelectedBill(bill);
-        fetchBillDetails(bill.billing_id);
-    };
+    // Calculate change
+    const changeDue = paymentMethod === 'cash' && amountReceived
+        ? Math.max(0, parseFloat(amountReceived) - (billDetails?.grandTotal || 0))
+        : 0;
 
-    // Handle payment processing
-    const handleProcessPayment = async (e) => {
-        e.preventDefault();
-
-        if (!selectedBill || !billDetails) {
-            alert('No bill selected');
+    // Process payment
+    const handleConfirmPayment = async () => {
+        if (!selectedPatient || !billDetails) {
+            alert('No patient selected');
             return;
         }
 
-        const paidAmount = parseFloat(paymentForm.paid_amount);
-        const totalAmount = parseFloat(billDetails.total_amount);
-
-        if (isNaN(paidAmount) || paidAmount <= 0) {
-            alert('Please enter a valid amount');
+        if (!paymentMethod) {
+            alert('Please select a payment method');
             return;
         }
 
-        if (Math.abs(paidAmount - totalAmount) > 0.01) {
-            if (!confirm(`Amount mismatch! Expected: ฿${totalAmount.toFixed(2)}, Received: ฿${paidAmount.toFixed(2)}. Continue?`)) {
-                return;
-            }
+        if (paymentMethod === 'cash' && (!amountReceived || parseFloat(amountReceived) < billDetails.grandTotal)) {
+            alert('Amount received is less than the total amount');
+            return;
+        }
+
+        if (['card', 'qr', 'transfer'].includes(paymentMethod) && !transactionRef) {
+            alert('Please enter transaction reference number');
+            return;
         }
 
         try {
-            const res = await authorizedFetch(`/api/billing/${selectedBill.billing_id}/payment`, {
+            // Update visit status to completed
+            const res = await authorizedFetch(`/api/visits/${selectedPatient.visit_id}/checkout`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(paymentForm)
+                body: JSON.stringify({
+                    status: 'completed',
+                    payment_method: paymentMethod,
+                    amount_paid: paymentMethod === 'cash' ? parseFloat(amountReceived) : billDetails.grandTotal,
+                    transaction_ref: transactionRef || null
+                })
             });
 
             if (!res.ok) {
@@ -105,10 +133,25 @@ const CounterPage = ({ selectedClinic }) => {
                 throw new Error(error.message || 'Failed to process payment');
             }
 
-            alert('Payment processed successfully!');
-            setSelectedBill(null);
-            setBillDetails(null);
-            fetchPendingBills();
+            alert('✅ Payment processed successfully!');
+
+            // Update patient status in list
+            setPatients(prev => prev.map(p =>
+                p.visit_id === selectedPatient.visit_id
+                    ? { ...p, payment_status: 'paid' }
+                    : p
+            ));
+
+            // Clear selection after short delay
+            setTimeout(() => {
+                setSelectedPatient(null);
+                setBillDetails(null);
+                setAmountReceived('');
+                setTransactionRef('');
+                setPaymentMethod('cash');
+                fetchReadyPatients();
+            }, 1500);
+
         } catch (err) {
             console.error('Error processing payment:', err);
             alert(err.message);
@@ -117,348 +160,509 @@ const CounterPage = ({ selectedClinic }) => {
 
     // Print receipt
     const handlePrintReceipt = () => {
-        window.print();
+        if (!billDetails) return;
+
+        const printWindow = window.open('', '_blank');
+        const receiptHTML = generateReceiptHTML(billDetails, paymentMethod, amountReceived, changeDue, user);
+        printWindow.document.write(receiptHTML);
+        printWindow.document.close();
+        printWindow.print();
     };
 
+    // Filter patients by search term
+    const filteredPatients = patients.filter(p => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            p.dn?.toLowerCase().includes(searchLower) ||
+            p.first_name_th?.toLowerCase().includes(searchLower) ||
+            p.last_name_th?.toLowerCase().includes(searchLower) ||
+            p.first_name_en?.toLowerCase().includes(searchLower) ||
+            p.last_name_en?.toLowerCase().includes(searchLower)
+        );
+    });
+
     return (
-        <div style={{ padding: '20px', maxWidth: '1600px', margin: '0 auto' }}>
-            <h1 style={{ marginBottom: '20px' }}>Payment Counter</h1>
+        <div className="flex h-screen bg-slate-50">
+            {/* LEFT SIDEBAR - Patient Queue Panel (25-30%) */}
+            <div className="w-[30%] bg-white border-r border-slate-200 flex flex-col">
+                {/* Header */}
+                <div className="p-4 border-b border-slate-200">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-xl font-bold text-slate-800">Ready for Checkout</h2>
+                        <button
+                            onClick={fetchReadyPatients}
+                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                            title="Refresh"
+                        >
+                            <RefreshCw size={20} className={isLoading ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                {/* Left: Pending Bills List */}
-                <div>
-                    <h2 style={{ marginBottom: '15px' }}>Pending Bills</h2>
-
-                    {isLoading && <p>Loading bills...</p>}
-
-                    {!isLoading && !selectedClinic && (
-                        <p style={{ color: '#999' }}>Please select a clinic to view pending bills</p>
-                    )}
-
-                    {!isLoading && selectedClinic && pendingBills.length === 0 && (
-                        <p style={{ color: '#999' }}>No pending bills</p>
-                    )}
-
-                    {!isLoading && pendingBills.length > 0 && (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{
-                                width: '100%',
-                                backgroundColor: 'white',
-                                borderCollapse: 'collapse',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                            }}>
-                                <thead>
-                                    <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                                        <th style={{ padding: '12px', textAlign: 'left' }}>DN</th>
-                                        <th style={{ padding: '12px', textAlign: 'left' }}>Patient Name</th>
-                                        <th style={{ padding: '12px', textAlign: 'left' }}>Visit Date</th>
-                                        <th style={{ padding: '12px', textAlign: 'right' }}>Amount</th>
-                                        <th style={{ padding: '12px', textAlign: 'center' }}>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pendingBills.map((bill) => (
-                                        <tr
-                                            key={bill.billing_id}
-                                            style={{
-                                                borderBottom: '1px solid #e5e7eb',
-                                                backgroundColor: selectedBill?.billing_id === bill.billing_id ? '#e0f2fe' : 'white',
-                                                cursor: 'pointer'
-                                            }}
-                                            onClick={() => handleSelectBill(bill)}
-                                        >
-                                            <td style={{ padding: '12px' }}>{bill.dn}</td>
-                                            <td style={{ padding: '12px' }}>
-                                                {bill.first_name_th} {bill.last_name_th}
-                                            </td>
-                                            <td style={{ padding: '12px' }}>
-                                                {new Date(bill.visit_date).toLocaleDateString('th-TH')}
-                                            </td>
-                                            <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}>
-                                                ฿{parseFloat(bill.total_amount).toFixed(2)}
-                                            </td>
-                                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleSelectBill(bill);
-                                                    }}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        backgroundColor: '#3B82F6',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '4px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '12px'
-                                                    }}
-                                                >
-                                                    View
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    {/* Search Bar */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by name or ID..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                    </div>
                 </div>
 
-                {/* Right: Bill Details & Payment */}
-                <div>
-                    {!billDetails ? (
-                        <div style={{
-                            backgroundColor: 'white',
-                            padding: '40px',
-                            borderRadius: '8px',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                            textAlign: 'center',
-                            color: '#999'
-                        }}>
-                            <p>Select a bill to view details and process payment</p>
+                {/* Patient List */}
+                <div className="flex-1 overflow-y-auto">
+                    {isLoading && (
+                        <div className="p-8 text-center text-slate-500">Loading patients...</div>
+                    )}
+
+                    {!isLoading && filteredPatients.length === 0 && (
+                        <div className="p-8 text-center text-slate-500">
+                            {searchTerm ? 'No patients found' : 'No patients ready for checkout'}
                         </div>
-                    ) : (
-                        <div style={{
-                            backgroundColor: 'white',
-                            padding: '20px',
-                            borderRadius: '8px',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                        }}>
-                            <h2 style={{ marginBottom: '20px', borderBottom: '2px solid #e5e7eb', paddingBottom: '10px' }}>
-                                Bill Details
-                            </h2>
+                    )}
 
-                            {/* Patient Info */}
-                            <div style={{ marginBottom: '20px' }}>
-                                <h3 style={{ marginBottom: '10px' }}>Patient Information</h3>
-                                <p><strong>DN:</strong> {billDetails.dn}</p>
-                                <p><strong>Name:</strong> {billDetails.first_name_th} {billDetails.last_name_th}</p>
-                                <p><strong>Phone:</strong> {billDetails.mobile_phone || 'N/A'}</p>
+                    {!isLoading && filteredPatients.map((patient) => {
+                        const isActive = selectedPatient?.visit_id === patient.visit_id;
+                        const isPaid = patient.payment_status === 'paid';
+                        const statusColor = isPaid ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                        const statusText = isPaid ? 'Paid' : 'Waiting';
+
+                        return (
+                            <div
+                                key={patient.visit_id}
+                                onClick={() => !isPaid && handleSelectPatient(patient)}
+                                className={`p-4 m-2 rounded-lg cursor-pointer transition-all ${
+                                    isActive
+                                        ? 'bg-sky-50 border-2 border-sky-400 shadow-md'
+                                        : isPaid
+                                        ? 'bg-slate-50 opacity-60'
+                                        : 'bg-white border border-slate-200 hover:border-sky-300 hover:shadow-sm'
+                                }`}
+                            >
+                                <div className="flex items-start justify-between mb-2">
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-lg text-slate-800">
+                                            {patient.first_name_th} {patient.last_name_th}
+                                        </h3>
+                                        <p className="text-sm text-slate-600">
+                                            DN: {patient.dn} • {patient.doctor_name || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusColor}`}>
+                                        {statusText}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-500">
+                                    Check-in: {new Date(patient.check_in_time).toLocaleTimeString('th-TH')}
+                                </p>
                             </div>
+                        );
+                    })}
+                </div>
+            </div>
 
-                            {/* Visit Info */}
-                            <div style={{ marginBottom: '20px' }}>
-                                <h3 style={{ marginBottom: '10px' }}>Visit Information</h3>
-                                <p><strong>Date:</strong> {new Date(billDetails.visit_date).toLocaleDateString('th-TH')}</p>
-                                <p><strong>Doctor:</strong> {billDetails.doctor_name || 'N/A'}</p>
-                                <p><strong>Check-in:</strong> {new Date(billDetails.check_in_time).toLocaleTimeString('th-TH')}</p>
-                                {billDetails.checkout_time && (
-                                    <p><strong>Checkout:</strong> {new Date(billDetails.checkout_time).toLocaleTimeString('th-TH')}</p>
-                                )}
+            {/* RIGHT SIDE - Main Payment Panel (70-75%) */}
+            <div className="flex-1 flex flex-col">
+                {!billDetails ? (
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center text-slate-400">
+                            <User size={64} className="mx-auto mb-4" />
+                            <p className="text-lg">Select a patient to process payment</p>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* A. Patient Identification Header */}
+                        <div className="bg-white border-b border-slate-200 p-6">
+                            <div className="flex items-center space-x-4">
+                                <div className="w-16 h-16 bg-sky-100 rounded-full flex items-center justify-center">
+                                    <User size={32} className="text-sky-600" />
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold text-slate-800">
+                                        {billDetails.patient.first_name_th} {billDetails.patient.last_name_th}
+                                    </h1>
+                                    <p className="text-slate-600">
+                                        DN: {billDetails.patient.dn} • DOB: {billDetails.patient.date_of_birth ? new Date(billDetails.patient.date_of_birth).toLocaleDateString('th-TH') : 'N/A'}
+                                    </p>
+                                </div>
                             </div>
+                        </div>
 
-                            {/* Itemized Treatments */}
-                            <div style={{ marginBottom: '20px' }}>
-                                <h3 style={{ marginBottom: '10px' }}>Itemized Treatments</h3>
-                                {billDetails.items && billDetails.items.length > 0 ? (
-                                    <table style={{
-                                        width: '100%',
-                                        borderCollapse: 'collapse',
-                                        fontSize: '14px'
-                                    }}>
+                        {/* B. Itemized Bill Section */}
+                        <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
+                            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                                <h2 className="text-lg font-bold text-slate-800 mb-4">Itemized Bill</h2>
+
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
                                         <thead>
-                                            <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                                                <th style={{ padding: '8px', textAlign: 'left' }}>Code</th>
-                                                <th style={{ padding: '8px', textAlign: 'left' }}>Name</th>
-                                                <th style={{ padding: '8px', textAlign: 'left' }}>Tooth Numbers</th>
-                                                <th style={{ padding: '8px', textAlign: 'right' }}>Price</th>
+                                            <tr className="border-b-2 border-slate-200">
+                                                <th className="text-left py-3 px-2 text-slate-600 font-semibold">Item/Service</th>
+                                                <th className="text-center py-3 px-2 text-slate-600 font-semibold">Qty</th>
+                                                <th className="text-right py-3 px-2 text-slate-600 font-semibold">Unit Price</th>
+                                                <th className="text-right py-3 px-2 text-slate-600 font-semibold">Total Price</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {billDetails.items.map((item, index) => (
-                                                <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                                    <td style={{ padding: '8px' }}>{item.code}</td>
-                                                    <td style={{ padding: '8px' }}>{item.name}</td>
-                                                    <td style={{ padding: '8px' }}>{item.tooth_numbers || '-'}</td>
-                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
-                                                        ฿{parseFloat(item.actual_price).toFixed(2)}
+                                            {billDetails.treatments.map((item, index) => (
+                                                <tr key={index} className="border-b border-slate-100">
+                                                    <td className="py-3 px-2">
+                                                        <div className="font-medium text-slate-800">{item.name}</div>
+                                                        <div className="text-sm text-slate-500">
+                                                            Code: {item.code}
+                                                            {item.tooth_numbers && ` • Tooth: ${item.tooth_numbers}`}
+                                                        </div>
                                                     </td>
+                                                    <td className="py-3 px-2 text-center">1</td>
+                                                    <td className="py-3 px-2 text-right">฿{parseFloat(item.actual_price || 0).toFixed(2)}</td>
+                                                    <td className="py-3 px-2 text-right font-semibold">฿{parseFloat(item.actual_price || 0).toFixed(2)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                ) : (
-                                    <p style={{ color: '#999' }}>No treatments recorded</p>
-                                )}
-                            </div>
+                                </div>
 
-                            {/* Totals */}
-                            <div style={{
-                                borderTop: '2px solid #e5e7eb',
-                                paddingTop: '15px',
-                                marginBottom: '20px'
-                            }}>
-                                {billDetails.discount > 0 && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                {/* Summary Box */}
+                                <div className="mt-6 pt-6 border-t-2 border-slate-200 space-y-2">
+                                    <div className="flex justify-between text-slate-600">
                                         <span>Subtotal:</span>
-                                        <span>฿{(parseFloat(billDetails.total_amount) + parseFloat(billDetails.discount)).toFixed(2)}</span>
+                                        <span>฿{billDetails.subtotal.toFixed(2)}</span>
                                     </div>
-                                )}
-                                {billDetails.discount > 0 && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#DC2626' }}>
-                                        <span>Discount:</span>
-                                        <span>-฿{parseFloat(billDetails.discount).toFixed(2)}</span>
+                                    {billDetails.discount > 0 && (
+                                        <div className="flex justify-between text-red-600">
+                                            <span>Discount:</span>
+                                            <span>-฿{billDetails.discount.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between text-2xl font-bold text-sky-600 pt-2">
+                                        <span>Grand Total:</span>
+                                        <span>฿{billDetails.grandTotal.toFixed(2)}</span>
                                     </div>
-                                )}
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    fontSize: '18px',
-                                    fontWeight: 'bold',
-                                    color: '#3B82F6'
-                                }}>
-                                    <span>Total Amount:</span>
-                                    <span>฿{parseFloat(billDetails.total_amount).toFixed(2)}</span>
                                 </div>
                             </div>
 
-                            {/* Payment Form */}
-                            <form onSubmit={handleProcessPayment} style={{
-                                borderTop: '2px solid #e5e7eb',
-                                paddingTop: '20px'
-                            }}>
-                                <h3 style={{ marginBottom: '15px' }}>Process Payment</h3>
+                            {/* C. Payment Processing Section */}
+                            <div className="bg-white rounded-lg shadow-sm p-6">
+                                <h2 className="text-lg font-bold text-slate-800 mb-4">Select Payment Method</h2>
 
-                                <div style={{ marginBottom: '15px' }}>
-                                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                        Payment Method *
-                                    </label>
-                                    <select
-                                        value={paymentForm.payment_method}
-                                        onChange={(e) => setPaymentForm({ ...paymentForm, payment_method: e.target.value })}
-                                        required
-                                        style={{
-                                            width: '100%',
-                                            padding: '10px',
-                                            border: '1px solid #ddd',
-                                            borderRadius: '4px'
-                                        }}
-                                    >
-                                        <option value="cash">Cash (เงินสด)</option>
-                                        <option value="card">Credit/Debit Card (บัตร)</option>
-                                        <option value="transfer">Bank Transfer (โอน)</option>
-                                        <option value="promptpay">PromptPay</option>
-                                        <option value="other">Other (อื่นๆ)</option>
-                                    </select>
+                                {/* Payment Method Buttons */}
+                                <div className="grid grid-cols-4 gap-3 mb-6">
+                                    {[
+                                        { value: 'cash', label: 'Cash (เงินสด)', icon: '💵' },
+                                        { value: 'card', label: 'Card (บัตร)', icon: '💳' },
+                                        { value: 'qr', label: 'QR Payment', icon: '📱' },
+                                        { value: 'transfer', label: 'Bank Transfer', icon: '🏦' }
+                                    ].map(method => (
+                                        <button
+                                            key={method.value}
+                                            onClick={() => {
+                                                setPaymentMethod(method.value);
+                                                if (method.value === 'cash') {
+                                                    setAmountReceived(billDetails.grandTotal.toFixed(2));
+                                                } else {
+                                                    setAmountReceived(billDetails.grandTotal.toFixed(2));
+                                                }
+                                            }}
+                                            className={`p-4 rounded-lg border-2 transition-all ${
+                                                paymentMethod === method.value
+                                                    ? 'bg-sky-500 border-sky-500 text-white shadow-lg'
+                                                    : 'bg-white border-slate-200 hover:border-sky-300 text-slate-700'
+                                            }`}
+                                        >
+                                            <div className="text-2xl mb-1">{method.icon}</div>
+                                            <div className="text-sm font-semibold">{method.label}</div>
+                                        </button>
+                                    ))}
                                 </div>
 
-                                <div style={{ marginBottom: '20px' }}>
-                                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                                        Amount Received (฿) *
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={paymentForm.paid_amount}
-                                        onChange={(e) => setPaymentForm({ ...paymentForm, paid_amount: e.target.value })}
-                                        required
-                                        min="0"
-                                        step="0.01"
-                                        style={{
-                                            width: '100%',
-                                            padding: '10px',
-                                            border: '1px solid #ddd',
-                                            borderRadius: '4px',
-                                            fontSize: '16px'
-                                        }}
-                                    />
-                                </div>
+                                {/* Dynamic Payment Input Area */}
+                                <div className="space-y-4">
+                                    {paymentMethod === 'cash' && (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                    Amount Received (฿)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={amountReceived}
+                                                    onChange={(e) => setAmountReceived(e.target.value)}
+                                                    className="w-full px-4 py-3 text-lg border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                                    step="0.01"
+                                                />
+                                            </div>
+                                            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm font-semibold text-green-700">Change Due:</span>
+                                                    <span className="text-2xl font-bold text-green-700">
+                                                        ฿{changeDue.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
 
-                                {/* Change calculation */}
-                                {paymentForm.paid_amount && parseFloat(paymentForm.paid_amount) > parseFloat(billDetails.total_amount) && (
-                                    <div style={{
-                                        padding: '15px',
-                                        backgroundColor: '#ecfdf5',
-                                        borderRadius: '4px',
-                                        marginBottom: '20px'
-                                    }}>
-                                        <p style={{ fontSize: '16px', fontWeight: 'bold', color: '#10B981' }}>
-                                            Change: ฿{(parseFloat(paymentForm.paid_amount) - parseFloat(billDetails.total_amount)).toFixed(2)}
-                                        </p>
-                                    </div>
-                                )}
-
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <button
-                                        type="submit"
-                                        style={{
-                                            flex: 1,
-                                            padding: '15px',
-                                            backgroundColor: '#10B981',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            fontWeight: 'bold',
-                                            fontSize: '16px'
-                                        }}
-                                    >
-                                        Process Payment
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handlePrintReceipt}
-                                        style={{
-                                            padding: '15px 20px',
-                                            backgroundColor: '#6B7280',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            fontWeight: 'bold'
-                                        }}
-                                    >
-                                        Print
-                                    </button>
+                                    {['card', 'qr', 'transfer'].includes(paymentMethod) && (
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                                Transaction Reference No.
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={transactionRef}
+                                                onChange={(e) => setTransactionRef(e.target.value)}
+                                                placeholder="Enter transaction reference number"
+                                                className="w-full px-4 py-3 text-lg border-2 border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
-                            </form>
-
-                            {billDetails.notes && (
-                                <div style={{
-                                    marginTop: '20px',
-                                    padding: '10px',
-                                    backgroundColor: '#fef3c7',
-                                    borderRadius: '4px'
-                                }}>
-                                    <strong>Notes:</strong> {billDetails.notes}
-                                </div>
-                            )}
+                            </div>
                         </div>
-                    )}
-                </div>
-            </div>
 
-            {/* Today's Summary Card */}
-            <div style={{
-                marginTop: '30px',
-                padding: '20px',
-                backgroundColor: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
-                <h3 style={{ marginBottom: '15px' }}>Today's Summary</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <p style={{ color: '#666', marginBottom: '5px' }}>Pending Bills</p>
-                        <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#F59E0B' }}>
-                            {pendingBills.length}
-                        </p>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <p style={{ color: '#666', marginBottom: '5px' }}>Total Pending Amount</p>
-                        <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#EF4444' }}>
-                            ฿{pendingBills.reduce((sum, bill) => sum + parseFloat(bill.total_amount), 0).toFixed(2)}
-                        </p>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <p style={{ color: '#666', marginBottom: '5px' }}>Status</p>
-                        <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#10B981' }}>
-                            Active
-                        </p>
-                    </div>
-                </div>
+                        {/* D. Action Bar (Footer) */}
+                        <div className="bg-white border-t border-slate-200 p-6">
+                            <div className="flex justify-end space-x-4">
+                                <button
+                                    onClick={handlePrintReceipt}
+                                    className="px-6 py-3 bg-slate-600 text-white rounded-lg font-semibold hover:bg-slate-700 transition-colors flex items-center space-x-2"
+                                >
+                                    <Printer size={20} />
+                                    <span>Print Receipt</span>
+                                </button>
+                                <button
+                                    onClick={handleConfirmPayment}
+                                    disabled={
+                                        (paymentMethod === 'cash' && (!amountReceived || parseFloat(amountReceived) < billDetails.grandTotal)) ||
+                                        (['card', 'qr', 'transfer'].includes(paymentMethod) && !transactionRef)
+                                    }
+                                    className="px-8 py-3 bg-green-600 text-white rounded-lg font-bold text-lg hover:bg-green-700 transition-colors disabled:bg-slate-300 disabled:cursor-not-allowed flex items-center space-x-2"
+                                >
+                                    <span>✓ Confirm Payment</span>
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
+};
+
+// Receipt HTML Generator
+const generateReceiptHTML = (billDetails, paymentMethod, amountPaid, changeDue, employee) => {
+    const now = new Date();
+    const receiptNo = `R${now.getTime()}`;
+
+    const paymentMethodLabels = {
+        'cash': 'Cash (เงินสด)',
+        'card': 'Credit/Debit Card (บัตร)',
+        'qr': 'QR Payment (พร้อมเพย์)',
+        'transfer': 'Bank Transfer (โอนเงิน)'
+    };
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Receipt - ${billDetails.patient.dn}</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            width: 80mm;
+            margin: 0 auto;
+            padding: 10px;
+            font-size: 12px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 10px;
+        }
+        .logo {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+        }
+        .clinic-info {
+            flex: 1;
+        }
+        .clinic-name {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .separator {
+            border-top: 1px dashed #000;
+            margin: 10px 0;
+        }
+        .double-separator {
+            border-top: 2px solid #000;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            border-bottom: 1px solid #000;
+            padding: 5px 0;
+        }
+        td {
+            padding: 3px 0;
+        }
+        .right {
+            text-align: right;
+        }
+        .center {
+            text-align: center;
+        }
+        .bold {
+            font-weight: bold;
+        }
+        .total-section {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 2px solid #000;
+        }
+        .grand-total {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 20px;
+            border-top: 2px dashed #000;
+            padding-top: 10px;
+        }
+        @media print {
+            body { margin: 0; padding: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="${clinicLogo}" class="logo" alt="Logo">
+        <div class="clinic-info">
+            <div class="clinic-name">Newtrend Dental Clinic</div>
+            <div>123 Main Street, Bangkok 10110</div>
+            <div>Tel: 02-xxx-xxxx</div>
+            <div>Tax ID: 0-0000-00000-00-0</div>
+        </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div>
+        <table>
+            <tr>
+                <td><strong>Receipt No:</strong></td>
+                <td class="right">${receiptNo}</td>
+            </tr>
+            <tr>
+                <td><strong>Date:</strong></td>
+                <td class="right">${now.toLocaleDateString('th-TH')}</td>
+            </tr>
+            <tr>
+                <td><strong>Time:</strong></td>
+                <td class="right">${now.toLocaleTimeString('th-TH')}</td>
+            </tr>
+            <tr>
+                <td><strong>Patient:</strong></td>
+                <td class="right">${billDetails.patient.first_name_th} ${billDetails.patient.last_name_th}</td>
+            </tr>
+            <tr>
+                <td><strong>Patient ID:</strong></td>
+                <td class="right">${billDetails.patient.dn}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="separator"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th class="center">Qty</th>
+                <th class="right">Price</th>
+                <th class="right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${billDetails.treatments.map(item => `
+                <tr>
+                    <td>${item.name}<br><small>${item.code}${item.tooth_numbers ? ' • ' + item.tooth_numbers : ''}</small></td>
+                    <td class="center">1</td>
+                    <td class="right">${parseFloat(item.actual_price || 0).toFixed(2)}</td>
+                    <td class="right">${parseFloat(item.actual_price || 0).toFixed(2)}</td>
+                </tr>
+            `).join('')}
+        </tbody>
+    </table>
+
+    <div class="total-section">
+        <table>
+            <tr>
+                <td>Subtotal:</td>
+                <td class="right">${billDetails.subtotal.toFixed(2)} THB</td>
+            </tr>
+            ${billDetails.discount > 0 ? `
+            <tr>
+                <td>Discount:</td>
+                <td class="right">${billDetails.discount.toFixed(2)} THB</td>
+            </tr>
+            ` : ''}
+            <tr class="grand-total">
+                <td><strong>Grand Total:</strong></td>
+                <td class="right"><strong>${billDetails.grandTotal.toFixed(2)} THB</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="separator"></div>
+
+    <table>
+        <tr>
+            <td><strong>Payment Method:</strong></td>
+            <td class="right">${paymentMethodLabels[paymentMethod] || paymentMethod}</td>
+        </tr>
+        ${paymentMethod === 'cash' ? `
+        <tr>
+            <td><strong>Amount Paid:</strong></td>
+            <td class="right">${parseFloat(amountPaid).toFixed(2)} THB</td>
+        </tr>
+        <tr>
+            <td><strong>Change Due:</strong></td>
+            <td class="right">${changeDue.toFixed(2)} THB</td>
+        </tr>
+        ` : `
+        <tr>
+            <td><strong>Amount Paid:</strong></td>
+            <td class="right">${billDetails.grandTotal.toFixed(2)} THB</td>
+        </tr>
+        `}
+    </table>
+
+    <div class="footer">
+        <div><strong>Received by:</strong> ${employee?.full_name || employee?.username || 'Staff'}</div>
+        <div style="margin-top: 15px; text-align: center;">
+            <div>Thank you for visiting!</div>
+            <div>Please get well soon.</div>
+        </div>
+        <div style="margin-top: 10px; text-align: center; font-size: 10px;">
+            <div>Opening Hours: Mon-Sat 9:00-18:00</div>
+            <div>www.newtrenddental.com</div>
+        </div>
+    </div>
+</body>
+</html>
+    `;
 };
 
 export default CounterPage;
