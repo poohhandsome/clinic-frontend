@@ -945,6 +945,7 @@ const DoctorDashboard = ({ selectedClinic }) => {
                 ) : (
                     allPatients.map((patient) => {
                         const statusBadge = getStatusBadge(patient.status);
+                        const statusLower = patient.status?.toLowerCase();
 
                         // Calculate waiting time in minutes
                         const checkInTime = new Date(patient.check_in_time);
