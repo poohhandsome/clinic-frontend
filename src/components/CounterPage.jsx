@@ -260,9 +260,8 @@ const CounterPage = ({ selectedClinic }) => {
                                             <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                                                 <th style={{ padding: '8px', textAlign: 'left' }}>Code</th>
                                                 <th style={{ padding: '8px', textAlign: 'left' }}>Name</th>
-                                                <th style={{ padding: '8px', textAlign: 'center' }}>Qty</th>
+                                                <th style={{ padding: '8px', textAlign: 'left' }}>Tooth Numbers</th>
                                                 <th style={{ padding: '8px', textAlign: 'right' }}>Price</th>
-                                                <th style={{ padding: '8px', textAlign: 'right' }}>Total</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -270,12 +269,9 @@ const CounterPage = ({ selectedClinic }) => {
                                                 <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                                     <td style={{ padding: '8px' }}>{item.code}</td>
                                                     <td style={{ padding: '8px' }}>{item.name}</td>
-                                                    <td style={{ padding: '8px', textAlign: 'center' }}>{item.quantity}</td>
+                                                    <td style={{ padding: '8px' }}>{item.tooth_numbers || '-'}</td>
                                                     <td style={{ padding: '8px', textAlign: 'right' }}>
-                                                        ฿{parseFloat(item.price).toFixed(2)}
-                                                    </td>
-                                                    <td style={{ padding: '8px', textAlign: 'right' }}>
-                                                        ฿{parseFloat(item.total_price).toFixed(2)}
+                                                        ฿{parseFloat(item.actual_price).toFixed(2)}
                                                     </td>
                                                 </tr>
                                             ))}
