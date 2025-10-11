@@ -1,23 +1,24 @@
 // src/components/NewUILayout/NewSidebar.jsx (REPLACE)
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Stethoscope, CalendarDays, UserRound, Syringe, Receipt, FlaskConical, BarChart3, ClipboardList, DollarSign, Activity } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { getNavigationForUser, getUserNavigationRole, getRoleDisplayName } from '../../config/rolePermissions';
 import clinicLogo from '../../assets/clinic-logo.png';
 
-const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
+const NavItem = ({ icon: Icon, text, active, isSidebarOpen, href }) => (
     <li>
-        <a 
+        <a
             href={href}
             className={`flex items-center p-3 my-1 rounded-lg transition-colors group
-                ${active 
-                    ? 'bg-sky-100 text-sky-800 font-semibold' 
+                ${active
+                    ? 'bg-sky-100 text-sky-800 font-semibold'
                     : 'text-slate-600 hover:bg-slate-200'
                 }
                 ${!isSidebarOpen && 'justify-center'}`}
         >
-            {icon}
-            <span 
-                className={`overflow-hidden transition-all whitespace-nowrap 
+            <Icon size={20} />
+            <span
+                className={`overflow-hidden transition-all whitespace-nowrap
                     ${isSidebarOpen ? 'w-40 ml-3' : 'w-0'}`
                 }
             >
@@ -35,20 +36,13 @@ const NavItem = ({ icon, text, active, isSidebarOpen, href }) => (
 export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPath }) {
     const [isHovering, setIsHovering] = useState(false);
     const showSidebar = isSidebarOpen || isHovering;
+    const { user } = useAuth();
 
-    const navItems = [
-        { id: '#/nurse/dashboard', text: 'Doctor Dashboard', icon: <LayoutDashboard size={20} /> },
-        { id: '#/nurse/clinic-dashboard', text: 'Clinic Dashboard', icon: <Stethoscope size={20} /> },
-        { id: '#/nurse/appointments', text: 'Appointments', icon: <CalendarDays size={20} /> }, // <-- CORRECTED: This is now the main link
-        { id: '#/nurse/treatment-plan', text: 'Treatment Plan', icon: <ClipboardList size={20} /> },
-        { id: '#/nurse/operations', text: 'Operations', icon: <Activity size={20} /> },
-        { id: '#/nurse/counter', text: 'Counter', icon: <DollarSign size={20} /> },
-        { id: '#/nurse/doctors', text: 'Doctors', icon: <UserRound size={20} /> },
-        { id: '#/nurse/treatments', text: 'Treatments', icon: <Syringe size={20} /> },
-        { id: '#/nurse/billing', text: 'Billing', icon: <Receipt size={20} /> },
-        { id: '#/nurse/lab-costs', text: 'Lab Costs', icon: <FlaskConical size={20} /> },
-        { id: '#/nurse/summary', text: 'Summary', icon: <BarChart3 size={20} /> },
-    ];
+    // Get navigation items based on user's role
+    // Super admins see ALL items, doctors/nurses see only their items
+    const navItems = getNavigationForUser(user);
+    const userRole = getUserNavigationRole(user);
+    const roleDisplayName = getRoleDisplayName(user);
 
     return (
         <aside 
@@ -71,10 +65,10 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
                     </span>
                 )}
             </div>
-            <nav className="flex-1 px-3 py-4">
+            <nav className="flex-1 px-3 py-4 overflow-y-auto">
                 <ul>
                     {navItems.map(item => (
-                        <NavItem 
+                        <NavItem
                             key={item.id}
                             isSidebarOpen={showSidebar}
                             icon={item.icon}
@@ -85,6 +79,31 @@ export default function NewSidebar({ isSidebarOpen, setIsSidebarOpen, currentPat
                     ))}
                 </ul>
             </nav>
+
+            {/* Role Badge at bottom */}
+            <div className={`px-3 py-4 border-t border-slate-200 ${!showSidebar && 'flex justify-center'}`}>
+                {userRole === 'superAdmin' && (
+                    <div className={`${showSidebar ? 'flex items-center' : 'flex justify-center'}`}>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white ${!showSidebar && 'w-8 h-8 justify-center'}`}>
+                            {showSidebar ? '👑 Super Admin' : '👑'}
+                        </span>
+                    </div>
+                )}
+                {userRole === 'doctor' && showSidebar && (
+                    <div className="flex items-center">
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-800">
+                            🩺 Doctor
+                        </span>
+                    </div>
+                )}
+                {userRole === 'nurse' && showSidebar && (
+                    <div className="flex items-center">
+                        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-green-100 text-green-800">
+                            💼 Staff
+                        </span>
+                    </div>
+                )}
+            </div>
         </aside>
     );
 }
