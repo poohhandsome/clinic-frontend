@@ -520,7 +520,7 @@ const DoctorMainContent = ({ selectedPatient, onShowCheckoutModal, onRefreshQueu
                                                             />
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-slate-700 text-right">
-                                                            ฿{parseFloat(vt.price || vt.actual_price || 0).toFixed(2)}
+                                                            ฿{parseFloat(vt.price || 0).toFixed(2)}
                                                         </td>
                                                         <td className="px-4 py-3 text-center">
                                                             <button
@@ -600,7 +600,8 @@ const DoctorDashboard = ({ selectedClinic }) => {
     useEffect(() => {
         if (user && selectedClinic) {
             fetchQueue();
-            const interval = setInterval(fetchQueue, 30000);
+            const refreshInterval = parseInt(import.meta.env.VITE_AUTO_REFRESH_INTERVAL) || 30000;
+            const interval = setInterval(fetchQueue, refreshInterval);
             return () => clearInterval(interval);
         }
     }, [user, selectedClinic, statusFilters, checkoutDateRange]);

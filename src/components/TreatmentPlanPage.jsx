@@ -54,10 +54,10 @@ export default function TreatmentPlanPage({ user, patientId, checkInTime }) {
     };
 
     const tabs = [
-        { id: 'history', label: 'History Review', icon: <Clock size={16} /> },
-        { id: 'create', label: 'Ex & Tx Created', icon: <Stethoscope size={16} /> },
-        { id: 'processing', label: 'Treatment Processing', icon: <ClipboardList size={16} /> },
-        { id: 'scans', label: 'Scan Documents', icon: <Microscope size={16} /> },
+        { id: 'history', label: 'History Review', icon: <Clock size={16} />, disabled: false },
+        { id: 'create', label: 'Ex & Tx Created (Coming Soon)', icon: <Stethoscope size={16} />, disabled: true },
+        { id: 'processing', label: 'Treatment Processing', icon: <ClipboardList size={16} />, disabled: false },
+        { id: 'scans', label: 'Scan Documents (Coming Soon)', icon: <Microscope size={16} />, disabled: true },
     ];
 
     return (
@@ -87,8 +87,9 @@ export default function TreatmentPlanPage({ user, patientId, checkInTime }) {
                                     <TabButton
                                         key={tab.id}
                                         active={activeTab === tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
+                                        onClick={() => !tab.disabled && setActiveTab(tab.id)}
                                         icon={tab.icon}
+                                        disabled={tab.disabled}
                                     >
                                         {tab.label}
                                     </TabButton>
@@ -100,9 +101,23 @@ export default function TreatmentPlanPage({ user, patientId, checkInTime }) {
                             {!isLoading && history && (
                                 <>
                                     {activeTab === 'history' && <HistoryReview history={history} />}
-                                    {activeTab === 'create' && <ExTxCreated patientId={selectedPatient.patient_id} doctorId={user.id} />}
-                                    {activeTab === 'processing' && <TreatmentProcessing plans={history.plans} items={history.items} />}
-                                    {activeTab === 'scans' && <ScanDocuments patientId={selectedPatient.patient_id} documents={history.documents} />}
+                                    {activeTab === 'create' && (
+                                        <div className="p-8 bg-yellow-50 rounded-lg border-2 border-yellow-200 text-center">
+                                            <Stethoscope size={48} className="mx-auto text-yellow-600 mb-4" />
+                                            <h3 className="text-xl font-semibold text-yellow-800 mb-2">Feature Coming Soon</h3>
+                                            <p className="text-yellow-700">The "Ex & Tx Created" tab is currently under development.</p>
+                                            <p className="text-yellow-600 text-sm mt-2">Please use the Treatment Processing tab for now.</p>
+                                        </div>
+                                    )}
+                                    {activeTab === 'processing' && <TreatmentProcessing plans={history.plans} />}
+                                    {activeTab === 'scans' && (
+                                        <div className="p-8 bg-yellow-50 rounded-lg border-2 border-yellow-200 text-center">
+                                            <Microscope size={48} className="mx-auto text-yellow-600 mb-4" />
+                                            <h3 className="text-xl font-semibold text-yellow-800 mb-2">Feature Coming Soon</h3>
+                                            <p className="text-yellow-700">The "Scan Documents" tab is currently under development.</p>
+                                            <p className="text-yellow-600 text-sm mt-2">Document scanning functionality will be available in a future update.</p>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -141,7 +156,7 @@ const HistoryReview = ({ history }) => {
     );
 };
 
-const TreatmentProcessing = ({ plans, items }) => {
+const TreatmentProcessing = ({ plans }) => {
     const [upperSectionTreatments, setUpperSectionTreatments] = useState([]);
     const [selectedPlans, setSelectedPlans] = useState([]);
     const [showRecordBox, setShowRecordBox] = useState(null);
@@ -440,11 +455,14 @@ const StatusTag = ({ status }) => {
     return <span className={`px-2 py-1 text-xs font-medium rounded-full ${style}`}>{status}</span>;
 };
 
-const TabButton = ({ active, onClick, icon, children }) => (
+const TabButton = ({ active, onClick, icon, children, disabled }) => (
     <button
         onClick={onClick}
+        disabled={disabled}
         className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-t-lg border-b-2 transition-colors ${
-            active
+            disabled
+                ? 'border-transparent text-slate-300 cursor-not-allowed opacity-60'
+                : active
                 ? 'border-sky-500 text-sky-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
         }`}

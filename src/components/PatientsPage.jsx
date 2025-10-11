@@ -72,7 +72,8 @@ export default function PatientsPage({ selectedClinic }) {
 
     useEffect(() => {
         fetchPendingCount();
-        const interval = setInterval(fetchPendingCount, 30000);
+        const refreshInterval = parseInt(import.meta.env.VITE_AUTO_REFRESH_INTERVAL) || 30000;
+        const interval = setInterval(fetchPendingCount, refreshInterval);
         return () => clearInterval(interval);
     }, [selectedClinic]);
 

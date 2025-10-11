@@ -49,10 +49,11 @@ const CounterPage = ({ selectedClinic }) => {
         }
     }, [selectedClinic, fetchReadyPatients]);
 
-    // Auto-refresh every 30 seconds
+    // Auto-refresh based on configured interval
     useEffect(() => {
         if (autoRefresh && selectedClinic) {
-            const interval = setInterval(fetchReadyPatients, 30000);
+            const refreshInterval = parseInt(import.meta.env.VITE_AUTO_REFRESH_INTERVAL) || 30000;
+            const interval = setInterval(fetchReadyPatients, refreshInterval);
             return () => clearInterval(interval);
         }
     }, [autoRefresh, selectedClinic, fetchReadyPatients]);
